@@ -46,6 +46,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
         actions: [
           IconButton(
             icon: Icon(_torchOn ? Icons.flash_on_rounded : Icons.flash_off_rounded),
+            tooltip: _torchOn ? l10n.qrTorchOff : l10n.qrTorchOn,
             color: _torchOn ? Colors.amber : Colors.white,
             onPressed: () {
               setState(() => _torchOn = !_torchOn);
@@ -67,7 +68,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
             right: 0,
             child: Center(
               child: Text(
-                'Aponte para um código QR ou de barras',
+                l10n.qrInstruction,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Colors.white,
                     ),
@@ -189,7 +190,7 @@ class _ScanResultSheet extends StatelessWidget {
           const SizedBox(height: EpiSpacing.lg),
           Center(
             child: Text(
-              'Código detectado',
+              AppLocalizations.of(context).qrDetected,
               style: Theme.of(context).textTheme.titleLarge,
             ),
           ),
@@ -211,14 +212,14 @@ class _ScanResultSheet extends StatelessWidget {
           ),
           const SizedBox(height: EpiSpacing.xl2),
           EpiButton(
-            label: 'Escanear novamente',
+            label: AppLocalizations.of(context).qrScanAgain,
             onPressed: onScanAgain,
             variant: EpiButtonVariant.ghost,
             fullWidth: true,
           ),
           const SizedBox(height: EpiSpacing.md),
           EpiButton(
-            label: 'Fechar',
+            label: AppLocalizations.of(context).close,
             onPressed: () => Navigator.pop(context),
             fullWidth: true,
           ),

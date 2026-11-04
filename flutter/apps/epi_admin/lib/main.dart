@@ -105,10 +105,13 @@ Future<void> main() async {
     apiBaseUrlDefine: _kApiBaseUrl,
   );
 
-  await ApiClient.init(baseUrl: baseUrl);
+  final localeProvider = LocaleProvider();
+  await ApiClient.init(
+    baseUrl: baseUrl,
+    localeTag: () => localeProvider.locale.toLanguageTag(),
+  );
   SyncService().startListening();
   final themeNotifier = ThemeModeNotifier();
-  final localeProvider = LocaleProvider();
   await Future.wait([themeNotifier.init(), localeProvider.init()]);
   try {
     await Firebase.initializeApp(

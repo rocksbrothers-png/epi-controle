@@ -15,6 +15,13 @@ from modules.epis.validity import (
 )
 
 
+def _presentation(title, description, **params):
+    """Additive presentation metadata; legacy strings and alert rules stay intact."""
+    return {'title_key': 'operationalAlerts.' + title,
+            'description_key': 'operationalAlerts.' + description,
+            'params': params}
+
+
 def compute_alerts(
     connection,
     actor=None,
@@ -45,18 +52,23 @@ def compute_alerts(
         if status == STATUS_NEAR_MINIMUM:
             type_label = 'warning'
             prefix = 'Estoque próximo do mínimo'
+            title_key = 'stock.nearMinimum'
         elif stock < 0:
             type_label = 'danger'
             prefix = 'Saldo negativo'
+            title_key = 'stock.negative'
         elif stock == 0:
             type_label = 'danger'
             prefix = 'Estoque zerado'
+            title_key = 'stock.zero'
         elif stock < minimum:
             type_label = 'danger'
             prefix = 'Estoque abaixo do mínimo'
+            title_key = 'stock.belowMinimum'
         else:
             type_label = 'warning'
             prefix = 'Estoque no limite mínimo'
+            title_key = 'stock.atMinimum'
         size_balances = item.get('size_balances') or []
         size_parts = []
         for sb in size_balances:
@@ -80,6 +92,9 @@ def compute_alerts(
             'epi_id': item.get('epi_id'),
             'epi_name': item.get('epi_name'),
             'size_balances': size_balances,
+            'presentation': _presentation(title_key, 'stock.description',
+                epi=item['epi_name'], company=item['company_name'], unit=item['unit_name'],
+                stock=stock, minimum=minimum, measure=item['unit_measure']),
         })
 
     # EST-V3.5 (G02): a validade do fabricante que rege o alerta é a FÍSICA do
@@ -97,6 +112,8 @@ def compute_alerts(
                 'type': 'danger' if ca_days <= 7 else 'warning',
                 'category': 'ca',
                 'title': f"CA próximo do vencimento: {epi['name']}",
+                'presentation': _presentation('ca.title', 'ca.description',
+                    epi=epi['name'], company=epi['company_name'], date=epi['ca_expiry']),
                 'description': f"{epi['company_name']} - vence em {epi['ca_expiry']}.",
                 'company_id': epi.get('company_id'),
                 'unit_id': epi.get('unit_id'),
@@ -120,6 +137,9 @@ def compute_alerts(
                     'type': 'danger',
                     'category': 'manufacturer',
                     'title': f"Validade do fabricante vencida: {epi['name']}",
+                    'presentation': _presentation('manufacturer.expiredTitle', 'manufacturer.expiredDescription',
+                        epi=epi['name'], company=epi['company_name'], date=effective_mv,
+                        stock=stock, measure=unit_measure, days=mv_days),
                     'description': (
                         f"{epi['company_name']} - validade do fabricante venceu em "
                         f"{effective_mv}. Retire do estoque ({stock} {unit_measure}(s)): "
@@ -135,6 +155,9 @@ def compute_alerts(
                     'type': 'danger' if mv_days <= 7 else 'warning',
                     'category': 'manufacturer',
                     'title': f"Validade do fabricante próxima: {epi['name']}",
+                    'presentation': _presentation('manufacturer.expiringTitle', 'manufacturer.expiringDescription',
+                        epi=epi['name'], company=epi['company_name'], date=effective_mv,
+                        stock=stock, measure=unit_measure, days=mv_days),
                     'description': (
                         f"{epi['company_name']} - validade do fabricante vence em "
                         f"{effective_mv} (em {mv_days} dia(s)). Priorize a entrega "
@@ -152,7 +175,9 @@ def compute_alerts(
                     'title': 'Validade física desconhecida' if category == 'physical_unknown' else 'Lotes próximos do vencimento',
                     'description': f"{epi['name']}: {count} peça(s) física(s).",
                     'company_id': epi.get('company_id'), 'unit_id': scope_unit_id,
-                    'epi_id': epi.get('id'), 'epi_name': epi.get('name')})
+                    'epi_id': epi.get('id'), 'epi_name': epi.get('name'),
+                    'presentation': _presentation(category + '.title', 'physicalDescription',
+                        epi=epi['name'], count=count)})
 
     return alerts
 

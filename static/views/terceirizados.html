@@ -5,7 +5,7 @@
             <p class="page-desc" data-i18n="outsourcedCompany.pageDesc">Cadastro Simplificado de empresas terceirizadas e prestadoras de serviço — CNPJ é opcional aqui, pode ser completado depois.</p>
           </div>
         </header>
-        <nav class="view-tabs" data-vtabs="terceirizados" aria-label="Terceirizados e Prestadores">
+        <nav class="view-tabs" data-vtabs="terceirizados" aria-label="Terceirizados e Prestadores" data-i18n-aria-label="nav.outsourcedCompanies">
           <button type="button" class="vtab" data-vtab="cadastro" data-i18n="tabs.register">Cadastro</button>
           <button type="button" class="vtab" data-vtab="lista" data-i18n="tabs.list">Lista</button>
           <button type="button" class="vtab" data-vtab="colaboradores" data-i18n="outsourcedCompany.employeesTab">Cadastro de Colaboradores</button>
@@ -30,12 +30,12 @@
                 <option value="other_contracted" data-i18n="outsourcedCompany.kindOther">Outro</option>
               </select></label>
               <label><span data-i18n="outsourcedCompany.responsibility">Responsabilidade pelo fornecimento de EPI</span><select name="epi_responsibility">
-                <option value="Empresa Contratante">Empresa Contratante</option>
-                <option value="Empresa Terceirizada">Empresa Terceirizada</option>
-                <option value="Empresa Prestadora de Serviço">Empresa Prestadora de Serviço</option>
-                <option value="Responsabilidade Compartilhada">Responsabilidade Compartilhada</option>
-                <option value="Conforme Contrato" selected>Conforme Contrato</option>
-                <option value="Não Definido">Não Definido</option>
+                <option value="Empresa Contratante" data-i18n="ui.terceirizados.empresa_contratante_3769f4">Empresa Contratante</option>
+                <option value="Empresa Terceirizada" data-i18n="ui.terceirizados.empresa_terceirizada_6b6c40">Empresa Terceirizada</option>
+                <option value="Empresa Prestadora de Serviço" data-i18n="ui.terceirizados.empresa_prestadora_de_servico_915cda">Empresa Prestadora de Serviço</option>
+                <option value="Responsabilidade Compartilhada" data-i18n="ui.terceirizados.responsabilidade_compartilhada_f885e2">Responsabilidade Compartilhada</option>
+                <option value="Conforme Contrato" selected data-i18n="ui.terceirizados.conforme_contrato_0fcd66">Conforme Contrato</option>
+                <option value="Não Definido" data-i18n="ui.terceirizados.nao_definido_11add2">Não Definido</option>
               </select></label>
               <label><span data-i18n="outsourcedCompany.unit">Unidade de origem</span><select name="unit_id" id="outsourced-company-unit"></select><small class="muted" data-i18n="outsourcedCompany.unitHint">Só no cadastro: perfis de unidade (Administrador Local/Gestor de EPI) ficam restritos à própria unidade automaticamente. Depois de criada, a empresa fica disponível para o tenant inteiro vincular (aba Lista) e a Unidade de origem não muda mais.</small></label>
             </fieldset>
@@ -51,7 +51,7 @@
         <div class="vtab-panel" data-vtab-panel="lista">
           <article class="card"><h3 data-i18n="outsourcedCompany.pageTitle">Terceirizados e Prestadores</h3>
             <div class="form-grid">
-              <label><span data-i18n="outsourcedCompany.filterSearch">Buscar</span><input id="outsourced-companies-filter-search" type="search" placeholder="Nome ou CNPJ"></label>
+              <label><span data-i18n="outsourcedCompany.filterSearch">Buscar</span><input id="outsourced-companies-filter-search" type="search" placeholder="Nome ou CNPJ" data-i18n-placeholder="ui.terceirizados.nome_ou_cnpj_9aa0b8"></label>
               <label><span data-i18n="outsourcedCompany.filterKind">Tipo</span><select id="outsourced-companies-filter-kind"><option value="" data-i18n="unit.filterAll">Todos</option>
                 <option value="outsourced" data-i18n="outsourcedCompany.kindOutsourced">Terceirizada</option>
                 <option value="service_provider" data-i18n="outsourcedCompany.kindServiceProvider">Prestadora de Serviço</option>
@@ -92,7 +92,7 @@
               <label><span data-i18n="outsourcedCompany.employeeUnitLabel">Unidade</span><select name="unit_id" id="outsourced-employee-unit" required></select><small class="muted" id="outsourced-employee-unit-hint" data-i18n="outsourcedCompany.employeeUnitLockedHint" hidden>Unidade definida pelo seu perfil de acesso.</small></label>
               <label><span data-i18n="outsourcedCompany.employeeCompanyLabel">Empresa terceirizada/prestadora</span><select name="outsourced_company_id" id="outsourced-employee-outsourced-company" required></select></label>
               <label><span data-i18n="outsourcedCompany.employeeNameLabel">Nome completo</span><input name="name" type="text" autocomplete="off" required></label>
-              <label><span data-i18n="outsourcedCompany.employeeCpfLabel">CPF</span><input name="cpf" type="text" placeholder="Somente números" required></label>
+              <label><span data-i18n="outsourcedCompany.employeeCpfLabel">CPF</span><input name="cpf" type="text" placeholder="Somente números" required data-i18n-placeholder="ui.terceirizados.somente_numeros_a4bde0"></label>
               <label><span data-i18n="outsourcedCompany.employeeRoleLabel">Função</span><input name="role_name" type="text" required></label>
               <label><span data-i18n="outsourcedCompany.employeeVincLabel">Tipo de vínculo</span>
                 <select name="tipo_vinculo" required>
@@ -116,7 +116,7 @@
           <article class="card">
             <h3 data-i18n="outsourcedCompany.employeesTab">Cadastro de Colaboradores</h3>
             <div class="form-grid">
-              <label><span data-i18n="outsourcedCompany.employeesFilterSearch">Buscar</span><input id="outsourced-employees-filter-search" type="search" placeholder="Nome ou função"></label>
+              <label><span data-i18n="outsourcedCompany.employeesFilterSearch">Buscar</span><input id="outsourced-employees-filter-search" type="search" placeholder="Nome ou função" data-i18n-placeholder="ui.terceirizados.nome_ou_funcao_912ba3"></label>
             </div>
             <div class="table-wrap"><table><thead><tr>
               <th scope="col" data-i18n="employee.tableName">Colaborador</th>
@@ -148,8 +148,8 @@
             <div class="form-grid">
               <label><span data-i18n="unit.filterCompany">Empresa</span><select id="archived-outsourced-companies-filter-company"><option value="" data-i18n="unit.filterAllCompanies">Todas</option></select></label>
               <label><span data-i18n="unit.archivedFilterDate">Arquivado em</span><input id="archived-outsourced-companies-filter-date" type="date"></label>
-              <label><span data-i18n="unit.archivedFilterReason">Motivo</span><input id="archived-outsourced-companies-filter-reason" type="search" placeholder="Motivo do arquivamento"></label>
-              <label><span data-i18n="unit.archivedFilterUser">Responsável</span><input id="archived-outsourced-companies-filter-user" type="search" placeholder="Usuário responsável"></label>
+              <label><span data-i18n="unit.archivedFilterReason">Motivo</span><input id="archived-outsourced-companies-filter-reason" type="search" placeholder="Motivo do arquivamento" data-i18n-placeholder="ui.terceirizados.motivo_do_arquivamento_c7c318"></label>
+              <label><span data-i18n="unit.archivedFilterUser">Responsável</span><input id="archived-outsourced-companies-filter-user" type="search" placeholder="Usuário responsável" data-i18n-placeholder="ui.terceirizados.usuario_responsavel_5edc51"></label>
             </div>
             <div class="table-wrap"><table><thead><tr>
               <th scope="col" data-i18n="unit.tableCompany">Empresa</th>
@@ -170,8 +170,8 @@
             <div class="form-grid">
               <label><span data-i18n="unit.filterCompany">Empresa</span><select id="archived-outsourced-employees-filter-company"><option value="" data-i18n="unit.filterAllCompanies">Todas</option></select></label>
               <label><span data-i18n="unit.archivedFilterDate">Arquivado em</span><input id="archived-outsourced-employees-filter-date" type="date"></label>
-              <label><span data-i18n="unit.archivedFilterReason">Motivo</span><input id="archived-outsourced-employees-filter-reason" type="search" placeholder="Motivo do arquivamento"></label>
-              <label><span data-i18n="unit.archivedFilterUser">Responsável</span><input id="archived-outsourced-employees-filter-user" type="search" placeholder="Usuário responsável"></label>
+              <label><span data-i18n="unit.archivedFilterReason">Motivo</span><input id="archived-outsourced-employees-filter-reason" type="search" placeholder="Motivo do arquivamento" data-i18n-placeholder="ui.terceirizados.motivo_do_arquivamento_c7c318"></label>
+              <label><span data-i18n="unit.archivedFilterUser">Responsável</span><input id="archived-outsourced-employees-filter-user" type="search" placeholder="Usuário responsável" data-i18n-placeholder="ui.terceirizados.usuario_responsavel_5edc51"></label>
             </div>
             <div class="table-wrap"><table><thead><tr>
               <th scope="col" data-i18n="unit.tableCompany">Empresa</th>

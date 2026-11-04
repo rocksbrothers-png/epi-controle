@@ -1,0 +1,36 @@
+{
+  "corporate_head": "624d89153bfbddfd2853810b521376dd7f1811ed",
+  "saas_checkpoint": "75185fb",
+  "independent_execution_repo": "Corporate",
+  "new_blocking_defects_confirmed": 0,
+  "real_dashboard_locales": [
+    "pt_BR",
+    "en_US",
+    "es_ES",
+    "fr_FR",
+    "no_NO"
+  ],
+  "plural_cases": 30,
+  "complete_fallback_cases": 25,
+  "real_dashboard_locale_change_refetches": 0,
+  "source_contract_evidence": "flutter-source-contract-results.json",
+  "runtime_evidence": "flutter-independent-results.json",
+  "refresh_retry_reexecution_log": "flutter-independent-capture-final.log",
+  "readable_capture_log": "flutter-independent-readable-capture-final.log",
+  "capture_evidence": "flutter-independent-capture-results.json",
+  "known_preexisting_issue": {
+    "component": "EpiKpiCard Column",
+    "mobile_viewport": "390x844",
+    "overflow_pixels_with_Inter_and_EpiTheme": 3.9,
+    "observations": 12,
+    "initial_Ahem_harness_overflow_pixels": 26,
+    "regression_in_alert_locale_block": false
+  },
+  "scope_limits": [
+    "No full-product approval",
+    "No live token, backend RBAC, database or native-device execution",
+    "SaaS execution provided by root, not independently rerun by this auditor",
+    "Local edits after checkpoint excluded",
+    "Captures use synthetic payload, not historical production screenshots"
+  ]
+}

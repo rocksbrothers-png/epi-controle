@@ -1,0 +1,42 @@
+{
+  "cases": [
+    {
+      "locale": "pt-BR",
+      "errorCode": "GENERIC_VALIDATION",
+      "validationCode": "ITEM_PRICE_REQUIRED",
+      "payloadPreserved": true,
+      "liveFeedbackMarkupToast": true
+    },
+    {
+      "locale": "en-GB",
+      "errorCode": "GENERIC_VALIDATION",
+      "validationCode": "ITEM_PRICE_REQUIRED",
+      "payloadPreserved": true,
+      "liveFeedbackMarkupToast": true
+    },
+    {
+      "locale": "es-ES",
+      "errorCode": "GENERIC_VALIDATION",
+      "validationCode": "ITEM_PRICE_REQUIRED",
+      "payloadPreserved": true,
+      "liveFeedbackMarkupToast": true
+    },
+    {
+      "locale": "fr-FR",
+      "errorCode": "GENERIC_VALIDATION",
+      "validationCode": "ITEM_PRICE_REQUIRED",
+      "payloadPreserved": true,
+      "liveFeedbackMarkupToast": true
+    },
+    {
+      "locale": "nb-NO",
+      "errorCode": "GENERIC_VALIDATION",
+      "validationCode": "ITEM_PRICE_REQUIRED",
+      "payloadPreserved": true,
+      "liveFeedbackMarkupToast": true
+    }
+  ],
+  "transport_headers_and_payload_preserved": true,
+  "page_errors": [],
+  "limits": "Private functions extracted by AST; actual global engine and showToast. Local fixture only."
+}

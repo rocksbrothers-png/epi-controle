@@ -1,0 +1,63 @@
+[
+  {
+    "before": true,
+    "locale": "fr-FR",
+    "heading": "Finalizar Assinatura",
+    "page_errors": []
+  },
+  {
+    "before": false,
+    "locale": "pt-BR",
+    "heading": "Finalizar Assinatura",
+    "price": "R$ 1.234,56",
+    "benefits": "Até 1 usuário\nSuporte e atualizações inclusos\nCancele quando quiser, sem fidelidade",
+    "selection_preserved": true,
+    "intent_preserved": true,
+    "page_errors": [],
+    "writes": []
+  },
+  {
+    "before": false,
+    "locale": "en-GB",
+    "heading": "Complete subscription",
+    "price": "R$1,234.56",
+    "benefits": "Up to 1 user\nSupport and updates included\nCancel anytime, no lock-in",
+    "selection_preserved": true,
+    "intent_preserved": true,
+    "page_errors": [],
+    "writes": []
+  },
+  {
+    "before": false,
+    "locale": "es-ES",
+    "heading": "Completar suscripción",
+    "price": "1234,56 BRL",
+    "benefits": "Hasta 1 usuario\nSoporte y actualizaciones incluidos\nCancele cuando quiera, sin permanencia",
+    "selection_preserved": true,
+    "intent_preserved": true,
+    "page_errors": [],
+    "writes": []
+  },
+  {
+    "before": false,
+    "locale": "fr-FR",
+    "heading": "Finaliser l’abonnement",
+    "price": "1 234,56 R$",
+    "benefits": "Jusqu’à 1 utilisateur\nAssistance et mises à jour incluses\nRésiliez à tout moment, sans engagement",
+    "selection_preserved": true,
+    "intent_preserved": true,
+    "page_errors": [],
+    "writes": []
+  },
+  {
+    "before": false,
+    "locale": "nb-NO",
+    "heading": "Fullfør abonnementet",
+    "price": "1 234,56 BRL",
+    "benefits": "Opptil 1 bruker\nKundestøtte og oppdateringer inkludert\nSi opp når som helst, uten bindingstid",
+    "selection_preserved": true,
+    "intent_preserved": true,
+    "page_errors": [],
+    "writes": []
+  }
+]

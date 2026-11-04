@@ -19,14 +19,14 @@
     return value === true || value === 1 || value === '1';
   }
 
-  var TYPE_LABELS = {
-    matriz: 'Matriz',
-    filial: 'Filial',
-    subsidiaria: 'Subsidiária',
+  const TYPE_LABELS = {
+    get ['matriz']() { return (globalThis.trEpi?.('legalEntity.typeHeadquarters','Matriz',{}) ?? 'Matriz'); },
+    get ['filial']() { return (globalThis.trEpi?.('legalEntity.typeBranch','Filial',{}) ?? 'Filial'); },
+    get ['subsidiaria']() { return (globalThis.trEpi?.('legalEntity.typeSubsidiary','Subsidi\u00e1ria',{}) ?? 'Subsidi\u00e1ria'); },
     spe: 'SPE',
-    jv_partner: 'Sócia de JV',
-    consorciada: 'Consorciada',
-    outro: 'Outro',
+    get ['jv_partner']() { return (globalThis.trEpi?.('legalEntity.typeJvPartner','S\u00f3cia de JV',{}) ?? 'S\u00f3cia de JV'); },
+    get ['consorciada']() { return (globalThis.trEpi?.('legalEntity.typeConsortium','Consorciada',{}) ?? 'Consorciada'); },
+    get ['outro']() { return (globalThis.trEpi?.('outsourcedCompany.kindOther','Outro',{}) ?? 'Outro'); },
   };
 
   /** Rótulo do tipo; valor desconhecido volta como veio, em vez de sumir. */

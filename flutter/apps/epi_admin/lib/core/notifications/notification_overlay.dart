@@ -1,3 +1,5 @@
+import '../i18n/generated/app_localizations.dart';
+import '../i18n/presentation_formatters.dart';
 import 'dart:async';
 
 import 'package:epi_design/epi_design.dart';
@@ -50,6 +52,17 @@ class _NotificationOverlayState extends State<NotificationOverlay>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final count = _current?.criticalStockCount;
+    final title = count == null
+        ? _current?.title ?? ''
+        : l10n.criticalStockTitle;
+    final body = count == null
+        ? _current?.body ?? ''
+        : l10n.criticalStockBody(
+            count,
+            formatDisplayCount(count, l10n.localeName),
+          );
     return Stack(
       children: [
         widget.child,
@@ -62,10 +75,7 @@ class _NotificationOverlayState extends State<NotificationOverlay>
               position: Tween<Offset>(
                 begin: const Offset(0, -1),
                 end: Offset.zero,
-              ).animate(CurvedAnimation(
-                parent: _anim,
-                curve: Curves.easeOut,
-              )),
+              ).animate(CurvedAnimation(parent: _anim, curve: Curves.easeOut)),
               child: Material(
                 elevation: 4,
                 borderRadius: BorderRadius.circular(EpiRadius.md),
@@ -76,25 +86,25 @@ class _NotificationOverlayState extends State<NotificationOverlay>
                     padding: const EdgeInsets.all(EpiSpacing.md),
                     child: Row(
                       children: [
-                        const Icon(Icons.notifications_rounded,
-                            color: EpiColors.brand),
+                        const Icon(
+                          Icons.notifications_rounded,
+                          color: EpiColors.brand,
+                        ),
                         const SizedBox(width: EpiSpacing.md),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              if (_current!.title.isNotEmpty)
+                              if (title.isNotEmpty)
                                 Text(
-                                  _current!.title,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .labelLarge
+                                  title,
+                                  style: Theme.of(context).textTheme.labelLarge
                                       ?.copyWith(fontWeight: FontWeight.w700),
                                 ),
-                              if (_current!.body.isNotEmpty)
+                              if (body.isNotEmpty)
                                 Text(
-                                  _current!.body,
+                                  body,
                                   style: Theme.of(context).textTheme.bodySmall,
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
@@ -103,8 +113,11 @@ class _NotificationOverlayState extends State<NotificationOverlay>
                           ),
                         ),
                         const SizedBox(width: EpiSpacing.sm),
-                        const Icon(Icons.close_rounded,
-                            size: 16, color: EpiColors.textMuted),
+                        const Icon(
+                          Icons.close_rounded,
+                          size: 16,
+                          color: EpiColors.textMuted,
+                        ),
                       ],
                     ),
                   ),

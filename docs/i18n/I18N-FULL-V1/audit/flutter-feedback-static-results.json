@@ -1,0 +1,30 @@
+{
+  "baseline": "c1faf3a3",
+  "classification_function": "EXACTLY_EQUAL ignoring whitespace",
+  "action_visibility_conditions": "EXACTLY_EQUAL ignoring whitespace",
+  "reject_admin_null_empty_guards": "EXACTLY_EQUAL ignoring whitespace",
+  "cubit_calls_and_decision_codes": "EXACTLY_EQUAL",
+  "filter_values": [
+    null,
+    "open",
+    "in_review",
+    "resolved"
+  ],
+  "critical_files_byte_identical": [
+    "flutter/apps/epi_admin/lib/core/bloc/feedback_cubit.dart",
+    "flutter/packages/epi_api/lib/endpoints/feedback_api.dart",
+    "flutter/apps/epi_admin/lib/core/api/api_client.dart",
+    "modules/feedback/service.py",
+    "flutter/packages/epi_api/lib/models/feedback.dart"
+  ],
+  "new_dialog_controller_ownership": "State-owned; dispose on unmount; same trim and null/empty guards",
+  "calendar_compatibility": "Resolved in source: dedicated formatFeedbackDate uses DateTime.parse(raw), then locale DateFormat.yMd. Empty and invalid raw string fallbacks preserved; timestamp offset normalization matches the previous formatter.",
+  "sha256": {
+    "flutter/apps/epi_admin/lib/features/feedback/feedback_screen.dart": "d91582309d0c65468cba1ea6ebf2baf97969494c2271d502bef965609ffe4fdd",
+    "flutter/apps/epi_admin/lib/features/feedback/feedback_presentation.dart": "9de7142a8c528d7f3cb7fbfe19a22e31dc7cf23d40fb2b5c47e190f99cfa968f"
+  },
+  "limits": "Read-only static proof, no independent Flutter execution of FeedbackScreen.",
+  "backend_current_timestamp_source": "modules/feedback/service.py uses datetime.now(UTC).isoformat()",
+  "initial_calendar_compatibility_finding": "New helper preserves original ISO calendar prefix; old DateTime.parse normalized explicit offsets to UTC. Same date for current UTC/Z backend values; arbitrary offset timestamps may display a different day.",
+  "temporal_runtime_test": "Offset 23h -03 => next UTC day test passed according to implementer; no SDK rerun by independent auditor."
+}

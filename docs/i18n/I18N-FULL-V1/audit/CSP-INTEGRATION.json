@@ -1,0 +1,44 @@
+{
+  "scope": "Reconcile I18N-FULL-V1 with main SECURITY-CSP-V1 without merging the draft PRs",
+  "integrated_main": {
+    "corporate": "13a1e8bf22a3151dae449c2f78f68a474612e183",
+    "saas": "25b0170be057f7040f3139669ba02da9acc52f8c"
+  },
+  "pre_integration_published_connector_heads": {
+    "corporate": "e90a2d62a4e2110091fd2ea46e2f73d062127ff8",
+    "saas": "ced27428c85b3349f3d8f508442c906bfaa736b3"
+  },
+  "before": {
+    "failure": "ValueError: substring not found importing supplier_portal_page; incoming CSP expected an inline script absent from the modular I18N shell",
+    "reproduced_by": "pytest tests/test_security_csp_v1.py: collection error"
+  },
+  "resolution": {
+    "delegated_actions": "Preserve data attributes/listeners from main and I18N bindings from draft",
+    "supplier_portal": "Exactly three local external scripts with byte-derived SRI and matching hash-only CSP; no self/unsafe-inline/unsafe-eval script source",
+    "network_and_data": "Original token/actor/payload/permissions/scope unchanged",
+    "cache": "Asset-specific version changes with content digest",
+    "digests": "F4/F5B recomputed from resolved paired content; file lists and normalization unchanged"
+  },
+  "local_results": {
+    "directed_pytest": {
+      "corporate": 225,
+      "saas": 223
+    },
+    "javascript_per_product": 665,
+    "supplier_portal_flows_per_product": 20,
+    "supplier_portal_csp_violations": 0,
+    "independent_CSP_SRI_cases_per_product": 20,
+    "independent_CSP_SRI_failures": 0,
+    "SPA_CSP": {
+      "locale_count": 5,
+      "screens_and_tabs_per_locale": 37,
+      "negative_controls": 6,
+      "failures": 0,
+      "external_libraries": "same-URL stubs; portal assets execute real bytes"
+    },
+    "connector_checks_after_integration_per_product": 165,
+    "DOM_regression_after_integration_per_product": 40
+  },
+  "CI": "Backend CI retains its single existing i18n-runtime reusable job, expands frontend/harness filters, and runs retained CSP/SRI checks. An accidental duplicate call was removed after observing concurrency cancellation; final exact HEADs/checks are recorded in PR descriptions.",
+  "ready_for_human_merge_decision": false
+}

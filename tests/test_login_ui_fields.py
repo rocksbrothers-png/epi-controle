@@ -43,4 +43,5 @@ def test_login_password_toggle_is_single_scoped_binding():
     assert source.count("function toggleLoginPasswordVisibility") == 1
     assert source.count("bindAppListener(refs.loginPasswordToggle, 'click', toggleLoginPasswordVisibility)") == 1
     assert "refs.loginPassword.type = isVisible ? 'text' : 'password';" in source
-    assert "aria-label', isVisible ? 'Ocultar senha' : 'Mostrar senha'" in source
+    assert 'attributeFor?.(refs.loginPasswordToggle,"aria-label","login.hidePassword"' in source
+    assert 'attributeFor?.(refs.loginPasswordToggle,"aria-label","login.showPassword"' in source

@@ -1,0 +1,20 @@
+00:00 +0: loading /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/billing_i18n_test.dart
+00:00 +0: (setUpAll)
+00:00 +0: subscription details and explicit cancellation pt_BR use only existing authenticated action
+00:01 +1: invoice labels, large BRL values and canonical filter pt_BR fit mobile
+00:02 +2: empty and denied subscription have localized title without actions pt_BR
+00:02 +3: subscription details and explicit cancellation en_US use only existing authenticated action
+00:02 +4: invoice labels, large BRL values and canonical filter en_US fit mobile
+00:03 +5: empty and denied subscription have localized title without actions en_US
+00:03 +6: subscription details and explicit cancellation es_ES use only existing authenticated action
+00:03 +7: invoice labels, large BRL values and canonical filter es_ES fit mobile
+00:04 +8: empty and denied subscription have localized title without actions es_ES
+00:04 +9: subscription details and explicit cancellation fr_FR use only existing authenticated action
+00:04 +10: invoice labels, large BRL values and canonical filter fr_FR fit mobile
+00:04 +11: empty and denied subscription have localized title without actions fr_FR
+00:05 +12: subscription details and explicit cancellation no_NO use only existing authenticated action
+00:05 +13: invoice labels, large BRL values and canonical filter no_NO fit mobile
+00:05 +14: empty and denied subscription have localized title without actions no_NO
+00:05 +15: locale change preserves selected filter and open confirmation without fetching or writing
+00:06 +16: (tearDownAll)
+00:06 +16: All tests passed!

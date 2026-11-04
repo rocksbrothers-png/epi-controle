@@ -1,0 +1,37 @@
+00:00 +0: loading /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/billing_i18n_test.dart
+00:00 +0: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/billing_i18n_test.dart: (setUpAll)
+00:00 +0: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/billing_i18n_test.dart: subscription details and explicit cancellation pt_BR use only existing authenticated action
+00:01 +1: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/billing_i18n_test.dart: invoice labels, large BRL values and canonical filter pt_BR fit mobile
+00:02 +2: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/billing_i18n_test.dart: empty and denied subscription have localized title without actions pt_BR
+00:02 +3: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/billing_i18n_test.dart: subscription details and explicit cancellation en_US use only existing authenticated action
+00:02 +4: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/billing_i18n_test.dart: invoice labels, large BRL values and canonical filter en_US fit mobile
+00:02 +5: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/billing_i18n_test.dart: empty and denied subscription have localized title without actions en_US
+00:03 +6: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/billing_i18n_test.dart: subscription details and explicit cancellation es_ES use only existing authenticated action
+00:03 +7: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/billing_i18n_test.dart: invoice labels, large BRL values and canonical filter es_ES fit mobile
+00:03 +8: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/billing_i18n_test.dart: empty and denied subscription have localized title without actions es_ES
+00:03 +9: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/billing_i18n_test.dart: subscription details and explicit cancellation fr_FR use only existing authenticated action
+00:04 +10: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/billing_i18n_test.dart: invoice labels, large BRL values and canonical filter fr_FR fit mobile
+00:04 +11: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/billing_i18n_test.dart: empty and denied subscription have localized title without actions fr_FR
+00:04 +12: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/billing_i18n_test.dart: subscription details and explicit cancellation no_NO use only existing authenticated action
+00:05 +13: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/billing_i18n_test.dart: invoice labels, large BRL values and canonical filter no_NO fit mobile
+00:05 +14: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/billing_i18n_test.dart: empty and denied subscription have localized title without actions no_NO
+00:05 +15: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/billing_i18n_test.dart: locale change preserves selected filter and open confirmation without fetching or writing
+00:06 +16: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/billing_i18n_test.dart: (tearDownAll)
+00:06 +16: loading /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/presentation_formatters_test.dart
+00:06 +16: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/presentation_formatters_test.dart: (setUpAll)
+00:07 +16: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/presentation_formatters_test.dart: locale pt_BR changes separators/calendar display without converting value or currency
+00:07 +17: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/presentation_formatters_test.dart: locale en_US changes separators/calendar display without converting value or currency
+00:07 +18: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/presentation_formatters_test.dart: locale es_ES changes separators/calendar display without converting value or currency
+00:07 +19: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/presentation_formatters_test.dart: locale fr_FR changes separators/calendar display without converting value or currency
+00:07 +20: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/presentation_formatters_test.dart: locale no_NO changes separators/calendar display without converting value or currency
+00:07 +21: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/presentation_formatters_test.dart: display preserves the preexisting two-decimal double rounding
+00:07 +22: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/presentation_formatters_test.dart: (tearDownAll)
+00:07 +22: loading /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/i18n_catalogue_runtime_test.dart
+00:07 +22: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/i18n_catalogue_runtime_test.dart: generated base pt matches regional BR for every message
+00:07 +23: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/i18n_catalogue_runtime_test.dart: generated base en matches regional US for every message
+00:07 +24: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/i18n_catalogue_runtime_test.dart: generated base es matches regional ES for every message
+00:07 +25: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/i18n_catalogue_runtime_test.dart: generated base fr matches regional FR for every message
+00:08 +26: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/i18n_catalogue_runtime_test.dart: generated base no matches regional NO for every message
+00:08 +27: loading /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/dashboard_i18n_mobile_test.dart
+00:15 +27: /workspace/i18n-full-v1/corporate/flutter/apps/epi_admin/test/dashboard_i18n_mobile_test.dart: real dashboard in all five languages fits mobile and larger text without refetch
+00:20 +28: All tests passed!

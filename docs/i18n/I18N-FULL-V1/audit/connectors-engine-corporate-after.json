@@ -1,0 +1,343 @@
+{
+  "product": "corporate",
+  "checks": [
+    {
+      "locale": "pt-BR",
+      "name": "known_cause_refs_path_payload",
+      "passed": true
+    },
+    {
+      "locale": "pt-BR",
+      "next": "pt-BR",
+      "name": "live_nested_binding",
+      "passed": true
+    },
+    {
+      "locale": "pt-BR",
+      "next": "en-GB",
+      "name": "live_nested_binding",
+      "passed": true
+    },
+    {
+      "locale": "pt-BR",
+      "next": "es-ES",
+      "name": "live_nested_binding",
+      "passed": true
+    },
+    {
+      "locale": "pt-BR",
+      "next": "fr-FR",
+      "name": "live_nested_binding",
+      "passed": true
+    },
+    {
+      "locale": "pt-BR",
+      "next": "nb-NO",
+      "name": "live_nested_binding",
+      "passed": true
+    },
+    {
+      "locale": "pt-BR",
+      "name": "unknown_cause_opaque",
+      "passed": true
+    },
+    {
+      "locale": "pt-BR",
+      "name": "network_cause_not_recursive",
+      "passed": true
+    },
+    {
+      "locale": "pt-BR",
+      "name": "colon_path_parameter_preserved",
+      "passed": true,
+      "detail": "/orders/REF: v2/status: remote error",
+      "text": "Falha de comunicação com a loja em /orders/REF: v2/status: remote error"
+    },
+    {
+      "locale": "pt-BR",
+      "name": "invalid_namespace_apiErrors.wrappers.__proto__.x",
+      "passed": true
+    },
+    {
+      "locale": "pt-BR",
+      "name": "invalid_namespace_apiErrors.messages.constructor.name",
+      "passed": true
+    },
+    {
+      "locale": "pt-BR",
+      "name": "invalid_namespace_purchase.connectors.demo",
+      "passed": true
+    },
+    {
+      "locale": "en-GB",
+      "name": "known_cause_refs_path_payload",
+      "passed": true
+    },
+    {
+      "locale": "en-GB",
+      "next": "pt-BR",
+      "name": "live_nested_binding",
+      "passed": true
+    },
+    {
+      "locale": "en-GB",
+      "next": "en-GB",
+      "name": "live_nested_binding",
+      "passed": true
+    },
+    {
+      "locale": "en-GB",
+      "next": "es-ES",
+      "name": "live_nested_binding",
+      "passed": true
+    },
+    {
+      "locale": "en-GB",
+      "next": "fr-FR",
+      "name": "live_nested_binding",
+      "passed": true
+    },
+    {
+      "locale": "en-GB",
+      "next": "nb-NO",
+      "name": "live_nested_binding",
+      "passed": true
+    },
+    {
+      "locale": "en-GB",
+      "name": "unknown_cause_opaque",
+      "passed": true
+    },
+    {
+      "locale": "en-GB",
+      "name": "network_cause_not_recursive",
+      "passed": true
+    },
+    {
+      "locale": "en-GB",
+      "name": "colon_path_parameter_preserved",
+      "passed": true,
+      "detail": "/orders/REF: v2/status: remote error",
+      "text": "Could not communicate with the store at /orders/REF: v2/status: remote error"
+    },
+    {
+      "locale": "en-GB",
+      "name": "invalid_namespace_apiErrors.wrappers.__proto__.x",
+      "passed": true
+    },
+    {
+      "locale": "en-GB",
+      "name": "invalid_namespace_apiErrors.messages.constructor.name",
+      "passed": true
+    },
+    {
+      "locale": "en-GB",
+      "name": "invalid_namespace_purchase.connectors.demo",
+      "passed": true
+    },
+    {
+      "locale": "es-ES",
+      "name": "known_cause_refs_path_payload",
+      "passed": true
+    },
+    {
+      "locale": "es-ES",
+      "next": "pt-BR",
+      "name": "live_nested_binding",
+      "passed": true
+    },
+    {
+      "locale": "es-ES",
+      "next": "en-GB",
+      "name": "live_nested_binding",
+      "passed": true
+    },
+    {
+      "locale": "es-ES",
+      "next": "es-ES",
+      "name": "live_nested_binding",
+      "passed": true
+    },
+    {
+      "locale": "es-ES",
+      "next": "fr-FR",
+      "name": "live_nested_binding",
+      "passed": true
+    },
+    {
+      "locale": "es-ES",
+      "next": "nb-NO",
+      "name": "live_nested_binding",
+      "passed": true
+    },
+    {
+      "locale": "es-ES",
+      "name": "unknown_cause_opaque",
+      "passed": true
+    },
+    {
+      "locale": "es-ES",
+      "name": "network_cause_not_recursive",
+      "passed": true
+    },
+    {
+      "locale": "es-ES",
+      "name": "colon_path_parameter_preserved",
+      "passed": true,
+      "detail": "/orders/REF: v2/status: remote error",
+      "text": "Error de comunicación con la tienda en /orders/REF: v2/status: remote error"
+    },
+    {
+      "locale": "es-ES",
+      "name": "invalid_namespace_apiErrors.wrappers.__proto__.x",
+      "passed": true
+    },
+    {
+      "locale": "es-ES",
+      "name": "invalid_namespace_apiErrors.messages.constructor.name",
+      "passed": true
+    },
+    {
+      "locale": "es-ES",
+      "name": "invalid_namespace_purchase.connectors.demo",
+      "passed": true
+    },
+    {
+      "locale": "fr-FR",
+      "name": "known_cause_refs_path_payload",
+      "passed": true
+    },
+    {
+      "locale": "fr-FR",
+      "next": "pt-BR",
+      "name": "live_nested_binding",
+      "passed": true
+    },
+    {
+      "locale": "fr-FR",
+      "next": "en-GB",
+      "name": "live_nested_binding",
+      "passed": true
+    },
+    {
+      "locale": "fr-FR",
+      "next": "es-ES",
+      "name": "live_nested_binding",
+      "passed": true
+    },
+    {
+      "locale": "fr-FR",
+      "next": "fr-FR",
+      "name": "live_nested_binding",
+      "passed": true
+    },
+    {
+      "locale": "fr-FR",
+      "next": "nb-NO",
+      "name": "live_nested_binding",
+      "passed": true
+    },
+    {
+      "locale": "fr-FR",
+      "name": "unknown_cause_opaque",
+      "passed": true
+    },
+    {
+      "locale": "fr-FR",
+      "name": "network_cause_not_recursive",
+      "passed": true
+    },
+    {
+      "locale": "fr-FR",
+      "name": "colon_path_parameter_preserved",
+      "passed": true,
+      "detail": "/orders/REF: v2/status: remote error",
+      "text": "Échec de la communication avec la boutique sur /orders/REF: v2/status: remote error"
+    },
+    {
+      "locale": "fr-FR",
+      "name": "invalid_namespace_apiErrors.wrappers.__proto__.x",
+      "passed": true
+    },
+    {
+      "locale": "fr-FR",
+      "name": "invalid_namespace_apiErrors.messages.constructor.name",
+      "passed": true
+    },
+    {
+      "locale": "fr-FR",
+      "name": "invalid_namespace_purchase.connectors.demo",
+      "passed": true
+    },
+    {
+      "locale": "nb-NO",
+      "name": "known_cause_refs_path_payload",
+      "passed": true
+    },
+    {
+      "locale": "nb-NO",
+      "next": "pt-BR",
+      "name": "live_nested_binding",
+      "passed": true
+    },
+    {
+      "locale": "nb-NO",
+      "next": "en-GB",
+      "name": "live_nested_binding",
+      "passed": true
+    },
+    {
+      "locale": "nb-NO",
+      "next": "es-ES",
+      "name": "live_nested_binding",
+      "passed": true
+    },
+    {
+      "locale": "nb-NO",
+      "next": "fr-FR",
+      "name": "live_nested_binding",
+      "passed": true
+    },
+    {
+      "locale": "nb-NO",
+      "next": "nb-NO",
+      "name": "live_nested_binding",
+      "passed": true
+    },
+    {
+      "locale": "nb-NO",
+      "name": "unknown_cause_opaque",
+      "passed": true
+    },
+    {
+      "locale": "nb-NO",
+      "name": "network_cause_not_recursive",
+      "passed": true
+    },
+    {
+      "locale": "nb-NO",
+      "name": "colon_path_parameter_preserved",
+      "passed": true,
+      "detail": "/orders/REF: v2/status: remote error",
+      "text": "Kunne ikke kommunisere med butikken på /orders/REF: v2/status: remote error"
+    },
+    {
+      "locale": "nb-NO",
+      "name": "invalid_namespace_apiErrors.wrappers.__proto__.x",
+      "passed": true
+    },
+    {
+      "locale": "nb-NO",
+      "name": "invalid_namespace_apiErrors.messages.constructor.name",
+      "passed": true
+    },
+    {
+      "locale": "nb-NO",
+      "name": "invalid_namespace_purchase.connectors.demo",
+      "passed": true
+    }
+  ],
+  "passed": 60,
+  "failed": 0,
+  "non_get_calls": []
+}

@@ -1,0 +1,1151 @@
+{
+  "audit_timestamp_utc": "2026-10-28T15:51:42.583436+00:00",
+  "snapshot_app": "2026-10-28T15:45:57.226120Z",
+  "snapshot_api": "2026-10-28T15:46:38.639043Z",
+  "head_at_report": "46fd5d677a10e5c4d1be0732f40c31a7c7393719",
+  "counts_are_occurrences_not_total_debt": true,
+  "files_parsed_app_design": 168,
+  "files_parsed_adjacent_api": 51,
+  "parse_failures": [],
+  "literal_expressions": 4774,
+  "review_classes": {
+    "technical_or_opaque_candidate": 4272,
+    "opaque_identity_or_regulatory": 13,
+    "confirmed_ui_literal": 109,
+    "technical_or_opaque": 199,
+    "canonical_error_code_or_detection": 9,
+    "canonical_error_code_with_localized_consumer": 3,
+    "canonical_operation_or_id": 7,
+    "unresolved_candidate": 2,
+    "localized_consumer_sentinel": 1,
+    "state_sentinel_not_proven_exposed": 1,
+    "canonical_with_localized_display": 26,
+    "canonical_permission": 17,
+    "canonical_record_field": 46,
+    "confirmed_ui_and_canonical_value": 8,
+    "language_autonym": 5,
+    "dynamic_model_label_needs_server_trace": 1,
+    "developer_boot_configuration": 4,
+    "design_default_latent": 21,
+    "exception_exposure_unresolved": 1,
+    "model_value_exposure_unresolved": 29
+  },
+  "dynamic_sink_classes": {
+    "raw_error_presentation_needs_server_trace": 26,
+    "localized_wrapper_with_raw_branch": 6,
+    "localized_consumer": 34,
+    "opaque_user_data": 2,
+    "confirmed_literal_from_cubit": 1,
+    "localized_sentinel_with_dynamic_fallback": 1,
+    "generic_component_passthrough": 3
+  },
+  "cubit_message_producer_occurrences": 207,
+  "file_metadata": [
+    {
+      "path": "flutter/apps/epi_admin/lib/app.dart",
+      "sha256_of_parsed_source": "03f9dbf850cf6823ac7abf11e0bdbc454fdc6d8de6d5978bd07a664d690b9f7a",
+      "lines": 106
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/api/api_client.dart",
+      "sha256_of_parsed_source": "ba9991b89de485013f73b028bf6c454009147c30b9bbbe1c78952a06a8e25982",
+      "lines": 394
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/api/locale_header_interceptor.dart",
+      "sha256_of_parsed_source": "c5d89e32e24c1960f85e8b8d4825ba49dec83227e06d35bc83e2fd45443cd36c",
+      "lines": 25
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/bloc/auth_cubit.dart",
+      "sha256_of_parsed_source": "0afa04cfb60549e6816347fbd1994923007f2381326ff4936b0d2ac6ac0cd8a6",
+      "lines": 157
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/bloc/auth_state.dart",
+      "sha256_of_parsed_source": "9e8dfaa15a6b4f02c9bba3542c41824d1eec9f4808b104a8e7fd0f7f0007a464",
+      "lines": 52
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/bloc/companies_cubit.dart",
+      "sha256_of_parsed_source": "b0bc05731ad4f2b1b5f0dd91be9092baa76007f71704e65fc2c41951bb35f72b",
+      "lines": 86
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/bloc/company_attention_cubit.dart",
+      "sha256_of_parsed_source": "a57ad81a954df382f55b2a553f6adde903e30423db3fa4481b875a413b50e3d0",
+      "lines": 185
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/bloc/dashboard_cubit.dart",
+      "sha256_of_parsed_source": "c3d9c13c19d68806831dcadb4e519dc08156a2a363c1bbfe2ef30ab91c0cb169",
+      "lines": 218
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/bloc/devolutions_cubit.dart",
+      "sha256_of_parsed_source": "c9e490678c101f19552353fb6e1548d947b5c4df5ca9d646be80056fc68a7027",
+      "lines": 132
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/bloc/employees_cubit.dart",
+      "sha256_of_parsed_source": "589e91d80cb16e100aee590333927e284e0f576c6593cd6e6e614006ae5458b2",
+      "lines": 2
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/bloc/epis_cubit.dart",
+      "sha256_of_parsed_source": "76893ab87a41f0a2213d3941b1c542d6e9d8db1b653870fefc3db312eba168e3",
+      "lines": 224
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/bloc/feedback_cubit.dart",
+      "sha256_of_parsed_source": "991ba1c87cc576a5216f863b59d3280f6f89fe0da53975c92c3bdb3a2b5a09f3",
+      "lines": 107
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/bloc/fichas_cubit.dart",
+      "sha256_of_parsed_source": "a6e7606e4deb20e72bfcd45c23d19b4ead2bde7c0003bae8d9e51ca886629490",
+      "lines": 67
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/bloc/legal_entities_cubit.dart",
+      "sha256_of_parsed_source": "d298cada6d64edb7d70414e3edb61f5084d93c362cded9873ac1bb3a5908419a",
+      "lines": 185
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/bloc/my_company_cubit.dart",
+      "sha256_of_parsed_source": "00304eb2cc2231bf5ac55f0fa708a04c21f099236666aebf7725225de0fa8a96",
+      "lines": 114
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/bloc/new_delivery_cubit.dart",
+      "sha256_of_parsed_source": "4cfda6fd5c233fd809c2a7c3c53f9cc606449214d50b25cd541548a066c2f7d2",
+      "lines": 470
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/bloc/outsourced_companies_cubit.dart",
+      "sha256_of_parsed_source": "2ba52cf95aab2faebf70f12dca5fc1eb11d19e593f9dae6a2541f281ff64ee8a",
+      "lines": 337
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/bloc/outsourced_employees_cubit.dart",
+      "sha256_of_parsed_source": "a62802740b0d837884974453e5bdcf867de2a8bfe58f463a381e7798ca518a3a",
+      "lines": 283
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/bloc/portal_cubit.dart",
+      "sha256_of_parsed_source": "1b5c55e774c2615bf3144e576b4ce30246d1059504116307b736e6bec5b0961a",
+      "lines": 151
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/bloc/purchases_cubit.dart",
+      "sha256_of_parsed_source": "d56e9ab5c417216f7c6dffd762aa77a67f8e3294ea81dfeced8c8a8f20773ef4",
+      "lines": 189
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/bloc/reports_cubit.dart",
+      "sha256_of_parsed_source": "e649c29b9b907a20da613fe8facb36558ef4296708b4572d733e2d5c678c71ab",
+      "lines": 125
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/bloc/settings_cubit.dart",
+      "sha256_of_parsed_source": "b7589fc9b20bada592605ef564d0cf9ac49e3dccc286ea3f2a0fb8a21f044cb0",
+      "lines": 148
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/bloc/stock_config_cubit.dart",
+      "sha256_of_parsed_source": "17cc7bd14bef0cab0683ceb4bcd0443bca3ad590dc20f92394a777c43c703998",
+      "lines": 510
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/bloc/stock_cubit.dart",
+      "sha256_of_parsed_source": "f6940429b49e3858df5896807f407ac707056bb9eda8705099d2e8a0950baf2f",
+      "lines": 434
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/bloc/unit_selector_cubit.dart",
+      "sha256_of_parsed_source": "43ab5bc202d200629f84613337dabadf410c94c538519974f3ab716ed2f9c799",
+      "lines": 172
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/bloc/units_cubit.dart",
+      "sha256_of_parsed_source": "a4bc73c9cc40c34fe3d7bde0fda4a1199e2de53052d7dcf8fd859b19187613ac",
+      "lines": 179
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/bloc/users_cubit.dart",
+      "sha256_of_parsed_source": "51a5af3b303bd894ad06b64a3e76ca52a974de279063411c87ca43572bc63a46",
+      "lines": 122
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/connectivity/connectivity_checker.dart",
+      "sha256_of_parsed_source": "e2c81d9573f6151df7a05909518dad492aaef70af6ec8cf978ef73fa3c24cb10",
+      "lines": 19
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/database/sync_database.dart",
+      "sha256_of_parsed_source": "1cb702581dd5099532b38f760b5dc95a7a59086649382bb94fe289b146c90c7e",
+      "lines": 62
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/i18n/entity_labels.dart",
+      "sha256_of_parsed_source": "db0692c0fd13028d4e4cd6e18f0e6b64076a18ac08059c4b8250b97280e8e0a4",
+      "lines": 23
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/i18n/l10n_x.dart",
+      "sha256_of_parsed_source": "a4b733fa106f9c0f4c869546385546cf9430c4df5c6b2da9ed6c7dc22413c1c7",
+      "lines": 7
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/i18n/locale_provider.dart",
+      "sha256_of_parsed_source": "43c00ae4fb9f4cb35e8b13d947a97010d3f1591f44e899482b5b56ba578d2fd7",
+      "lines": 130
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/i18n/localized_epi_badge.dart",
+      "sha256_of_parsed_source": "34fc4a92897a76c3475e748cd582e73ca296062394139dd31af301c486fa319c",
+      "lines": 49
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/i18n/presentation_formatters.dart",
+      "sha256_of_parsed_source": "b41acf222626700765fe0e8368c4216da000ba87151914f2f6afc2165ea04027",
+      "lines": 28
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/i18n/theme_mode_notifier.dart",
+      "sha256_of_parsed_source": "b3df7db9082719f0885ddd7d70a0df8467fca1d92b2d1cc42636a46bd834d475",
+      "lines": 50
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/notifications/notification_overlay.dart",
+      "sha256_of_parsed_source": "dec32964aff492746a57f3246b125f918d62a893310a430422e5d49a9665c440",
+      "lines": 119
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/notifications/notification_service.dart",
+      "sha256_of_parsed_source": "d3aa5a8ab5ee337ec1cefef5f30c3c25530700cf71cc78d51fcfac2547a3a85a",
+      "lines": 72
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/observability/app_monitoring.dart",
+      "sha256_of_parsed_source": "9217f38f3baed82da94e1ce351fa7fa80052a915b87dc19c775e412052872d15",
+      "lines": 83
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/router/app_router.dart",
+      "sha256_of_parsed_source": "34b350059c586c58bdce48d9f02abf144dae5002a67dd27fa470345491eb4ed7",
+      "lines": 285
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/router/navigation_policy.dart",
+      "sha256_of_parsed_source": "985f3d70b678bf6e83b92426a70c869dc74dd1192b94ad00e191578cb94a7b2c",
+      "lines": 82
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/router/route_permissions.dart",
+      "sha256_of_parsed_source": "8ed3e54566ec4976483f7c6eeba88b72c8f73eac04342812060a6222dbf648ae",
+      "lines": 104
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/router/routes.dart",
+      "sha256_of_parsed_source": "5f511f794a952622ffc8a6c5ea9e6ea69e5679fd65fcde4ce603523514fbe0ee",
+      "lines": 87
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/session/session_context.dart",
+      "sha256_of_parsed_source": "a4d21fc0cf9696bf33792823fbd767f44e442df33b7f4923aca2e6f9bc602a36",
+      "lines": 154
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/shell/app_shell.dart",
+      "sha256_of_parsed_source": "2c040f6ae7e18dca64595fdae9e83016faad32d20b55ede2c3a48c53bc55cf98",
+      "lines": 165
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/sync/offline_queue.dart",
+      "sha256_of_parsed_source": "033b2ddfe7c7c309995368fead268e076916de56303b0b8dd30edb87f2cbe857",
+      "lines": 23
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/sync/sync_service.dart",
+      "sha256_of_parsed_source": "9b3c37fa6b3a24fb19de97197306d56afe4ecf4411788ad2ce0a152def1d209a",
+      "lines": 90
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/utils/epi_status_utils.dart",
+      "sha256_of_parsed_source": "391fe2ce26dfb00ca0462a5230f0f6277776dc01e29c8b616325b3a54efcfd82",
+      "lines": 83
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/widgets/create_company_dialog.dart",
+      "sha256_of_parsed_source": "4d4926594d67bc8db6527a99bb32900f432dde4d0c0c52d26e5d307b1d1f8e29",
+      "lines": 295
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/core/widgets/unit_selector.dart",
+      "sha256_of_parsed_source": "6be27dc51e9a1c6362d4acea2fd9f019830b2cdee218b1b9fae0409fb5db6068",
+      "lines": 149
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/auth/change_password_screen.dart",
+      "sha256_of_parsed_source": "f85aad6784a526959ee8c7def565b109a19408411c74bff3401531f3e2ef4cab",
+      "lines": 223
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/auth/login_screen.dart",
+      "sha256_of_parsed_source": "6ac40fd94aeeb25abdcaddfa8f5eafb539f9577247d802389eb8a8d661f79fa0",
+      "lines": 182
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/companies/companies_screen.dart",
+      "sha256_of_parsed_source": "ea9a5b0a46eb02fdd6ca565271523b79f61391cf3710c2f78a836c291e632378",
+      "lines": 304
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/dashboard/alert_presentation.dart",
+      "sha256_of_parsed_source": "9682172949c356822c22725e544e1f1cc37b2e0f327e7f86793ea2eedb97a148",
+      "lines": 173
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/dashboard/dashboard_screen.dart",
+      "sha256_of_parsed_source": "bf345d78d39dc753af324a6df9b11e32c94abc630142bf09f895e9a89cdf1eff",
+      "lines": 622
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/deliveries/data/datasources/deliveries_remote_datasource.dart",
+      "sha256_of_parsed_source": "ef6b06ded17ac1f15047b09a91a79da756e8a48f9be5213087f8208229d36a7d",
+      "lines": 50
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/deliveries/data/repository_impl/deliveries_repository_impl.dart",
+      "sha256_of_parsed_source": "3ac52269547d7f396a873e1a7ba72814d9ce8813bcf7a052d5e3384e3e3dc753",
+      "lines": 37
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/deliveries/deliveries_screen.dart",
+      "sha256_of_parsed_source": "6ac80767826775ef2e846cc07b031c4ec240a73b5e433168a5e8528cfc45bcca",
+      "lines": 249
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/deliveries/domain/repositories/deliveries_repository.dart",
+      "sha256_of_parsed_source": "55a7d03280fd2369f2d7d999fe68e60d78a4a6c7a061f3a8260bdb6dbe8e3dd5",
+      "lines": 18
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/deliveries/handover_conference_screen.dart",
+      "sha256_of_parsed_source": "c692fde97d02d7cc28d9fc52513ccccf2ff21e5bcf9171a0258d008626feebea",
+      "lines": 292
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/deliveries/new_delivery_screen.dart",
+      "sha256_of_parsed_source": "d979a499a8c0f8a322892ca6d52687e7a3a180f386fee6072cb36ea9726715c3",
+      "lines": 811
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/employees/data/datasources/employees_remote_datasource.dart",
+      "sha256_of_parsed_source": "7cc34cfb1c0f134d04f224781bd7719f28bff10646946c4a38ad9651908caae7",
+      "lines": 77
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/employees/data/repository_impl/employees_repository_impl.dart",
+      "sha256_of_parsed_source": "8c68760064a46ba370c68df39d17ea2faea10fc2079f6587a5225c21c1e8cb74",
+      "lines": 40
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/employees/domain/repositories/employees_repository.dart",
+      "sha256_of_parsed_source": "b4be57894079b31093c1ad7035bf25b9af0f168944cc8eb0e97f0ca4c50bb0c1",
+      "lines": 13
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/employees/domain/usecases/create_employee_usecase.dart",
+      "sha256_of_parsed_source": "6251026dbeccd2629ac240a2072460e9741645615a0cf5597f68500836abd253",
+      "lines": 11
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/employees/domain/usecases/delete_employee_usecase.dart",
+      "sha256_of_parsed_source": "cf419833ba3601f3fc5143ea9438f0c9c59cfe29c6f21602ef01e83372f97d83",
+      "lines": 10
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/employees/domain/usecases/fetch_employees_usecase.dart",
+      "sha256_of_parsed_source": "909564cbbb4b6a6dd4f5127749547bb8ee0c3e5f49ef54fa6f95fb91b43a58d7",
+      "lines": 12
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/employees/domain/usecases/update_employee_usecase.dart",
+      "sha256_of_parsed_source": "88fdcd8df3f8bdbdbe6691b67ebfcd4966832b07136067fb549af2246b770572",
+      "lines": 11
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/employees/employee_detail_screen.dart",
+      "sha256_of_parsed_source": "6dbe9675d58463facff0678103ff7ef53153e2445871136a6e0ef6f3243ac9f5",
+      "lines": 484
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/employees/employee_form_screen.dart",
+      "sha256_of_parsed_source": "6995713610abcba10f5e8a6a14604e78ddaf357a2e0ec100ff28ceecf8f0e08f",
+      "lines": 388
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/employees/employees_screen.dart",
+      "sha256_of_parsed_source": "40ae78d37e7a131cc2d939163d7e90905b769023b01be4d8974c64583cae29da",
+      "lines": 387
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/employees/legal_entity_transfer_dialog.dart",
+      "sha256_of_parsed_source": "d1a7acff498ae6f80cc41a90b99b1e0bca1cc7c1922e86c6a9adfa2e08c1538c",
+      "lines": 190
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/employees/presentation/cubits/employees_cubit.dart",
+      "sha256_of_parsed_source": "63e95180d4e2d51ded1e279bc2bbbaf6a88e38fe86953427ba4c3bc395272715",
+      "lines": 190
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/employees/unit_transfer_dialog.dart",
+      "sha256_of_parsed_source": "560b22c5d76ec8f40b80906f4776364cd23684e89c50b9b12c5698dd807630c7",
+      "lines": 261
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/epis/epi_detail_screen.dart",
+      "sha256_of_parsed_source": "5e06716040ff0a6cd8643f83b21083e5195fce915d8afc3894b8cdaaa85af8f4",
+      "lines": 173
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/epis/epi_form_screen.dart",
+      "sha256_of_parsed_source": "4264ee5188a97b46cebeef5501aca13485e3935e71efcc37c676227f43ac8f05",
+      "lines": 238
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/epis/epis_screen.dart",
+      "sha256_of_parsed_source": "3148c9bfc1b05cc96758ac82cf5c18c0694d8804d2098c2af1cec5835d579fce",
+      "lines": 574
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/feedback/feedback_presentation.dart",
+      "sha256_of_parsed_source": "9de7142a8c528d7f3cb7fbfe19a22e31dc7cf23d40fb2b5c47e190f99cfa968f",
+      "lines": 38
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/feedback/feedback_screen.dart",
+      "sha256_of_parsed_source": "d91582309d0c65468cba1ea6ebf2baf97969494c2271d502bef965609ffe4fdd",
+      "lines": 376
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/legal_entities/legal_entities_screen.dart",
+      "sha256_of_parsed_source": "a7877e563b4f2f03592a3653333b06fe6b009af4a043322baba935d9a0793d5a",
+      "lines": 359
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/legal_entities/paste_import_dialog.dart",
+      "sha256_of_parsed_source": "ff0f8bc429305e0b1d9e020f05c99fa67df00b00fba6a67490118ae18e5d0e7f",
+      "lines": 164
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/outsourced_companies/outsourced_companies_screen.dart",
+      "sha256_of_parsed_source": "1a675882bcec86bd77406f7aedc3bdd6c72db0be547ece5f628ad1a5a8533699",
+      "lines": 829
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/outsourced_companies/outsourced_employees_reports_tab.dart",
+      "sha256_of_parsed_source": "fe244b40b609d7a489d69c78bd92537eda0818e687a7e63b4af7ce222584cf58",
+      "lines": 127
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/outsourced_companies/outsourced_employees_tab.dart",
+      "sha256_of_parsed_source": "36900f0c685e09df77b23a08902355e837fbf1ed4b61c5c4cb17938100096524",
+      "lines": 875
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/portal/portal_home_screen.dart",
+      "sha256_of_parsed_source": "d89df65bf037b159b8e935254aac993ae0a7dfa24affb32119e917c773dc928e",
+      "lines": 420
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/portal/portal_screen.dart",
+      "sha256_of_parsed_source": "cd6b8a0ed684d2fb4502b68bbae77043f1bd2d5469358cca377a8d88a4a11c6e",
+      "lines": 401
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/portal/portal_sign_screen.dart",
+      "sha256_of_parsed_source": "a64f113230d3a26325b34e6016c09536db20ec1774b1bfb1c43ccde64abc3b89",
+      "lines": 138
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/purchases/conference_purchase_request_screen.dart",
+      "sha256_of_parsed_source": "6da7130bbf72be4cf01b1c7fa59e63845e295c35b12c7ebc51d88cd7a680cc51",
+      "lines": 642
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/purchases/data/datasources/purchases_remote_datasource.dart",
+      "sha256_of_parsed_source": "b690bfeeb7429b094faa11f5a7d0cb7cc9c688dae37b8eaadc9f26b798205871",
+      "lines": 188
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/purchases/data/repository_impl/purchases_repository_impl.dart",
+      "sha256_of_parsed_source": "861cc59e0f22f289786cf5e00f14933ce2f6b7d1cbcc43a0d9b4f6d339258d13",
+      "lines": 139
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/purchases/domain/repositories/purchases_repository.dart",
+      "sha256_of_parsed_source": "c910fb033ea9b9edb29557c94f2710f61b08334070470002226c8c90da7c0383",
+      "lines": 52
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/purchases/new_purchase_screen.dart",
+      "sha256_of_parsed_source": "89f1bf48f9b9ed5b1467c1dfbc1228493401ce8e0b0981ba4d481301a9eed992",
+      "lines": 383
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/purchases/po_supplier_screen.dart",
+      "sha256_of_parsed_source": "572e946e9e28887041c473cd0ed5788c53c5d08062de7102fff8c2591524fcec",
+      "lines": 301
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/purchases/presentation/quotes_cubit.dart",
+      "sha256_of_parsed_source": "7c4b0eaa78d621d16257961fd7bbee829d5ece6d658f7205197fcc7f0c88cf36",
+      "lines": 138
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/purchases/presentation/suppliers_cubit.dart",
+      "sha256_of_parsed_source": "d0ab2e83cba1eb7a16b33a443d3cb9d40d6ad92858a41d529f93f0a6d1a4070e",
+      "lines": 125
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/purchases/purchase_orders_screen.dart",
+      "sha256_of_parsed_source": "db3eb0260fd8fb4d09a6fada8ead4cce67096f2b4f64ae28896d28d42b95a38c",
+      "lines": 234
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/purchases/purchases_screen.dart",
+      "sha256_of_parsed_source": "3eb88cd38f3ae6610a0be07f133489329972ab0e8330d32274542b382898522f",
+      "lines": 359
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/purchases/quote_comparison_screen.dart",
+      "sha256_of_parsed_source": "28240725ba81de98d2c11190b9565ab487f2a43144a6229273183a99fa6d5940",
+      "lines": 127
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/purchases/quotes_screen.dart",
+      "sha256_of_parsed_source": "3b5d77db374e7b31266044594941dca5be13e0ca00f26627e75cf7f7faea7425",
+      "lines": 465
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/purchases/receipt_contract.dart",
+      "sha256_of_parsed_source": "7a929ef3e9c07bada5ea40bceb57c25c6a34da382e1ce02528e502a6efa7dc18",
+      "lines": 43
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/purchases/receive_purchase_order_screen.dart",
+      "sha256_of_parsed_source": "3cb45d8f6af1077ff8ef7763adc70dec843b393ff881910d6a853979d2b5eac7",
+      "lines": 287
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/purchases/supplier_products_screen.dart",
+      "sha256_of_parsed_source": "e33194c05c210d73e2ff38f4472f3d4498b11b287c113d232aadf6ce513914d9",
+      "lines": 249
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/purchases/suppliers_screen.dart",
+      "sha256_of_parsed_source": "531e7ef0b54f8d6a69e9b2b1263f334a7f9308899576ba1fcd928099d60a95e1",
+      "lines": 297
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/qr/qr_scanner_screen.dart",
+      "sha256_of_parsed_source": "1562b7fd1fac6f036c0a58a0af82c87c7f42a44da71c79a0aa6f1fea7c3e4d75",
+      "lines": 232
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/records/records_screen.dart",
+      "sha256_of_parsed_source": "69550bd997d4b30076c31c91c608723fffcde7d3f25433cd94f23b84c23ad198",
+      "lines": 275
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/reports/data/datasources/reports_remote_datasource.dart",
+      "sha256_of_parsed_source": "685e7e337f74f47b9d3579ce8c712cce6931955ad72c13f2848cd6a7fc9cf45e",
+      "lines": 42
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/reports/data/repository_impl/reports_repository_impl.dart",
+      "sha256_of_parsed_source": "a85a80c2ebf126044efcd45da421d8f57477cb90141333d7d5f712bd4a68899e",
+      "lines": 33
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/reports/domain/repositories/reports_repository.dart",
+      "sha256_of_parsed_source": "5f95a99b90ebe6d2b71f71cae674c180ff4734a931638c8dbc16447077c185e5",
+      "lines": 15
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/reports/reports_screen.dart",
+      "sha256_of_parsed_source": "1a1bad79724922199dbd956fb4d939d5495e03f07c38e445c70ca96ddca5ba94",
+      "lines": 531
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/returns/new_return_screen.dart",
+      "sha256_of_parsed_source": "4185f03b2114be22e07a1a28c5baac4f96d581fe447031c25a4bf0521d6e3532",
+      "lines": 556
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/returns/returns_screen.dart",
+      "sha256_of_parsed_source": "3939a4cefbd367b62f66095f2ed0711f3cc94421c80abb999bce280c09d8ac04",
+      "lines": 210
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/safety_library/library_admin_screen.dart",
+      "sha256_of_parsed_source": "da82b4513ca951454554eebf3cd6c8dd8d1d890c6b2fce98410232ca08f50394",
+      "lines": 522
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/safety_library/library_labels.dart",
+      "sha256_of_parsed_source": "84fd4f8eb98ef8549013bbc54cfe6b2ace44be650f37542dada8c798c448d35f",
+      "lines": 18
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/safety_library/library_viewer.dart",
+      "sha256_of_parsed_source": "f97e157c8ba7c6900cd5cfaea3bbde62ac0aadb76f78abfd58cf87795650ee56",
+      "lines": 209
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/safety_library/portal_library_tab.dart",
+      "sha256_of_parsed_source": "3533e7dd1994bfeebe5969fc55cd51c60d1cc75a71dd1c7a7b7ef8f013634e65",
+      "lines": 343
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/settings/appearance_screen.dart",
+      "sha256_of_parsed_source": "79a79e6081c113f68d532ea1f4e5d12ffabed46d9aea63b8244fb881e41035b4",
+      "lines": 140
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/settings/archival_policy_screen.dart",
+      "sha256_of_parsed_source": "065f7629bfa5847e0bbc73491ee169186e5899129e0f540d3098d5a12fc4a25e",
+      "lines": 216
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/settings/ficha_config_screen.dart",
+      "sha256_of_parsed_source": "fbe16ce963069739ec8af42880731aaa56bfd03cc61eceb24c09855945fe1994",
+      "lines": 201
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/settings/module_visibility_screen.dart",
+      "sha256_of_parsed_source": "57fa4575eaebade8c17d4d99b058061f8d5d01b4930350c76f44862c212ceae1",
+      "lines": 339
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/settings/my_company_screen.dart",
+      "sha256_of_parsed_source": "77a0d82f6c23dd0bf79088eed205a4ce61ef089aa17267e7c438c64cdd4cc916",
+      "lines": 394
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/settings/settings_screen.dart",
+      "sha256_of_parsed_source": "a72c670e6543a7865904812856147dacc54b4695f3efe2dc4ddc8e2200ac9600",
+      "lines": 250
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/settings/stock_defaults_screen.dart",
+      "sha256_of_parsed_source": "aac35450c3b663a6ae8cea5a4b5f5c1eb6414a6ae3f219874e90fdc4e00d137c",
+      "lines": 58
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/settings/widgets/company_attention_card.dart",
+      "sha256_of_parsed_source": "3703e2017a719b6bcd74a5c2fd94041b50ec0639a526061a15aac801c925bc6b",
+      "lines": 214
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/settings/widgets/settings_page.dart",
+      "sha256_of_parsed_source": "7fd9cc07b913573e202046aa311cb28e262507ba04ea53986d476ca644dda03f",
+      "lines": 63
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/settings/widgets/settings_tile.dart",
+      "sha256_of_parsed_source": "f4dbae34d026c42c3edfa8680c0b8533fe0643dfe45dc9135ef573cc2caba27d",
+      "lines": 148
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/stock/data/datasources/stock_remote_datasource.dart",
+      "sha256_of_parsed_source": "20c47d5fd46e691363354ef4be2205960762ff0b2afbe3f09edde282d774b8d2",
+      "lines": 143
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/stock/data/repository_impl/stock_repository_impl.dart",
+      "sha256_of_parsed_source": "a3516f7369a5765262415df18d01d6ead4db37d9fa8fdf5c6c6cefd29d5c5e9a",
+      "lines": 85
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/stock/domain/repositories/stock_repository.dart",
+      "sha256_of_parsed_source": "5b6c5c892dde17ddb9f5de0f5bb318637adef9e78542d3be2cbfeda86b8fbb03",
+      "lines": 81
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/stock/regularize_validity_dialog.dart",
+      "sha256_of_parsed_source": "cec99260ab775c03ea240bd4371bae40c5bb1e5c1f1045da4a3aeba4ca9947d7",
+      "lines": 282
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/stock/stock_config_screen.dart",
+      "sha256_of_parsed_source": "c9b278e9865b5e93777f9337c13f6f6d795a02f775f37bea6d9cf267dae0a8c8",
+      "lines": 733
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/stock/stock_screen.dart",
+      "sha256_of_parsed_source": "335001de9f13f721f875358642c3849e27199cb4cbe3ec144c13ee8efa95d0e6",
+      "lines": 924
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/subscription/invoices_screen.dart",
+      "sha256_of_parsed_source": "a4ec52713e11c40d0f33649bd7ff28d72635d5d536970c5ea4455ec3bada176c",
+      "lines": 337
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/subscription/subscription_screen.dart",
+      "sha256_of_parsed_source": "2610ea6d0523696becd8400fa5555c415f935eddbc31d3bb15adff461e9ae414",
+      "lines": 418
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/units/unit_labels.dart",
+      "sha256_of_parsed_source": "46dc7125153763d70039b3f5827ff6a6014e8613544ff57d44c138f6505e1a1b",
+      "lines": 41
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/units/units_screen.dart",
+      "sha256_of_parsed_source": "6be3705b416f9361299b1235a6ff27663366e1d08acd5583b70c1f560abde42e",
+      "lines": 707
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/features/users/users_screen.dart",
+      "sha256_of_parsed_source": "b4ff1ee0fde42d51690fd58f50b65f93ee1791966dd4982b4283c36515531f59",
+      "lines": 589
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/firebase_options.dart",
+      "sha256_of_parsed_source": "c2b8a48f1f247271d0184b9f74cc885fca8509b0bfa11ec97e6178ece6d9e01e",
+      "lines": 63
+    },
+    {
+      "path": "flutter/apps/epi_admin/lib/main.dart",
+      "sha256_of_parsed_source": "8cee719b45c223338ebc27cb3c04ce8e739c67daecee0cb6d25c978fa9fe051c",
+      "lines": 126
+    },
+    {
+      "path": "flutter/packages/epi_design/lib/components/atoms/epi_avatar.dart",
+      "sha256_of_parsed_source": "e8fd4334f1f7fe282b308a1780b45bfa8911c740764a4b9a9191125d8cde21e7",
+      "lines": 52
+    },
+    {
+      "path": "flutter/packages/epi_design/lib/components/atoms/epi_badge.dart",
+      "sha256_of_parsed_source": "0f30e617e9144b03acf0795e3190b2ed9560b2f89008a284ae23cf6933db122b",
+      "lines": 72
+    },
+    {
+      "path": "flutter/packages/epi_design/lib/components/atoms/epi_button.dart",
+      "sha256_of_parsed_source": "fa85a5bb1cb7fa7f18f30b9db578b3b3a572494cadfe49353656aa3cf14b8e27",
+      "lines": 76
+    },
+    {
+      "path": "flutter/packages/epi_design/lib/components/atoms/epi_chip.dart",
+      "sha256_of_parsed_source": "0ae4816fa05d24ce506a38c83a4554a9d02258448523e8b01312411178c61e0a",
+      "lines": 80
+    },
+    {
+      "path": "flutter/packages/epi_design/lib/components/atoms/epi_divider.dart",
+      "sha256_of_parsed_source": "4e7dfc553ca3a518c504328480bf6c3b7f38a18def36d348bb9572f5f6501b97",
+      "lines": 46
+    },
+    {
+      "path": "flutter/packages/epi_design/lib/components/atoms/epi_input.dart",
+      "sha256_of_parsed_source": "14eac5a57cc257bcbf36742e73fa3b65ab248e0f1068006ab0b18eed63473161",
+      "lines": 136
+    },
+    {
+      "path": "flutter/packages/epi_design/lib/components/atoms/epi_stock_badge.dart",
+      "sha256_of_parsed_source": "3edea8f88b7e7233dd0527c2bafcdc0311b72fa31c9efdf5490c8fb0e025f808",
+      "lines": 95
+    },
+    {
+      "path": "flutter/packages/epi_design/lib/components/molecules/epi_card.dart",
+      "sha256_of_parsed_source": "591f3ce3750b70376584ac6e253a76efa2fc4a20507a5d3323f9145c53fbb208",
+      "lines": 56
+    },
+    {
+      "path": "flutter/packages/epi_design/lib/components/molecules/epi_form_field.dart",
+      "sha256_of_parsed_source": "27bf85e89707638d42bcca3e4402d2d37f7d83b0024c01ab1fcfbdea115d8ef1",
+      "lines": 71
+    },
+    {
+      "path": "flutter/packages/epi_design/lib/components/molecules/epi_kpi_card.dart",
+      "sha256_of_parsed_source": "bdaeb9457bbf8e54818b350c490f9c74fd5c2d1f719c6369179365ba503760da",
+      "lines": 100
+    },
+    {
+      "path": "flutter/packages/epi_design/lib/components/molecules/epi_search_bar.dart",
+      "sha256_of_parsed_source": "ebf0efb9d6463b43ca82b06a4ad550b822bb6ef59bccfa760abb251b0aaf95cb",
+      "lines": 112
+    },
+    {
+      "path": "flutter/packages/epi_design/lib/components/molecules/epi_status_row.dart",
+      "sha256_of_parsed_source": "162a0403086df9943425551f0540000f8f65553c8271f19c40e18f76feb0cc94",
+      "lines": 93
+    },
+    {
+      "path": "flutter/packages/epi_design/lib/components/organisms/epi_app_bar.dart",
+      "sha256_of_parsed_source": "cecc57177ec391f1b6b6fdd62919f386a1ecae8344c3ee625cfc646d9804f806",
+      "lines": 106
+    },
+    {
+      "path": "flutter/packages/epi_design/lib/components/organisms/epi_data_table.dart",
+      "sha256_of_parsed_source": "b7515b0653c808159cc38ed6f46c57cc77efa095ebed01c5ec0154b68333e4ca",
+      "lines": 214
+    },
+    {
+      "path": "flutter/packages/epi_design/lib/components/organisms/epi_empty_state.dart",
+      "sha256_of_parsed_source": "8db5cea9561cefe3c70f9136f7e4d76e0ec714b53aaa3dbdfd7d591d1bb31d1b",
+      "lines": 57
+    },
+    {
+      "path": "flutter/packages/epi_design/lib/components/organisms/epi_modal.dart",
+      "sha256_of_parsed_source": "a7a525b82bc2f5606f731612f76f8d58c37a6131301586406c1af60e40647533",
+      "lines": 111
+    },
+    {
+      "path": "flutter/packages/epi_design/lib/components/organisms/epi_sidebar.dart",
+      "sha256_of_parsed_source": "c31a96bec602f8d924b549a9c16d22b02fbb68960b6d1b4bce725a46aeb94dcf",
+      "lines": 256
+    },
+    {
+      "path": "flutter/packages/epi_design/lib/components/organisms/epi_signature_pad.dart",
+      "sha256_of_parsed_source": "542905a508e38af32e099617400652f5a47a6d5865e1418e35c2619a8c87b9dc",
+      "lines": 200
+    },
+    {
+      "path": "flutter/packages/epi_design/lib/components/organisms/epi_stepper.dart",
+      "sha256_of_parsed_source": "9fce9d58dbb189739569fc7b07f2a823ae54b3ced7835f4443a1af9f076be40d",
+      "lines": 165
+    },
+    {
+      "path": "flutter/packages/epi_design/lib/components/organisms/epi_timeline.dart",
+      "sha256_of_parsed_source": "eb8a9d6f07eb7aa04be8bf8d618c472b2f4c93d76dd3e5c8188b1eb466d68b7d",
+      "lines": 155
+    },
+    {
+      "path": "flutter/packages/epi_design/lib/components/patterns/epi_error_boundary.dart",
+      "sha256_of_parsed_source": "b27d7b352ff0124b03b5bb4a003faa61475705620f27a876e97bb82a546c0c56",
+      "lines": 64
+    },
+    {
+      "path": "flutter/packages/epi_design/lib/components/patterns/epi_loading_skeleton.dart",
+      "sha256_of_parsed_source": "8b4d223610fb6aff971f4bb22fd548ca5067edea8d6937615b7d4cc0d7211536",
+      "lines": 212
+    },
+    {
+      "path": "flutter/packages/epi_design/lib/components/patterns/epi_toast.dart",
+      "sha256_of_parsed_source": "4cf293846f035c6e4b813c0043837978a9979373c18568cc52410e81ded187bb",
+      "lines": 54
+    },
+    {
+      "path": "flutter/packages/epi_design/lib/epi_design.dart",
+      "sha256_of_parsed_source": "1aa63c0402d9626d72af03df8e8a3acf5851dd6e693214a62c32e15b44866538",
+      "lines": 48
+    },
+    {
+      "path": "flutter/packages/epi_design/lib/layouts/app_shell.dart",
+      "sha256_of_parsed_source": "eb865952f567c91b9e955571a53bc0edb85dd06dbc71133806151fc4bad060f1",
+      "lines": 110
+    },
+    {
+      "path": "flutter/packages/epi_design/lib/layouts/auth_layout.dart",
+      "sha256_of_parsed_source": "2e95760d092c1f78a8040f78e45ea9e7d928f03f11397bd454da03f290fae51d",
+      "lines": 114
+    },
+    {
+      "path": "flutter/packages/epi_design/lib/theme/epi_theme.dart",
+      "sha256_of_parsed_source": "5d21e7335a4b9fe4b15603c64b0628ed5bbfcbaa3ce6598165b7484e13fa5343",
+      "lines": 121
+    },
+    {
+      "path": "flutter/packages/epi_design/lib/tokens/breakpoints.dart",
+      "sha256_of_parsed_source": "7b58a8562721867d907ff655f9723d7e50df7a7b39046f4e004712a9d6796e4a",
+      "lines": 18
+    },
+    {
+      "path": "flutter/packages/epi_design/lib/tokens/colors.dart",
+      "sha256_of_parsed_source": "b640fa0cdee29f7369f34b6fd65bfbce308c891f0f75d147189f5cd1bcd0950c",
+      "lines": 44
+    },
+    {
+      "path": "flutter/packages/epi_design/lib/tokens/spacing.dart",
+      "sha256_of_parsed_source": "3ba1f8f98019182b2f1bbb46a0cacc284782081600138053e90a3499ef35ca36",
+      "lines": 23
+    },
+    {
+      "path": "flutter/packages/epi_design/lib/tokens/typography.dart",
+      "sha256_of_parsed_source": "cf3d5d6a85f088db2486ea5713633716b420db33f35063b7e756645f60d1be05",
+      "lines": 22
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/endpoints/auth_api.dart",
+      "sha256_of_parsed_source": "52548649df39e5d9ca3cece6814f52bfb9bf5c3e180dfd612d34c91ca2c3b022",
+      "lines": 120
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/endpoints/auth_api.g.dart",
+      "sha256_of_parsed_source": "c98eadd0006c0483c7748875490fd1ed0fff4609970a0affd2a1b05a834bbf30",
+      "lines": 126
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/endpoints/companies_api.dart",
+      "sha256_of_parsed_source": "2ad8474caf148ef6b007e4eb78368cc3bc11ca6360fcc0fc06c4e3d83dd5df6f",
+      "lines": 16
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/endpoints/dashboard_api.dart",
+      "sha256_of_parsed_source": "53e59a463d56fee9089d6ad92fdfa940122cb5175133d60be1947402c0c41a39",
+      "lines": 38
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/endpoints/deliveries_api.dart",
+      "sha256_of_parsed_source": "587113b1a713fe8462b6f6908db59378af62fded549ed47f5d821f898973f04a",
+      "lines": 96
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/endpoints/devolutions_api.dart",
+      "sha256_of_parsed_source": "99e428d06ffc14749596f0b1aea18bb3e208ad0f60ba2aed81ecb61ef4e1bf30",
+      "lines": 67
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/endpoints/employees_api.dart",
+      "sha256_of_parsed_source": "b7613efc1d0abac1b27f491bad3020166a8f83daff293a6f92173cf425a2fcda",
+      "lines": 283
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/endpoints/epis_api.dart",
+      "sha256_of_parsed_source": "e24c8a5749d784445142ff58f8729bc23d514894af67468362ceddd50164d84f",
+      "lines": 97
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/endpoints/feedback_api.dart",
+      "sha256_of_parsed_source": "7fcf82ca4c4e5b4ce4ee92ea7fe421d1ca1a94ca9c4d87e4f06373b03db95581",
+      "lines": 122
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/endpoints/fichas_api.dart",
+      "sha256_of_parsed_source": "320d68a0f6667f6c84fc50bef951bd298ee1ea5b271c04cb3903218b20af5f7b",
+      "lines": 21
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/endpoints/legal_entities_api.dart",
+      "sha256_of_parsed_source": "782fe9a0226ef55600201eb523f5e6ac166bb5e65d5dbd8386faccbd669e3043",
+      "lines": 162
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/endpoints/my_company_api.dart",
+      "sha256_of_parsed_source": "3590916786631ed6cfdceec4359516fda994a0c0b4836c419faae8efadab88b4",
+      "lines": 68
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/endpoints/outsourced_companies_api.dart",
+      "sha256_of_parsed_source": "43a536ba34907f1f1b7a24bf839b180a879ffab48776c18863d06b3d1c1c523e",
+      "lines": 302
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/endpoints/portal_api.dart",
+      "sha256_of_parsed_source": "cca9a138cefb7d5cd7fbf98a0acb561db22178b61ee463aa149df84164a5ee36",
+      "lines": 119
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/endpoints/purchases_api.dart",
+      "sha256_of_parsed_source": "ff9757d1e5ae49c244943e6f4c4a2d62c070ba8091b42086a2fdf43fd26f6546",
+      "lines": 216
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/endpoints/reports_api.dart",
+      "sha256_of_parsed_source": "1ffac2565d9c0a2fe1cfef97eb80c92ef8d60a375df301c69c8f82562d6ea467",
+      "lines": 54
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/endpoints/safety_library_api.dart",
+      "sha256_of_parsed_source": "7b275d7c78288a5be03cd70370a079ec00991c576343610d2c1a6991873406b5",
+      "lines": 45
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/endpoints/settings_api.dart",
+      "sha256_of_parsed_source": "a9f418ba4ce3e8435f88e2e945f0c29f8fbd672b1631c87a108baec4a75639a8",
+      "lines": 104
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/endpoints/stock_api.dart",
+      "sha256_of_parsed_source": "1b0b60a848c5177e33ab62c515a99524372f18598002c64f5aaafd53494f6bbe",
+      "lines": 496
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/endpoints/subscriptions_api.dart",
+      "sha256_of_parsed_source": "1b31270d312edf2ac98c95f23bf93207a560f06f94ebe5631d0c8880768e4235",
+      "lines": 55
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/endpoints/units_api.dart",
+      "sha256_of_parsed_source": "d0485c4dff36812ec169ea207c75cabcae69919b5baed777f874e85bd57f4b3b",
+      "lines": 86
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/endpoints/users_api.dart",
+      "sha256_of_parsed_source": "853f72e221a66336e2cef9c37dcba1a36497e52b13217ba0ed469f30b6327ba2",
+      "lines": 24
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/epi_api.dart",
+      "sha256_of_parsed_source": "e344c7591164db4a1d310c14d64ca523392e90a71ec5fcc1564fa05b7b11a1f6",
+      "lines": 51
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/interceptors/auth_interceptor.dart",
+      "sha256_of_parsed_source": "7b80ee844dc6910a9d0e71efebef694aa7ac87c18b46d38e529e53c8cea2341d",
+      "lines": 36
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/models/bootstrap_response.dart",
+      "sha256_of_parsed_source": "1bd917b4cb23992de0f73d640b31b15d3dce59342cb9f025c320ccc7a1c08dd3",
+      "lines": 62
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/models/company.dart",
+      "sha256_of_parsed_source": "59769bb3848ca66ee6d4aeed35c483ecc8c7abe9f92bb02d6863f0efd3581a6b",
+      "lines": 43
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/models/company_attention_setting.dart",
+      "sha256_of_parsed_source": "77b52aa5ddf067d0a7640bc01ef4d470d69c7d46c895af78962b0dff02f999d5",
+      "lines": 96
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/models/contact_launch_result.dart",
+      "sha256_of_parsed_source": "91e844e1b40ee2ff8d147a09e568ba5dd88cf7bb221ae613ce44ec42fee4479c",
+      "lines": 22
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/models/dashboard_summary.dart",
+      "sha256_of_parsed_source": "61ea3ba85ed84a2931c69ecec150f064c6d60b31b5b24fa52fc25166454e513d",
+      "lines": 190
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/models/delivery.dart",
+      "sha256_of_parsed_source": "00b0a7353f63a0e48faa14fa7132d9269c48671330624d7383f4c3e13515b4e7",
+      "lines": 36
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/models/devolution.dart",
+      "sha256_of_parsed_source": "a435bf67826d585d54978725204f1d120f8f1a61109add139271b71d66f89eb5",
+      "lines": 75
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/models/employee.dart",
+      "sha256_of_parsed_source": "5987936ac438ebe34d865c7014b31cb2d7249a5fa74fc17784544819a94f02ef",
+      "lines": 155
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/models/epi.dart",
+      "sha256_of_parsed_source": "9a21385d943b2f4ee81266e13281eee2fa91cc98dd421f4b11bf2c1b2feac892",
+      "lines": 396
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/models/epi_reimbursement.dart",
+      "sha256_of_parsed_source": "8270d1fed6d52c22a68ea51da5eb5de2a3760556b8926fffe19ba8fa16a12aa0",
+      "lines": 49
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/models/feedback.dart",
+      "sha256_of_parsed_source": "b0f8634741a0a3e3e77d3b3ff086a103d2c31e835ae341649113d76cb7662ecd",
+      "lines": 34
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/models/ficha_config.dart",
+      "sha256_of_parsed_source": "5fa0356083bdbaa2f38f3ed11afb1ac9003305d4dcf36da121b838a776f49c41",
+      "lines": 50
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/models/ficha_period.dart",
+      "sha256_of_parsed_source": "2084a9f5e48564bb9f1d789f15d0b77970eeface71328bd6f28621b89160c777",
+      "lines": 54
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/models/legal_entity.dart",
+      "sha256_of_parsed_source": "6aeb815b130c014e4608273e29243926b9db1e49b652f6806a577691e6af7d9d",
+      "lines": 114
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/models/migration_suggestion.dart",
+      "sha256_of_parsed_source": "91de351fd337870993c4dee610fd0d6ff07c066b889fb88108eec71874019236",
+      "lines": 28
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/models/my_company_profile.dart",
+      "sha256_of_parsed_source": "9f1e1a7f28877574b3d08c39265fa05b392a000fc5abdf96747bf66c511088bb",
+      "lines": 112
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/models/outsourced_company.dart",
+      "sha256_of_parsed_source": "abd22acba5ddd228de9b669119657576133266dd643a56f746765a2ba3b1379d",
+      "lines": 181
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/models/portal_models.dart",
+      "sha256_of_parsed_source": "90860f4ccb54ccf69ab9e4e2a1a4e99b297c7b0f5077d12d3aaedcc5e7617b2a",
+      "lines": 124
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/models/purchase_request.dart",
+      "sha256_of_parsed_source": "df80fb1debec8f1380742a1a6ed3573f0c157d632855db12446e2db2bcf36f46",
+      "lines": 101
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/models/regularization_result.dart",
+      "sha256_of_parsed_source": "571b6a5f7a770c61e2f712745889447685884e931d578af548e23063951cd147",
+      "lines": 41
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/models/report_data.dart",
+      "sha256_of_parsed_source": "965c8c9eeb6777adc78d43026ff88e41c60e2603f9863fcd8d358521f11127bd",
+      "lines": 83
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/models/selectable_units.dart",
+      "sha256_of_parsed_source": "975f1f21593bf841e4e8f27d15aa8d26bdedadd49189a0b68444e1fd015f36b1",
+      "lines": 94
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/models/service_contract.dart",
+      "sha256_of_parsed_source": "02d4b7c7a3b05112e08b3341b94504b9726440cdc8fe46302cbdd1d95745fd89",
+      "lines": 62
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/models/stock_item.dart",
+      "sha256_of_parsed_source": "ec91327f2b7f4402b96ee6a759e3c8fb1e6f613b7b893f4f46b94798c02fed97",
+      "lines": 118
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/models/subscription.dart",
+      "sha256_of_parsed_source": "578b875e23df45cfbaa1ec338548991baf6baa0c8ecf050684358c90e998c6ca",
+      "lines": 126
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/models/tenant_domain.dart",
+      "sha256_of_parsed_source": "0237a97499b8a75d58d7d5fcb8741eb4fd3c0e71401978db5f23b4918d29251b",
+      "lines": 49
+    },
+    {
+      "path": "flutter/packages/epi_api/lib/models/unit_epi_stock_config.dart",
+      "sha256_of_parsed_source": "74775cfa1883b31283d18b6dd1f1d412cbb8be45039b90d190535c1ff3b985d0",
+      "lines": 100
+    }
+  ],
+  "limits": [
+    "Syntactic AST only, no type-resolution or execution.",
+    "Classifications are triage; excluded_candidate values are not proven exempt.",
+    "Adjacent/interpolated strings counted as outer expressions; inner expression literals can have separate semantic occurrences.",
+    "Generated localizations excluded intentionally; catalogs/localization quality require separate review.",
+    "App/design and adjacent epi_api scanned syntactically. No native platform strings, generated localization semantics, backend payload corpus or third-party SDK translations audited.",
+    "Technical/opaque candidates are structural triage, not proof of exhaustive exemptions.",
+    "Multiple observations can share one resource or nested AdjacentStrings: these counts are not unique missing translations.",
+    "Concurrent uncommitted source updates may resolve observations; file hashes identify the scanned source. No runtime or SDK workspace validation executed."
+  ],
+  "files_changed_since_snapshot_at_report": []
+}

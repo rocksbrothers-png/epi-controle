@@ -1,0 +1,58 @@
+{
+  "scope": "Supplier API connector presentation; integral I18N remains open",
+  "implementation_parents": {
+    "corporate": "38bdbbaedee8bf22b1bbcea21afb1c03ef24910f",
+    "saas": "9add739e13d58d9fcd9d9cdce90db22b9c573192"
+  },
+  "locales": [
+    "pt-BR",
+    "en-GB",
+    "es-ES",
+    "fr-FR",
+    "nb-NO"
+  ],
+  "new_resources_per_locale": 19,
+  "new_error_templates": 17,
+  "operation_wrappers": 5,
+  "catalogue_leaf_count_per_locale": 3082,
+  "browser": {
+    "checks_per_product": 165,
+    "baseline_failures_per_product": 26,
+    "after_failures_per_product": 0,
+    "apis": "All requests intercepted; only synthetic fixtures and explicit user-triggered POSTs",
+    "mobile_viewport": {
+      "width": 390,
+      "height": 844
+    }
+  },
+  "local_verification": {
+    "engine_tests_per_product": 22,
+    "javascript_tests_per_product": 665,
+    "directed_python_tests": {
+      "corporate": 186,
+      "saas": 184
+    },
+    "prior_dom_security_checks_per_product": 40,
+    "ubx": {
+      "declarations": 727,
+      "endpoints": 104,
+      "new_cycles": 0
+    }
+  },
+  "independent_audit": {
+    "cases_per_product": 60,
+    "passed_per_product": 60,
+    "remaining_P0_P1_P2": 0,
+    "closed_P2": "colon-space inside an order reference must remain in the opaque network diagnostic tail"
+  },
+  "backend_changes": false,
+  "rbac_changes": false,
+  "api_contract_changes": false,
+  "ci": "Pending the commit containing this record. Exact published HEADs and final CI are reported in the PR descriptions.",
+  "ready_for_human_merge_decision": false,
+  "remaining_scope": [
+    "Global remaining backend dynamic errors",
+    "Remaining documents and UI surfaces",
+    "Complete functional matrix"
+  ]
+}

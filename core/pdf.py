@@ -67,8 +67,8 @@ def build_pdf_document(page_lines, header_image=None):
 
     catalog_id = add_object('')
     pages_id = add_object('')
-    font_regular_id = add_object('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>')
-    font_bold_id = add_object('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>')
+    font_regular_id = add_object('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>')
+    font_bold_id = add_object('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>')
     image_object_id = None
     if header_image:
         image_stream = header_image['bytes']

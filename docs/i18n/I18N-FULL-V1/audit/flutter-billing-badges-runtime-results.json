@@ -1,0 +1,181 @@
+{
+  "formatters": [
+    {
+      "locale": "pt_BR",
+      "money": "R$ 2,67",
+      "old_toFixed2": "2.67",
+      "calendar_date_preserved": true
+    },
+    {
+      "locale": "en_US",
+      "money": "R$2.67",
+      "old_toFixed2": "2.67",
+      "calendar_date_preserved": true
+    },
+    {
+      "locale": "es_ES",
+      "money": "2,67 R$",
+      "old_toFixed2": "2.67",
+      "calendar_date_preserved": true
+    },
+    {
+      "locale": "fr_FR",
+      "money": "2,67 R$",
+      "old_toFixed2": "2.67",
+      "calendar_date_preserved": true
+    },
+    {
+      "locale": "no_NO",
+      "money": "2,67 R$",
+      "old_toFixed2": "2.67",
+      "calendar_date_preserved": true
+    }
+  ],
+  "invoice": {
+    "pending_filter_locale_switch_preserved": true,
+    "locale_switch_no_refetch": true,
+    "receipt_url": "https://synthetic.local/receipt?original=00123&literal=A%2FB",
+    "external_launch": true,
+    "zero_POST": true,
+    "canonical_requests": [
+      {
+        "path": "/api/subscriptions/invoices",
+        "method": "GET",
+        "query": {
+          "limit": "50",
+          "offset": "0"
+        },
+        "headers": {
+          "Accept-Language": "en-US",
+          "Authorization": "Bearer synthetic-access"
+        },
+        "data": null
+      },
+      {
+        "path": "/api/subscriptions/invoices",
+        "method": "GET",
+        "query": {
+          "limit": "50",
+          "offset": "0",
+          "status": "pending"
+        },
+        "headers": {
+          "Accept-Language": "en-US",
+          "Authorization": "Bearer synthetic-access"
+        },
+        "data": null
+      }
+    ],
+    "no_overflow_390x844": true
+  },
+  "cancel": {
+    "dialog_locale_switch": true,
+    "back_zero_POST": true,
+    "exactly_one_POST_after_confirmation": true,
+    "reason_empty": true,
+    "success_snackbar_live_locale": true,
+    "requests": [
+      {
+        "path": "/api/subscriptions/current",
+        "method": "GET",
+        "query": {},
+        "headers": {
+          "Accept-Language": "en-US",
+          "Authorization": "Bearer synthetic-access"
+        },
+        "data": null
+      },
+      {
+        "path": "/api/subscriptions/cancel",
+        "method": "POST",
+        "query": {},
+        "headers": {
+          "content-type": "application/json",
+          "Accept-Language": "no-NO",
+          "Authorization": "Bearer synthetic-access",
+          "content-length": "13"
+        },
+        "data": {
+          "reason": ""
+        }
+      },
+      {
+        "path": "/api/subscriptions/current",
+        "method": "GET",
+        "query": {},
+        "headers": {
+          "Accept-Language": "no-NO",
+          "Authorization": "Bearer synthetic-access"
+        },
+        "data": null
+      }
+    ]
+  },
+  "badges": {
+    "cases": [
+      {
+        "locale": "pt_BR",
+        "theme": "light",
+        "status_labels": 14,
+        "canonical_status_and_decoration_preserved": true
+      },
+      {
+        "locale": "en_US",
+        "theme": "light",
+        "status_labels": 14,
+        "canonical_status_and_decoration_preserved": true
+      },
+      {
+        "locale": "es_ES",
+        "theme": "light",
+        "status_labels": 14,
+        "canonical_status_and_decoration_preserved": true
+      },
+      {
+        "locale": "fr_FR",
+        "theme": "light",
+        "status_labels": 14,
+        "canonical_status_and_decoration_preserved": true
+      },
+      {
+        "locale": "no_NO",
+        "theme": "light",
+        "status_labels": 14,
+        "canonical_status_and_decoration_preserved": true
+      },
+      {
+        "locale": "pt_BR",
+        "theme": "dark",
+        "status_labels": 14,
+        "canonical_status_and_decoration_preserved": true
+      },
+      {
+        "locale": "en_US",
+        "theme": "dark",
+        "status_labels": 14,
+        "canonical_status_and_decoration_preserved": true
+      },
+      {
+        "locale": "es_ES",
+        "theme": "dark",
+        "status_labels": 14,
+        "canonical_status_and_decoration_preserved": true
+      },
+      {
+        "locale": "fr_FR",
+        "theme": "dark",
+        "status_labels": 14,
+        "canonical_status_and_decoration_preserved": true
+      },
+      {
+        "locale": "no_NO",
+        "theme": "dark",
+        "status_labels": 14,
+        "canonical_status_and_decoration_preserved": true
+      }
+    ],
+    "capture": "flutter-badges-original-pt-vs-localized-fr.png",
+    "same_statuses_original_defaults_vs_current_wrapper": true,
+    "no_API": true
+  }
+}

@@ -1,133 +1,133 @@
         <div id="aval-action-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center;">
           <div class="card" style="width:min(500px,92vw);padding:24px;max-height:90vh;overflow-y:auto;">
-            <h3 id="aval-modal-title" style="margin-top:0;">Ação</h3>
+            <h3 id="aval-modal-title" style="margin-top:0;" data-i18n="employee.action">Ação</h3>
             <input type="hidden" id="aval-modal-feedback-id">
             <input type="hidden" id="aval-modal-action">
 
             <div id="aval-modal-validate-fields">
-              <label style="display:block;margin-bottom:10px;">Tipo de Feedback
+              <label style="display:block;margin-bottom:10px;" data-i18n="ui.aval_action_modal.tipo_de_feedback_077397">Tipo de Feedback
                 <select id="aval-modal-subtype" style="width:100%;margin-top:4px;">
-                  <option value="reclamacao">Reclamação</option>
-                  <option value="elogio">Elogio</option>
-                  <option value="sugestao_nova">Sugestão de novo EPI</option>
-                  <option value="avaliacao_geral">Avaliação Geral</option>
+                  <option value="reclamacao" data-i18n="evaluation.complaintSingle">Reclamação</option>
+                  <option value="elogio" data-i18n="evaluation.praiseSingle">Elogio</option>
+                  <option value="sugestao_nova" data-i18n="ui.aval_action_modal.sugestao_de_novo_epi_123fc4">Sugestão de novo EPI</option>
+                  <option value="avaliacao_geral" data-i18n="ui.aval_action_modal.avaliacao_geral_cb625c">Avaliação Geral</option>
                 </select>
               </label>
-              <label style="display:block;margin-bottom:10px;">Nível de Risco para o Colaborador
+              <label style="display:block;margin-bottom:10px;" data-i18n="ui.aval_action_modal.nivel_de_risco_para_o_colaborador_2de82e">Nível de Risco para o Colaborador
                 <select id="aval-modal-risk" style="width:100%;margin-top:4px;">
-                  <option value="nenhum">Nenhum</option>
-                  <option value="baixo">Baixo</option>
-                  <option value="medio">Médio</option>
-                  <option value="alto">Alto — pode ocasionar acidente</option>
+                  <option value="nenhum" data-i18n="ui.aval_action_modal.nenhum_496a53">Nenhum</option>
+                  <option value="baixo" data-i18n="ui.aval_action_modal.baixo_2914b0">Baixo</option>
+                  <option value="medio" data-i18n="ui.aval_action_modal.medio_151c29">Médio</option>
+                  <option value="alto" data-i18n="ui.aval_action_modal.alto_pode_ocasionar_acidente_7dc4d7">Alto — pode ocasionar acidente</option>
                 </select>
               </label>
               <div id="aval-modal-rank-field" style="display:none;">
-                <label style="display:block;margin-bottom:10px;">Avaliação do EPI (Rank)
+                <label style="display:block;margin-bottom:10px;" data-i18n="ui.aval_action_modal.avaliacao_do_epi_rank_57e3ca">Avaliação do EPI (Rank)
                   <select id="aval-modal-epi-rank" style="width:100%;margin-top:4px;">
-                    <option value="">Selecione</option>
+                    <option value="" data-i18n="ui.aval_action_modal.selecione_987d5b">Selecione</option>
                   </select>
                 </label>
               </div>
             </div>
 
             <div id="aval-modal-reject-fields" style="display:none;">
-              <label style="display:block;margin-bottom:10px;">Motivo da Recusa
+              <label style="display:block;margin-bottom:10px;" data-i18n="ui.aval_action_modal.motivo_da_recusa_7fc8a1">Motivo da Recusa
                 <select id="aval-modal-rejection-reason" style="width:100%;margin-top:4px;">
                   <option value="sem_ca" data-i18n="epi.withoutBrazilCa">Sem CA aprovado pelo Brasil</option>
-                  <option value="fornecedor_nao_aprovado">Fornecedor não aprovado</option>
-                  <option value="outro">Outro motivo</option>
+                  <option value="fornecedor_nao_aprovado" data-i18n="ui.aval_action_modal.fornecedor_nao_aprovado_326e1c">Fornecedor não aprovado</option>
+                  <option value="outro" data-i18n="ui.aval_action_modal.outro_motivo_05bb82">Outro motivo</option>
                 </select>
               </label>
-              <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+              <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;" data-i18n="ui.aval_action_modal.solicitar_avaliacao_de_novo_fornecedor_0ad48d">
                 <input type="checkbox" id="aval-modal-supplier-eval"> Solicitar avaliação de novo fornecedor
               </label>
             </div>
 
             <div id="aval-modal-reassessment-fields" style="display:none;">
-              <label style="display:block;margin-bottom:10px;">Período de Reavaliação
+              <label style="display:block;margin-bottom:10px;" data-i18n="ui.aval_action_modal.periodo_de_reavaliacao_9af095">Período de Reavaliação
                 <select id="aval-modal-period" style="width:100%;margin-top:4px;">
-                  <option value="3_meses">3 meses</option>
-                  <option value="6_meses">6 meses</option>
+                  <option value="3_meses" data-i18n="ui.aval_action_modal.3_meses_68b8a1">3 meses</option>
+                  <option value="6_meses" data-i18n="ui.aval_action_modal.6_meses_20ac85">6 meses</option>
                 </select>
               </label>
             </div>
 
             <div id="aval-modal-accept-suggestion-fields" style="display:none;">
               <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 10px;border-left:3px solid var(--accent);padding-left:10px;">
-                Fluxo único: a sugestão aceita entra no fluxo de <strong>Novos EPIs em Teste</strong>
-                (triagem → análise técnica → teste controlado → decisão → homologação).
-                O EPI só entra no banco oficial após a homologação.
+                <span data-i18n="ui.aval_action_modal.fluxo_unico_a_sugestao_aceita_entra_no_fluxo_de_5904c1">Fluxo único: a sugestão aceita entra no fluxo de</span> <strong data-i18n="ui.aval_action_modal.novos_epis_em_teste_307f0c">Novos EPIs em Teste</strong>
+                <span data-i18n="ui.aval_action_modal.triagem_analise_tecnica_teste_controlado_decisao_homologacao_o_epi_so_entra_b44e5b">(triagem → análise técnica → teste controlado → decisão → homologação).
+                O EPI só entra no banco oficial após a homologação.</span>
               </p>
             </div>
 
             <div id="aval-modal-admin-eval-fields" style="display:none;">
-              <label id="aval-tech-decision-label" style="display:block;margin-bottom:10px;"><span id="aval-tech-decision-label-text">Decisão Final</span>
+              <label id="aval-tech-decision-label" style="display:block;margin-bottom:10px;"><span id="aval-tech-decision-label-text" data-i18n="ui.aval_action_modal.decisao_final_c32aff">Decisão Final</span>
                 <select id="aval-modal-tech-decision" style="width:100%;margin-top:4px;">
-                  <option value="aceito">✓ Aceitar</option>
-                  <option value="recusado">✗ Recusar</option>
+                  <option value="aceito" data-i18n="ui.aval_action_modal.aceitar_e4b9f9">✓ Aceitar</option>
+                  <option value="recusado" data-i18n="ui.aval_action_modal.recusar_ba465f">✗ Recusar</option>
                 </select>
               </label>
-              <label style="display:block;margin-bottom:10px;">Atende à Norma Regulamentadora (NR)?
+              <label style="display:block;margin-bottom:10px;" data-i18n="ui.aval_action_modal.atende_a_norma_regulamentadora_nr_69df1f">Atende à Norma Regulamentadora (NR)?
                 <select id="aval-modal-atende-nr" style="width:100%;margin-top:4px;">
-                  <option value="">Não informado</option>
-                  <option value="sim">Sim</option>
-                  <option value="nao">Não</option>
+                  <option value="" data-i18n="ui.aval_action_modal.nao_informado_01af1e">Não informado</option>
+                  <option value="sim" data-i18n="yes">Sim</option>
+                  <option value="nao" data-i18n="no">Não</option>
                 </select>
               </label>
-              <label style="display:block;margin-bottom:10px;">Reduz o risco relatado?
+              <label style="display:block;margin-bottom:10px;" data-i18n="ui.aval_action_modal.reduz_o_risco_relatado_6574f7">Reduz o risco relatado?
                 <select id="aval-modal-reduz-risco" style="width:100%;margin-top:4px;">
-                  <option value="">Não informado</option>
-                  <option value="pouco">Pouco</option>
-                  <option value="moderadamente">Moderadamente</option>
-                  <option value="totalmente">Totalmente</option>
+                  <option value="" data-i18n="ui.aval_action_modal.nao_informado_01af1e">Não informado</option>
+                  <option value="pouco" data-i18n="ui.aval_action_modal.pouco_647932">Pouco</option>
+                  <option value="moderadamente" data-i18n="ui.aval_action_modal.moderadamente_d5d516">Moderadamente</option>
+                  <option value="totalmente" data-i18n="ui.aval_action_modal.totalmente_ad420c">Totalmente</option>
                 </select>
               </label>
               <fieldset style="border:1px solid var(--color-border,#e5e7eb);border-radius:6px;padding:10px 12px;margin-bottom:10px;">
-                <legend style="font-size:12px;font-weight:600;padding:0 4px;">Problemas Observados</legend>
-                <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><input type="checkbox" class="aval-problema" value="causa_alergia"> Causa alergia</label>
-                <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><input type="checkbox" class="aval-problema" value="embaca_visao"> Embaça a visão</label>
-                <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><input type="checkbox" class="aval-problema" value="peso_excessivo"> Peso excessivo</label>
-                <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><input type="checkbox" class="aval-problema" value="tamanho_inadequado"> Tamanho inadequado</label>
-                <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><input type="checkbox" class="aval-problema" value="desconforto_termico"> Desconforto térmico</label>
-                <label style="display:flex;align-items:center;gap:8px;"><input type="checkbox" class="aval-problema" value="durabilidade_baixa"> Durabilidade baixa</label>
+                <legend style="font-size:12px;font-weight:600;padding:0 4px;" data-i18n="ui.aval_action_modal.problemas_observados_e9c489">Problemas Observados</legend>
+                <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;" data-i18n="ui.aval_action_modal.causa_alergia_94dc2d"><input type="checkbox" class="aval-problema" value="causa_alergia"> Causa alergia</label>
+                <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;" data-i18n="ui.aval_action_modal.embaca_a_visao_002e39"><input type="checkbox" class="aval-problema" value="embaca_visao"> Embaça a visão</label>
+                <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;" data-i18n="ui.aval_action_modal.peso_excessivo_6f6c72"><input type="checkbox" class="aval-problema" value="peso_excessivo"> Peso excessivo</label>
+                <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;" data-i18n="ui.aval_action_modal.tamanho_inadequado_298960"><input type="checkbox" class="aval-problema" value="tamanho_inadequado"> Tamanho inadequado</label>
+                <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;" data-i18n="ui.aval_action_modal.desconforto_termico_682a17"><input type="checkbox" class="aval-problema" value="desconforto_termico"> Desconforto térmico</label>
+                <label style="display:flex;align-items:center;gap:8px;" data-i18n="ui.aval_action_modal.durabilidade_baixa_03ed43"><input type="checkbox" class="aval-problema" value="durabilidade_baixa"> Durabilidade baixa</label>
               </fieldset>
-              <label style="display:block;margin-bottom:10px;">Custo Estimado (R$)
-                <input type="text" id="aval-modal-custo" style="width:100%;margin-top:4px;" placeholder="Ex: 150,00">
+              <label style="display:block;margin-bottom:10px;" data-i18n="ui.aval_action_modal.custo_estimado_r_8e6335">Custo Estimado (R$)
+                <input type="text" id="aval-modal-custo" style="width:100%;margin-top:4px;" placeholder="Ex: 150,00" data-i18n-placeholder="ui.aval_action_modal.ex_150_00_d8b1c6">
               </label>
-              <label style="display:block;margin-bottom:10px;">Durabilidade Esperada
+              <label style="display:block;margin-bottom:10px;" data-i18n="ui.aval_action_modal.durabilidade_esperada_8d4a54">Durabilidade Esperada
                 <select id="aval-modal-durabilidade" style="width:100%;margin-top:4px;">
-                  <option value="">Não informado</option>
-                  <option value="dias">Dias</option>
-                  <option value="semanas">Semanas</option>
-                  <option value="1_mes">1 Mês</option>
-                  <option value="3_meses">3 Meses</option>
-                  <option value="6_meses">6 Meses</option>
-                  <option value="12_meses">12 Meses</option>
+                  <option value="" data-i18n="ui.aval_action_modal.nao_informado_01af1e">Não informado</option>
+                  <option value="dias" data-i18n="ui.aval_action_modal.dias_92ce01">Dias</option>
+                  <option value="semanas" data-i18n="ui.aval_action_modal.semanas_929c20">Semanas</option>
+                  <option value="1_mes" data-i18n="ui.aval_action_modal.1_mes_1ff946">1 Mês</option>
+                  <option value="3_meses" data-i18n="ui.aval_action_modal.3_meses_d093a2">3 Meses</option>
+                  <option value="6_meses" data-i18n="ui.aval_action_modal.6_meses_2f3f71">6 Meses</option>
+                  <option value="12_meses" data-i18n="ui.aval_action_modal.12_meses_fbbda7">12 Meses</option>
                 </select>
               </label>
-              <label style="display:block;margin-bottom:10px;">Disponibilidade no Mercado
+              <label style="display:block;margin-bottom:10px;" data-i18n="ui.aval_action_modal.disponibilidade_no_mercado_566aab">Disponibilidade no Mercado
                 <select id="aval-modal-disponibilidade" style="width:100%;margin-top:4px;">
-                  <option value="">Não informado</option>
-                  <option value="facil">Fácil de encontrar</option>
-                  <option value="media">Média disponibilidade</option>
-                  <option value="dificil">Difícil de encontrar</option>
+                  <option value="" data-i18n="ui.aval_action_modal.nao_informado_01af1e">Não informado</option>
+                  <option value="facil" data-i18n="ui.aval_action_modal.facil_de_encontrar_9f5c3d">Fácil de encontrar</option>
+                  <option value="media" data-i18n="ui.aval_action_modal.media_disponibilidade_4ee688">Média disponibilidade</option>
+                  <option value="dificil" data-i18n="ui.aval_action_modal.dificil_de_encontrar_2a60ec">Difícil de encontrar</option>
                 </select>
               </label>
-              <label style="display:block;margin-bottom:10px;">Observações Técnicas / Detalhes
-                <textarea id="aval-modal-tech-notes" rows="3" style="width:100%;margin-top:4px;" placeholder="Descreva detalhes, incidentes ou melhorias..."></textarea>
+              <label style="display:block;margin-bottom:10px;" data-i18n="ui.aval_action_modal.observacoes_tecnicas_detalhes_b9d115">Observações Técnicas / Detalhes
+                <textarea id="aval-modal-tech-notes" rows="3" style="width:100%;margin-top:4px;" placeholder="Descreva detalhes, incidentes ou melhorias..." data-i18n-placeholder="ui.aval_action_modal.descreva_detalhes_incidentes_ou_melhorias_83223d"></textarea>
               </label>
-              <label style="display:block;margin-bottom:10px;">Sugestão de Marca/Modelo
-                <input type="text" id="aval-modal-marca-modelo" style="width:100%;margin-top:4px;" placeholder="Ex: 3M Série X, Honeywell...">
+              <label style="display:block;margin-bottom:10px;" data-i18n="ui.aval_action_modal.sugestao_de_marca_modelo_0cabe8">Sugestão de Marca/Modelo
+                <input type="text" id="aval-modal-marca-modelo" style="width:100%;margin-top:4px;" placeholder="Ex: 3M Série X, Honeywell..." data-i18n-placeholder="ui.aval_action_modal.ex_3m_serie_x_honeywell_d11a1f">
               </label>
             </div>
 
-            <label style="display:block;margin-bottom:16px;">Observações
-              <textarea id="aval-modal-notes" rows="2" style="width:100%;margin-top:4px;" placeholder="Observações opcionais"></textarea>
+            <label style="display:block;margin-bottom:16px;" data-i18n="stock.observations">Observações
+              <textarea id="aval-modal-notes" rows="2" style="width:100%;margin-top:4px;" placeholder="Observações opcionais" data-i18n-placeholder="ui.aval_action_modal.observacoes_opcionais_20ff77"></textarea>
             </label>
 
             <div style="display:flex;gap:8px;justify-content:flex-end;">
-              <button class="ghost" id="aval-modal-cancel" type="button">Cancelar</button>
-              <button class="primary" id="aval-modal-confirm" type="button">Confirmar</button>
+              <button class="ghost" id="aval-modal-cancel" type="button" data-i18n="cancel">Cancelar</button>
+              <button class="primary" id="aval-modal-confirm" type="button" data-i18n="confirm">Confirmar</button>
             </div>
           </div>
         </div>

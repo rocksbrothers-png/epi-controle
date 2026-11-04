@@ -166,7 +166,13 @@
     return contains(rightTokens, leftTokens) || contains(leftTokens, rightTokens) ? 'partial' : 'different';
   }
 
-  function _evaluatePurchaseImportCandidate(row, item) {
+  // A apresentação injeta seu tradutor. O padrão mantém o contrato legado
+  // para consumidores sem UI e não participa da escolha/validação dos itens.
+  function legacyMessage(_key, fallback, vars) {
+    return fallback.replace(/\{(\w+)\}/g, (match, name) => Object.prototype.hasOwnProperty.call(vars || {}, name) ? String(vars[name]) : match);
+  }
+
+  function _evaluatePurchaseImportCandidate(row, item, format) {
     const matches = [];
     const divergences = [];
     const contradictions = [];
@@ -179,7 +185,7 @@
       if (rowItemId === itemId) {
         matches.push('id do item');
       } else {
-        const message = `id do item no arquivo (${rowItemId}) é de outro item`;
+        const message = format('purchase.importReview.foreignItemId', 'id do item no arquivo ({p0}) é de outro item', {p0:rowItemId});
         divergences.push(message);
         contradictions.push(message);
       }
@@ -192,13 +198,13 @@
         matches.push('CA');
       } else {
         blocked = true;
-        blockReason = `CA divergente (arquivo ${row.ca}, item ${item.epi_ca || item.ca})`;
+        blockReason = format('purchase.importReview.ca_divergente_arquivo_p0_item_p1_3cc730', 'CA divergente (arquivo {p0}, item {p1})', {p0:(row.ca),p1:(item.epi_ca || item.ca)});
         divergences.push(blockReason);
       }
     } else if (!rowCa) {
-      divergences.push('CA ausente no arquivo');
+      divergences.push(format('purchase.importReview.caMissingFile', 'CA ausente no arquivo', {}));
     } else {
-      divergences.push('CA ausente no item da requisição');
+      divergences.push(format('purchase.importReview.caMissingItem', 'CA ausente no item da requisição', {}));
     }
 
     const itemName = item.epi_name || item.epi_display_name;
@@ -206,9 +212,9 @@
     if (description === 'equal') {
       matches.push('descrição');
     } else if (description === 'partial') {
-      divergences.push(`descrição só parcialmente igual (arquivo "${row.epi}", item "${itemName}")`);
+      divergences.push(format('purchase.importReview.descricao_so_parcialmente_igual_arquivo_p0_item_p1_d97bf5', 'descrição só parcialmente igual (arquivo "{p0}", item "{p1}")', {p0:(row.epi),p1:(itemName)}));
     } else if (description === 'different') {
-      const message = `descrição diferente (arquivo "${row.epi}", item "${itemName}")`;
+      const message = format('purchase.importReview.descricao_diferente_arquivo_p0_item_p1_fb92a7', 'descrição diferente (arquivo "{p0}", item "{p1}")', {p0:(row.epi),p1:(itemName)});
       divergences.push(message);
       contradictions.push(message);
     }
@@ -218,7 +224,7 @@
     if (manufacturer === 'equal' || manufacturer === 'partial') {
       matches.push('fabricante');
     } else if (manufacturer === 'different') {
-      const message = `fabricante diferente (arquivo "${row.fabricante}", item "${itemManufacturer}")`;
+      const message = format('purchase.importReview.fabricante_diferente_arquivo_p0_item_p1_22585f', 'fabricante diferente (arquivo "{p0}", item "{p1}")', {p0:(row.fabricante),p1:(itemManufacturer)});
       divergences.push(message);
       contradictions.push(message);
     }
@@ -228,7 +234,7 @@
     if (model === 'equal') {
       matches.push('modelo');
     } else if (model === 'partial' || model === 'different') {
-      const message = `modelo diferente (arquivo "${row.modelo}", item "${itemModel}")`;
+      const message = format('purchase.importReview.modelo_diferente_arquivo_p0_item_p1_20999f', 'modelo diferente (arquivo "{p0}", item "{p1}")', {p0:(row.modelo),p1:(itemModel)});
       divergences.push(message);
       contradictions.push(message);
     }
@@ -241,7 +247,7 @@
           if (rowSize === itemSize) {
             matches.push(label);
           } else {
-            const message = `${label} diferente (arquivo ${row[rowKey]}, item ${item[itemKey]})`;
+            const message = format('purchase.importReview.p0_diferente_arquivo_p1_item_p2_fdd467', '{p0} diferente (arquivo {p1}, item {p2})', {p0:format('purchase.importReview.match.' + itemKey, label, {}),p1:(row[rowKey]),p2:(item[itemKey])});
             divergences.push(message);
             contradictions.push(message);
           }
@@ -272,17 +278,17 @@
     };
   }
 
-  function evaluatePurchaseImportCandidates(rows, prItems) {
+  function evaluatePurchaseImportCandidates(rows, prItems, format = legacyMessage) {
     const items = Array.isArray(prItems) ? prItems : [];
     const evaluated = (Array.isArray(rows) ? rows : []).map((row, rowIndex) => {
-      const all = items.map((item) => _evaluatePurchaseImportCandidate(row, item));
+      const all = items.map((item) => _evaluatePurchaseImportCandidate(row, item, format));
       const candidates = all.filter((c) => c.relevant);
       const strong = candidates.filter((c) => c.strong);
       const caMissing = !_normalizeCaNumber(row.ca);
       const notes = [];
-      if (caMissing) { notes.push('CA ausente: escolha e confirme o item manualmente.'); }
-      if (!candidates.some((c) => c.eligible)) { notes.push('Nenhum item da requisição corresponde a esta linha.'); }
-      if (strong.length > 1) { notes.push('Mais de um item corresponde a esta linha: escolha manualmente.'); }
+      if (caMissing) { notes.push(format('purchase.importReview.caMissingManual', 'CA ausente: escolha e confirme o item manualmente.', {})); }
+      if (!candidates.some((c) => c.eligible)) { notes.push(format('purchase.importReview.noCandidate', 'Nenhum item da requisição corresponde a esta linha.', {})); }
+      if (strong.length > 1) { notes.push(format('purchase.importReview.ambiguous', 'Mais de um item corresponde a esta linha: escolha manualmente.', {})); }
       return {
         rowIndex,
         row,
@@ -298,7 +304,7 @@
     evaluated.forEach((r) => {
       if (r.suggestedItemId != null && counts.get(String(r.suggestedItemId)) > 1) {
         r.suggestedItemId = null;
-        r.notes.push('Outra linha também corresponde a este item: escolha manualmente.');
+        r.notes.push(format('purchase.importReview.usedByAnother', 'Outra linha também corresponde a este item: escolha manualmente.', {}));
       }
     });
     return evaluated;
@@ -306,28 +312,28 @@
 
   // Valida as escolhas do operador antes de enviar. `decisions` é um array
   // alinhado às linhas: id do item escolhido, 'ignore' ou vazio (pendente).
-  function validatePurchaseImportDecisions(evaluation, decisions) {
+  function validatePurchaseImportDecisions(evaluation, decisions, format = legacyMessage) {
     const errors = [];
     const chosen = new Map();
     (evaluation || []).forEach((r) => {
       const decision = decisions?.[r.rowIndex];
-      const label = `Linha ${r.rowIndex + 1}`;
+      const label = format('purchase.importReview.linha_p0_b8b6be', 'Linha {p0}', {p0:(r.rowIndex + 1)});
       if (decision === undefined || decision === null || decision === '') {
-        errors.push(`${label}: escolha o item da requisição ou marque "não importar".`);
+        errors.push(format('purchase.importReview.p0_escolha_o_item_da_requisicao_ou_marque_nao_importar_7d24ed', '{p0}: escolha o item da requisição ou marque "não importar".', {p0:(label)}));
         return;
       }
       if (decision === 'ignore') { return; }
       const candidate = r.candidates.find((c) => String(c.itemId) === String(decision));
-      if (!candidate) { errors.push(`${label}: o item escolhido não é candidato desta linha.`); return; }
+      if (!candidate) { errors.push(format('purchase.importReview.p0_o_item_escolhido_nao_e_candidato_desta_linha_3235dc', '{p0}: o item escolhido não é candidato desta linha.', {p0:(label)})); return; }
       if (candidate.blocked) { errors.push(`${label}: ${candidate.blockReason}.`); return; }
       if (!candidate.eligible) {
         errors.push(candidate.contradicted
-          ? `${label}: a linha contradiz o item #${candidate.itemId} (${candidate.divergences.join('; ')}).`
-          : `${label}: o item escolhido não tem identificação inequívoca (CA, descrição ou modelo iguais, ou id do item).`);
+          ? format('purchase.importReview.contradiction', '{p0}: a linha contradiz o item #{p1} ({p2}).', {p0:label,p1:candidate.itemId,p2:candidate.divergences.join('; ')})
+          : format('purchase.importReview.identityInsufficient', '{p0}: o item escolhido não tem identificação inequívoca (CA, descrição ou modelo iguais, ou id do item).', {p0:label}));
         return;
       }
       const key = String(decision);
-      if (chosen.has(key)) { errors.push(`${label}: o item #${key} já foi escolhido na linha ${chosen.get(key) + 1}.`); return; }
+      if (chosen.has(key)) { errors.push(format('purchase.importReview.p0_o_item_p1_ja_foi_escolhido_na_linha_p2_a2bfd3', '{p0}: o item #{p1} já foi escolhido na linha {p2}.', {p0:(label),p1:(key),p2:(chosen.get(key) + 1)})); return; }
       chosen.set(key, r.rowIndex);
     });
     return errors;

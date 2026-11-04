@@ -1,0 +1,155 @@
+[
+  {
+    "id": "HTTP_VALUE_ERRORS",
+    "path": "app.py",
+    "line": 959,
+    "source_excerpt": "except ValueError as exc:",
+    "classification": "raw_exception_to_JSON",
+    "consumer": "api-client.js and module-specific wrappers",
+    "assessment": "Global GET/POST/PUT/DELETE convert ValueError to bad_request(error:str(exc)); PermissionError to forbidden. Central API localizes only known templates/codes; unmatched text remains original."
+  },
+  {
+    "id": "HTTP_UNHANDLED",
+    "path": "app.py",
+    "line": 968,
+    "source_excerpt": "return send_json(self, 500, {'error': str(exc)})",
+    "classification": "raw_exception_to_JSON",
+    "consumer": "Web/Flutter HTTP consumers",
+    "assessment": "Unexpected exceptions are also returned as raw text, rather than suppressed solely into a log. Reachability alone still cannot determine whether local catches intercept first."
+  },
+  {
+    "id": "HTTP_INTEGRITY",
+    "path": "app.py",
+    "line": 1041,
+    "source_excerpt": "return bad_request(self, humanize_integrity_error(exc))",
+    "classification": "transformed_exception_to_JSON",
+    "consumer": "Web/Flutter HTTP consumers",
+    "assessment": "Prioritize humanize_integrity_error outputs, not underlying SQL exception strings, for user presentation."
+  },
+  {
+    "id": "LIBRARY_WORKER_BRIDGE",
+    "path": "modules/safety_library/preview.py",
+    "line": 68,
+    "source_excerpt": "message = json.loads(error_file.read_text())['error'] if error_file.exists() else 'Conversor seguro indisponível. Verifique a infraestrutura de pré-visualização.'",
+    "classification": "worker_raw_ValueError_to_route",
+    "consumer": "safety-library.js client/status",
+    "assessment": "Worker ValueErrors go into error.json, become ValueError in preview, then routes catch returns error:str(exc). Converters are part of user-visible validation."
+  },
+  {
+    "id": "LIBRARY_ENVELOPE",
+    "path": "modules/safety_library/routes.py",
+    "line": 155,
+    "source_excerpt": "send_json(handler,403 if isinstance(exc,PermissionError) else 400,{'error':str(exc),'preview_available':False})",
+    "classification": "raw_exception_to_JSON",
+    "consumer": "safety-library.js client/status",
+    "assessment": "400/403 preserve raw error. Client describes and binds known templates; no backend translation or contract mutation required."
+  },
+  {
+    "id": "LIBRARY_CONSUMER",
+    "path": "static/js/views/safety-library.js",
+    "line": 26,
+    "source_excerpt": "const localized = globalThis.EpiI18n?.describeApiError?.(error, typeof error.error === 'string' ? error.error : (globalThis.trEpi?.('ui.safety_library.acesso_a_biblioteca_recusado_3dc3e3','Acesso \\u00e0 biblioteca recusado.',{}) ?? 'Acesso \\u00e0 biblioteca recusado.')) || {text:typeof error.error === 'string' ? error.error : (globalThis.trEpi?.('ui.safety_library.acesso_a_biblioteca_recusado_3dc3e3','Acesso \\u00e0 biblioteca recusado.',{}) ?? 'Acesso \\u00e0 biblioteca recusado.')};",
+    "classification": "localized_consumer",
+    "consumer": "status()/textFor",
+    "assessment": "Original payload/status/code preserved in Error; known message metadata supports live language changes. Frozen browser proof exercises actual library error."
+  },
+  {
+    "id": "RECEIPT_VALIDATION",
+    "path": "modules/purchases/routes.py",
+    "line": 418,
+    "source_excerpt": "'ok': False, 'error': str(error), 'validation': error.details,",
+    "classification": "structured_validation_to_JSON",
+    "consumer": "purchases.js receive/import feedback",
+    "assessment": "ReceiptValidationError adds code/line/item metadata. Generic code must not discard detailed error. Central client now reads validation.code; UI consumers must retain/bind error.i18n for live changes."
+  },
+  {
+    "id": "PROCUREMENT_BYPASS",
+    "path": "static/js/views/procurement.js",
+    "line": 28,
+    "source_excerpt": "if (!res.ok) {throw new Error(data?.error?.message || data?.error || (globalThis.trEpi?.('ui.procurement.erro_p0_6b5d33','Erro {p0}',{p0:(res.status)}) ?? `Erro ${res.status}`));}",
+    "classification": "raw_consumer_no_localization",
+    "consumer": "toast(err.message) and feedback.textContent",
+    "assessment": "Private api() always uses direct fetch and raw error/message; central describeApiError is not called. Extending catalogs alone does not fix this active consumer."
+  },
+  {
+    "id": "EMPLOYEE_PORTAL_MAIN",
+    "path": "static/js/views/employee-portal.js",
+    "line": 53,
+    "source_excerpt": "if (typeof globalThis.api === 'function') {return globalThis.api(path, options);}",
+    "classification": "central_client_main_fallback_raw",
+    "consumer": "employee portal alert(error.message)",
+    "assessment": "Main app delegates to shared api; direct fetch below is fallback outside app. Do not classify main flow as guaranteed bypass. Fallback mishandles structured error objects as [object Object]."
+  },
+  {
+    "id": "SUPPLIER_PORTAL_RAW",
+    "path": "modules/purchases/supplier_portal_page.py",
+    "line": 136,
+    "source_excerpt": "caixa.textContent = (resultado.json && resultado.json.error && (resultado.json.error.message || resultado.json.error)) || 'Falha ao enviar.';",
+    "classification": "raw_public_portal_consumer",
+    "consumer": "standalone supplier quote/confirm textContent",
+    "assessment": "Separate HTML/JS has direct fetch and no main app i18n engine. Quote/confirmation errors are actually assigned to visible textContent; token/RBAC/rate contracts must remain unchanged."
+  },
+  {
+    "id": "CHECKOUT_WRAPPER",
+    "path": "static/js/pagamento.js",
+    "line": 98,
+    "source_excerpt": "throw new Error((data.error && data.error.message) || `Erro HTTP ${res.status}`);",
+    "classification": "raw_checkout_consumer",
+    "consumer": "onPay catch -> showResult(String(err))",
+    "assessment": "Both project wrappers preserve distinct auth contracts but do not call describeApiError. Nested error.message is displayed; string error falls back to Portuguese HTTP error. Central client additions do not affect this path."
+  },
+  {
+    "id": "PAYMENT_REPLACEMENT",
+    "path": "modules/payments/routes.py",
+    "line": 297,
+    "source_excerpt": "'code': 'CHECKOUT_PERSIST_PENDING',",
+    "classification": "exception_replaced_by_public_operational_message",
+    "consumer": "checkout onPay/showResult",
+    "assessment": "Persistence exceptions logged; consumer receives a specific reconciliation/idempotency instruction instead. Translate envelope message without altering code or retry requirements."
+  },
+  {
+    "id": "PAYMENT_WEBHOOK",
+    "path": "modules/payments/routes.py",
+    "line": 496,
+    "source_excerpt": "structured_log('error', 'payments.webhook_error', path=parsed.path, error=str(exc))",
+    "classification": "machine_to_machine_error_no_business_UI_proven",
+    "consumer": "payment provider webhook",
+    "assessment": "200 response with raw error is intended for webhook caller, not proven business UI. Do not use webhook reachability alone to justify a visible translation requirement."
+  },
+  {
+    "id": "DYNAMIC_CONNECTOR",
+    "path": "modules/purchases/connectors_service.py",
+    "line": 149,
+    "source_excerpt": "raise ValueError(f'Falha ao consultar o catálogo da loja: {exc}') from exc",
+    "classification": "dynamic_connector_error_wrapped_then_visible",
+    "consumer": "connectors_routes catalog-sync -> procurement.js feedback",
+    "assessment": "Unresolved HttpJsonConnector methods have a confirmed dynamic factory route. Nested ConnectorError remains embedded in visible ValueError. These seven templates cannot be exempted as unreachable."
+  },
+  {
+    "id": "MIGRATION_WORKER_REPLACEMENT",
+    "path": "modules/data_migration/async_jobs.py",
+    "line": 364,
+    "source_excerpt": "'Payload inválido ou adulterado; nada aplicado.')",
+    "classification": "exception_replaced_by_persisted_status",
+    "consumer": "async_jobs._public -> GET async job/list API",
+    "assessment": "Decryption details are replaced by generic status text. Translate the public status presentation, not encrypted payload/logs. Original eight worker template texts are not uniformly public."
+  },
+  {
+    "id": "MIGRATION_PUBLIC_FIELDS",
+    "path": "modules/data_migration/async_jobs.py",
+    "line": 55,
+    "source_excerpt": "def _public(row):",
+    "classification": "status_persisted_to_API",
+    "consumer": "data_migration/routes.py async get/list",
+    "assessment": "Removes ciphertext/hash/fingerprint, not error_message; generic worker errors can appear in API status. Previous inventory found no active async Web/Flutter consumer; do not claim UI coverage."
+  },
+  {
+    "id": "MIGRATION_SYNC_REPLACEMENT",
+    "path": "modules/data_migration/routes.py",
+    "line": 203,
+    "source_excerpt": "job['error_message'] = 'A importação falhou. Consulte o relatório por registro.' if job.get('error_message') else ''",
+    "classification": "historical_exception_replaced_by_public_message",
+    "consumer": "data-migration-view history",
+    "assessment": "Historical raw exceptions replaced by fixed message. Historical diagnostics replaced by code historical_diagnostic + fixed description. Prioritize those messages and per-record errors."
+  }
+]

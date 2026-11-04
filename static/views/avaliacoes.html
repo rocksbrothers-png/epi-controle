@@ -5,7 +5,7 @@
             <p class="page-desc" data-i18n="pagehead.evaluations">Avaliações e sugestões de EPI enviadas pelos colaboradores.</p>
           </div>
         </header>
-        <nav id="avaliacoes-subtabs" class="view-tabs" aria-label="Avaliações">
+        <nav id="avaliacoes-subtabs" class="view-tabs" aria-label="Avaliações" data-i18n-aria-label="ppetest.evaluations">
           <button type="button" class="vtab is-active" data-avaliacoes-tab="pendentes" id="avaltab-pendentes" data-i18n="evaluation.pending">Pendentes</button>
           <button type="button" class="vtab" data-avaliacoes-tab="reclamacoes" id="avaltab-reclamacoes" data-i18n="evaluation.complaints">Reclamações</button>
           <button type="button" class="vtab" data-avaliacoes-tab="elogios" id="avaltab-elogios" data-i18n="evaluation.praises">Elogios</button>
@@ -53,7 +53,7 @@
             <article class="card" style="border:2px solid var(--success);padding:14px;">
               <h4 style="margin:0 0 10px;color:var(--success);display:flex;align-items:center;gap:6px;">
                 <span>⭐</span> <span data-i18n="evaluation.mostPraisedPpes">EPIs Mais Elogiados</span>
-                <span style="font-size:11px;font-weight:400;color:var(--color-text-muted);margin-left:auto;">Manter no catálogo</span>
+                <span style="font-size:11px;font-weight:400;color:var(--color-text-muted);margin-left:auto;" data-i18n="evaluation.keepInCatalog">Manter no catálogo</span>
               </h4>
               <ol id="aval-top-elogiados" style="margin:0;padding-left:18px;list-style:decimal;">
                 <li style="opacity:.5;font-size:13px;"><span data-i18n="loading">Carregando...</span></li>
@@ -65,14 +65,14 @@
         <div id="avaliacoes-pane-pendentes">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
             <h3 style="margin:0;" data-i18n="evaluation.pendingValidation">Avaliações Pendentes de Validação</h3>
-            <button class="ghost" id="aval-reload-btn" type="button">↻ Recarregar</button>
+            <button class="ghost" id="aval-reload-btn" type="button" data-i18n="ui.avaliacoes.recarregar_bcd9f8">↻ Recarregar</button>
           </div>
           <div class="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th scope="col">#</th><th scope="col">EPI</th><th scope="col">Colaborador</th><th scope="col">Tipo</th><th scope="col">Risco</th>
-                  <th scope="col">Notas (C/Q/A/D)</th><th scope="col">Comentário</th><th scope="col">Data</th><th scope="col">Ações</th>
+                  <th scope="col">#</th><th scope="col" data-i18n="dashboard.tableEpi">EPI</th><th scope="col" data-i18n="employee.title">Colaborador</th><th scope="col" data-i18n="stock.type">Tipo</th><th scope="col" data-i18n="evaluation.riskLabel">Risco</th>
+                  <th scope="col" data-i18n="evaluation.gradesShort">Notas (C/Q/A/D)</th><th scope="col" data-i18n="evaluation.comment">Comentário</th><th scope="col" data-i18n="stock.date">Data</th><th scope="col" data-i18n="company.actions">Ações</th>
                 </tr>
               </thead>
               <tbody id="aval-pendentes-tbody">
@@ -85,28 +85,28 @@
         <div id="avaliacoes-pane-reclamacoes" style="display:none;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
             <h3 style="margin:0;" data-i18n="evaluation.complaintsAnalysis">Análise de Reclamações</h3>
-            <button class="primary" id="aval-compute-btn" type="button">⚙ Computar Status EPIs</button>
+            <button class="primary" id="aval-compute-btn" type="button" data-i18n="ui.avaliacoes.computar_status_epis_71a083">⚙ Computar Status EPIs</button>
           </div>
           <div id="aval-risk-breakdown" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:16px;"></div>
-          <h4>Por EPI</h4>
+          <h4 data-i18n="ui.avaliacoes.por_epi_154e9d">Por EPI</h4>
           <div class="table-wrap">
             <table>
               <thead>
-                <tr><th scope="col">EPI</th><th scope="col">Reclamações</th><th scope="col">Risco Alto</th><th scope="col">Status EPI</th><th scope="col">Ações</th></tr>
+                <tr><th scope="col" data-i18n="dashboard.tableEpi">EPI</th><th scope="col" data-i18n="evaluation.complaints">Reclamações</th><th scope="col" data-i18n="ui.avaliacoes.risco_alto_4874e4">Risco Alto</th><th scope="col" data-i18n="ui.avaliacoes.status_epi_da2a3f">Status EPI</th><th scope="col" data-i18n="company.actions">Ações</th></tr>
               </thead>
               <tbody id="aval-reclamacoes-tbody">
-                <tr><td colspan="5" style="text-align:center;opacity:.6;">Carregando...</td></tr>
+                <tr><td colspan="5" style="text-align:center;opacity:.6;" data-i18n="loading">Carregando...</td></tr>
               </tbody>
             </table>
           </div>
-          <h4 style="margin-top:20px;">Detalhes</h4>
+          <h4 style="margin-top:20px;" data-i18n="company.eyebrowDetails">Detalhes</h4>
           <div class="table-wrap">
             <table>
               <thead>
-                <tr><th scope="col">#</th><th scope="col">EPI</th><th scope="col">Colaborador</th><th scope="col">Risco</th><th scope="col">Comentário</th><th scope="col">Status Portal</th><th scope="col">Data</th><th scope="col">Ações</th></tr>
+                <tr><th scope="col">#</th><th scope="col" data-i18n="dashboard.tableEpi">EPI</th><th scope="col" data-i18n="employee.title">Colaborador</th><th scope="col" data-i18n="evaluation.riskLabel">Risco</th><th scope="col" data-i18n="evaluation.comment">Comentário</th><th scope="col" data-i18n="ui.avaliacoes.status_portal_f5f30f">Status Portal</th><th scope="col" data-i18n="stock.date">Data</th><th scope="col" data-i18n="company.actions">Ações</th></tr>
               </thead>
               <tbody id="aval-reclamacoes-detail-tbody">
-                <tr><td colspan="8" style="text-align:center;opacity:.6;">Carregando...</td></tr>
+                <tr><td colspan="8" style="text-align:center;opacity:.6;" data-i18n="loading">Carregando...</td></tr>
               </tbody>
             </table>
           </div>
@@ -117,10 +117,10 @@
           <div class="table-wrap">
             <table>
               <thead>
-                <tr><th scope="col">#</th><th scope="col">EPI</th><th scope="col">Colaborador</th><th scope="col">Notas (C/Q/A/D)</th><th scope="col">Comentário</th><th scope="col">Status EPI</th><th scope="col">Data</th></tr>
+                <tr><th scope="col">#</th><th scope="col" data-i18n="dashboard.tableEpi">EPI</th><th scope="col" data-i18n="employee.title">Colaborador</th><th scope="col" data-i18n="evaluation.gradesShort">Notas (C/Q/A/D)</th><th scope="col" data-i18n="evaluation.comment">Comentário</th><th scope="col" data-i18n="ui.avaliacoes.status_epi_da2a3f">Status EPI</th><th scope="col" data-i18n="stock.date">Data</th></tr>
               </thead>
               <tbody id="aval-elogios-tbody">
-                <tr><td colspan="7" style="text-align:center;opacity:.6;">Carregando...</td></tr>
+                <tr><td colspan="7" style="text-align:center;opacity:.6;" data-i18n="loading">Carregando...</td></tr>
               </tbody>
             </table>
           </div>
@@ -131,10 +131,10 @@
           <div class="table-wrap">
             <table>
               <thead>
-                <tr><th scope="col">#</th><th scope="col">Colaborador</th><th scope="col">EPI Atual</th><th scope="col">Sugestão</th><th scope="col">Detalhes</th><th scope="col">Status</th><th scope="col">Data</th><th scope="col">Ações</th></tr>
+                <tr><th scope="col">#</th><th scope="col" data-i18n="employee.title">Colaborador</th><th scope="col" data-i18n="ui.avaliacoes.epi_atual_639332">EPI Atual</th><th scope="col" data-i18n="portal.suggestion">Sugestão</th><th scope="col" data-i18n="company.eyebrowDetails">Detalhes</th><th scope="col" data-i18n="stock.status">Status</th><th scope="col" data-i18n="stock.date">Data</th><th scope="col" data-i18n="company.actions">Ações</th></tr>
               </thead>
               <tbody id="aval-sugestoes-tbody">
-                <tr><td colspan="8" style="text-align:center;opacity:.6;">Carregando...</td></tr>
+                <tr><td colspan="8" style="text-align:center;opacity:.6;" data-i18n="loading">Carregando...</td></tr>
               </tbody>
             </table>
           </div>
@@ -142,37 +142,37 @@
 
         <div id="avaliacoes-pane-ranking" style="display:none;">
           <h3 data-i18n="evaluation.rankingTitle">Ranking de EPIs por Avaliação</h3>
-          <p style="color:var(--color-text-muted,#6b7280);font-size:13px;margin-top:-8px;">Score positivo = mais elogios/ranks positivos. Clique em "Computar Status EPIs" para atualizar.</p>
+          <p style="color:var(--color-text-muted,#6b7280);font-size:13px;margin-top:-8px;" data-i18n="ui.avaliacoes.score_positivo_mais_elogios_ranks_positivos_clique_em_computar_status_epis__a7e492">Score positivo = mais elogios/ranks positivos. Clique em "Computar Status EPIs" para atualizar.</p>
           <div class="table-wrap" style="margin-bottom:32px;">
             <table>
               <thead>
                 <tr>
-                  <th scope="col">Pos.</th><th scope="col">EPI</th><th scope="col">Score</th>
-                  <th scope="col" style="color:var(--success);">⭐ Excelente</th><th scope="col" style="color:var(--success);">Ótimo</th><th scope="col" style="color:var(--success);">Muito Bom</th>
-                  <th scope="col" style="color:var(--danger);">Péssimo</th><th scope="col" style="color:var(--danger);">Muito Ruim</th><th scope="col" style="color:var(--pending);">Ruim</th>
-                  <th scope="col">Elogios</th><th scope="col">Reclamações</th><th scope="col">Médias C/Q/A/D</th><th scope="col">Status</th>
+                  <th scope="col" data-i18n="ui.avaliacoes.pos_27a35c">Pos.</th><th scope="col" data-i18n="dashboard.tableEpi">EPI</th><th scope="col" data-i18n="ui.avaliacoes.score_38e5a4">Score</th>
+                  <th scope="col" style="color:var(--success);" data-i18n="ui.avaliacoes.excelente_6b9944">⭐ Excelente</th><th scope="col" style="color:var(--success);" data-i18n="ui.avaliacoes.otimo_b2f33e">Ótimo</th><th scope="col" style="color:var(--success);" data-i18n="ui.avaliacoes.muito_bom_73148c">Muito Bom</th>
+                  <th scope="col" style="color:var(--danger);" data-i18n="ui.avaliacoes.pessimo_184cc1">Péssimo</th><th scope="col" style="color:var(--danger);" data-i18n="ui.avaliacoes.muito_ruim_3427d4">Muito Ruim</th><th scope="col" style="color:var(--pending);" data-i18n="ui.avaliacoes.ruim_3efc21">Ruim</th>
+                  <th scope="col" data-i18n="evaluation.praises">Elogios</th><th scope="col" data-i18n="evaluation.complaints">Reclamações</th><th scope="col" data-i18n="ui.avaliacoes.medias_c_q_a_d_1b3b30">Médias C/Q/A/D</th><th scope="col" data-i18n="stock.status">Status</th>
                 </tr>
               </thead>
               <tbody id="aval-ranking-tbody">
-                <tr><td colspan="13" style="text-align:center;opacity:.6;">Carregando...</td></tr>
+                <tr><td colspan="13" style="text-align:center;opacity:.6;" data-i18n="loading">Carregando...</td></tr>
               </tbody>
             </table>
           </div>
 
-          <h3>Ranking de Sugestões de EPI</h3>
-          <p style="color:var(--color-text-muted,#6b7280);font-size:13px;margin-top:-8px;">Sugestões mais bem avaliadas pelos colaboradores e validadas pelos gestores.</p>
+          <h3 data-i18n="ui.avaliacoes.ranking_de_sugestoes_de_epi_e9d875">Ranking de Sugestões de EPI</h3>
+          <p style="color:var(--color-text-muted,#6b7280);font-size:13px;margin-top:-8px;" data-i18n="ui.avaliacoes.sugestoes_mais_bem_avaliadas_pelos_colaboradores_e_validadas_pelos_gestores_b53243">Sugestões mais bem avaliadas pelos colaboradores e validadas pelos gestores.</p>
           <div class="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th scope="col">Pos.</th><th scope="col">Sugestão</th><th scope="col">EPI Referência</th><th scope="col">Score</th>
-                  <th scope="col" style="color:var(--success);">Excelente</th><th scope="col" style="color:var(--success);">Ótima</th><th scope="col" style="color:var(--success);">Muito Boa</th>
-                  <th scope="col" style="color:var(--danger);">Péssima</th><th scope="col" style="color:var(--danger);">Muito Ruim</th><th scope="col" style="color:var(--pending);">Ruim</th>
-                  <th scope="col">Total</th><th scope="col">Status</th>
+                  <th scope="col" data-i18n="ui.avaliacoes.pos_27a35c">Pos.</th><th scope="col" data-i18n="portal.suggestion">Sugestão</th><th scope="col" data-i18n="ui.avaliacoes.epi_referencia_3a7095">EPI Referência</th><th scope="col" data-i18n="ui.avaliacoes.score_38e5a4">Score</th>
+                  <th scope="col" style="color:var(--success);" data-i18n="ui.avaliacoes.excelente_3f16c6">Excelente</th><th scope="col" style="color:var(--success);" data-i18n="ui.avaliacoes.otima_66be69">Ótima</th><th scope="col" style="color:var(--success);" data-i18n="ui.avaliacoes.muito_boa_57c383">Muito Boa</th>
+                  <th scope="col" style="color:var(--danger);" data-i18n="ui.avaliacoes.pessima_21fff7">Péssima</th><th scope="col" style="color:var(--danger);" data-i18n="ui.avaliacoes.muito_ruim_3427d4">Muito Ruim</th><th scope="col" style="color:var(--pending);" data-i18n="ui.avaliacoes.ruim_3efc21">Ruim</th>
+                  <th scope="col" data-i18n="evaluation.total">Total</th><th scope="col" data-i18n="stock.status">Status</th>
                 </tr>
               </thead>
               <tbody id="aval-ranking-sug-tbody">
-                <tr><td colspan="12" style="text-align:center;opacity:.6;">Carregando...</td></tr>
+                <tr><td colspan="12" style="text-align:center;opacity:.6;" data-i18n="loading">Carregando...</td></tr>
               </tbody>
             </table>
           </div>
@@ -332,11 +332,11 @@
           <!-- Painel de detalhe do teste -->
           <div id="ppe-test-detail" style="display:none;" class="card">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap;">
-              <h3 style="margin:0;flex:1;" id="ppe-detail-title">Teste</h3>
+              <h3 style="margin:0;flex:1;" id="ppe-detail-title" data-i18n="ui.avaliacoes.teste_89f308">Teste</h3>
               <span id="ppe-detail-status-chip"></span>
               <button class="btn ghost" id="ppe-detail-back" type="button" data-i18n="back">Voltar</button>
             </div>
-            <p style="margin:0 0 8px;font-size:12px;color:var(--danger);font-weight:600;" id="ppe-detail-banner">
+            <p style="margin:0 0 8px;font-size:12px;color:var(--danger);font-weight:600;" id="ppe-detail-banner" data-i18n="ui.avaliacoes.epi_em_teste_nao_homologado_uso_controlado_40cda7">
               ⚠ EPI EM TESTE — NÃO HOMOLOGADO — USO CONTROLADO
             </p>
             <div id="ppe-detail-progress" style="margin-bottom:12px;font-size:13px;"></div>
@@ -347,7 +347,7 @@
           <!-- Modal genérico de formulário do fluxo de teste -->
           <div id="ppe-form-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center;">
             <div class="card" style="width:min(560px,94vw);padding:24px;max-height:90vh;overflow-y:auto;">
-              <h3 id="ppe-form-title" style="margin-top:0;">Ação</h3>
+              <h3 id="ppe-form-title" style="margin-top:0;" data-i18n="employee.action">Ação</h3>
               <div id="ppe-form-fields"></div>
               <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">
                 <button class="btn ghost" id="ppe-form-cancel" type="button" data-i18n="cancel">Cancelar</button>

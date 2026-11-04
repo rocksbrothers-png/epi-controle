@@ -1,0 +1,19 @@
+# Integração com SECURITY-CSP-V1
+
+A main avançou para `13a1e8bf` Corporate / `25b0170b` SaaS depois do checkpoint anterior. A publicação dos conectores ficou com conflitos, impedindo checks de PR. Essas atualizações foram conciliadas nas próprias branches draft; nenhum PR foi mesclado na main.
+
+As ações de cotações, fornecedores e PO usam os `data-*`/listeners da CSP e mantêm os bindings de idioma. O rótulo de suspender/reativar acompanha o idioma sem alterar ação, ID ou estado. O pré-paint externo de tema, formulário de login, defaults CSP por superfície e modo report-only de produção permanecem os da main. Não houve deploy ou acesso a banco compartilhado.
+
+Uma incompatibilidade de auto-merge foi reproduzida antes da correção: a política do portal procurava `<script>` embutido, mas o I18N já havia extraído três módulos; a importação falhava com `ValueError: substring not found`. O portal agora adiciona SRI SHA256 aos três scripts locais, na ordem original, e o script-src contém exatamente esses hashes. Não autoriza `'self'`, `'unsafe-inline'`, `'unsafe-eval'` ou script-src-elem alternativo. Os caminhos vêm do pacote, independem do CWD e dados do pedido; um cache-buster deriva dos bytes. Demais diretivas restritivas da main e a rota que emite a CSP própria permanecem.
+
+O teste unitário confere fontes, ordem, integridades, versões e hashes contra os bytes servidos. A bateria de formulário agora usa o HTML runtime e o cabeçalho CSP real: 20 cenários por produto, cinco idiomas, cotação/pedido/answered/invalid, mudança de idioma, campos/arquivo/códigos e payloads canônicos preservados, sem violação CSP. A auditoria independente executou 20 casos por produto: legítimo, script extra de mesma origem, asset aprovado sem integrity e bytes adulterados mantendo os hashes/SRI originais congelados antes da requisição. Tudo passou; o código foi retido como regressão em `scripts/i18n/check_supplier_portal_csp_sri.py`.
+
+A regressão ampla SECURITY-CSP-V1 da main continua exercitando as telas e ações delegadas e os negativos de inline/handler/eval/URL javascript/timeout textual/script externo, incluindo controles sem CSP e report-only. O portal continua com política aplicada nesses controles report-only da SPA. Seus resultados finais estão em `evidence/csp-integration/` quando concluídos. Essa rodada local usa stubs nas URLs exatas das quatro bibliotecas externas; os três módulos do portal executam os bytes reais. Não é validação de câmera/dispositivo, SDK de pagamento ou ambiente de produção.
+
+Os guards F4/F5B foram recalculados depois da conciliação; listas e normalização não mudaram. Index foi regenerado por produto e a guarda UBX mantém 727 declarações/104 endpoints, sem novos ciclos. Passaram 225 testes Python dirigidos Corporate/223 SaaS e 665 testes JS por produto.
+
+Backend CI conserva a chamada I18N reutilizável já existente e amplia o filtro para alterações em harness/workflow/dependências. Um arquivo de workflow novo só nesta branch retorna 404 ao tentar workflow_dispatch antes de existir na default branch; a chamada local já existente executa a validação no mesmo commit sem merge de PR. Nenhum check obrigatório foi removido ou rebaixado.
+
+Resultados locais e da revisão não substituem CI dos HEADs finais. Eles constam nas descrições dos PRs. I18N integral continua aberto para mensagens dinâmicas globais, documentos/superfícies remanescentes e matriz completa. **READY FOR HUMAN MERGE DECISION: NO.**
+
+Uma chamada I18N adicional introduzida na conciliação foi cancelada pela concorrência; a chamada original passou. A duplicação foi removida. O filtro ampliado e o gate original permanecem, com uma única execução por workflow Backend CI. CI dos novos HEADs é a autoridade final.

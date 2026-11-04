@@ -1,0 +1,677 @@
+{
+  "root": "/workspace/i18n-full-v1/saas",
+  "head": "058773b08e7032cfb3ab0ff40e20c27c57d206e5",
+  "baseline_ref": "bcc23d1a9cfc12e4b1b333fc3e9a5eba7f95748e",
+  "synthetic_api_only": true,
+  "source_sha256": {
+    "app.js": "0b0c7ed6595bb48f405de33fcb5fdce07ccf60a06d245a576a194c8c36037802",
+    "navigation-controls.js": "851a0ec4033ce36f2e59d64827f58f7877f4e3e524839fd05bd766859be48317",
+    "entrega-epi.js": "5ce66b2161ca8c741980db18685136889f1bc992249fe99b9c5802878c3325c5",
+    "i18n.js": "e3b7c50a4b5523fd0012dbc3d679234b151709346615287bae606b4a867ed7c5",
+    "js/modules/auth.js": "d3bedc6285f2eb7b4cd2cd501e2eab6fa281a62a32d6e0c75b22d890d5de97bb"
+  },
+  "cases": [
+    {
+      "locale": "pt-BR",
+      "name": "interactive_tabs_text_and_token",
+      "passed": false,
+      "failed": [
+        "ok_label",
+        "ok_inert"
+      ],
+      "evidence": {
+        "ok_label": false,
+        "ok_inert": false,
+        "ok_token": true
+      }
+    },
+    {
+      "locale": "pt-BR",
+      "name": "navigation_tree_and_breadcrumb",
+      "passed": false,
+      "failed": [
+        "ok_tree_label",
+        "ok_crumb_label",
+        "ok_tree_inert",
+        "ok_crumb_inert"
+      ],
+      "evidence": {
+        "ok_tree_label": false,
+        "ok_crumb_label": false,
+        "ok_tree_inert": false,
+        "ok_crumb_inert": false
+      }
+    },
+    {
+      "locale": "pt-BR",
+      "name": "joinventure_labels_tokens_scope",
+      "passed": false,
+      "failed": [
+        "ok_value",
+        "ok_token",
+        "ok_label",
+        "ok_inert"
+      ],
+      "evidence": {
+        "ok_value": false,
+        "ok_hidden": true,
+        "ok_token": false,
+        "ok_label": false,
+        "ok_inert": false,
+        "ok_foreign_filtered": true
+      }
+    },
+    {
+      "locale": "pt-BR",
+      "name": "rich_text_literals_and_template_emphasis",
+      "passed": true,
+      "failed": [],
+      "evidence": {
+        "ok_text": true,
+        "ok_emphasis": true,
+        "ok_break": true,
+        "ok_inert": true,
+        "ok_italics": true
+      }
+    },
+    {
+      "locale": "pt-BR",
+      "name": "rich_catalogue_rejects_tags_and_attributes",
+      "passed": false,
+      "failed": [
+        "ok_text",
+        "ok_inert",
+        "ok_no_attributes"
+      ],
+      "evidence": {
+        "ok_text": false,
+        "ok_inert": false,
+        "ok_no_attributes": false,
+        "ok_allowed": true
+      }
+    },
+    {
+      "locale": "pt-BR",
+      "name": "password_change_boolean_storage",
+      "passed": true,
+      "failed": [],
+      "evidence": {
+        "ok_contract": true,
+        "outcomes": [
+          [
+            true,
+            "true"
+          ],
+          [
+            false,
+            "false"
+          ],
+          [
+            true,
+            "true"
+          ],
+          [
+            false,
+            "false"
+          ]
+        ]
+      }
+    },
+    {
+      "locale": "pt-BR",
+      "name": "delivery_review_and_search_text_tokens",
+      "passed": false,
+      "failed": [
+        "ok_review_labels",
+        "ok_review_inert",
+        "ok_search_label",
+        "ok_search_inert"
+      ],
+      "evidence": {
+        "ok_review_visible": true,
+        "ok_review_labels": false,
+        "ok_review_inert": false,
+        "ok_search_label": false,
+        "ok_search_inert": false,
+        "ok_search_value": true
+      }
+    },
+    {
+      "locale": "pt-BR",
+      "name": "no_api_writes_or_js_errors",
+      "passed": true,
+      "writes": [],
+      "errors": []
+    },
+    {
+      "locale": "en-GB",
+      "name": "interactive_tabs_text_and_token",
+      "passed": false,
+      "failed": [
+        "ok_label",
+        "ok_inert"
+      ],
+      "evidence": {
+        "ok_label": false,
+        "ok_inert": false,
+        "ok_token": true
+      }
+    },
+    {
+      "locale": "en-GB",
+      "name": "navigation_tree_and_breadcrumb",
+      "passed": false,
+      "failed": [
+        "ok_tree_label",
+        "ok_crumb_label",
+        "ok_tree_inert",
+        "ok_crumb_inert"
+      ],
+      "evidence": {
+        "ok_tree_label": false,
+        "ok_crumb_label": false,
+        "ok_tree_inert": false,
+        "ok_crumb_inert": false
+      }
+    },
+    {
+      "locale": "en-GB",
+      "name": "joinventure_labels_tokens_scope",
+      "passed": false,
+      "failed": [
+        "ok_value",
+        "ok_token",
+        "ok_label",
+        "ok_inert"
+      ],
+      "evidence": {
+        "ok_value": false,
+        "ok_hidden": true,
+        "ok_token": false,
+        "ok_label": false,
+        "ok_inert": false,
+        "ok_foreign_filtered": true
+      }
+    },
+    {
+      "locale": "en-GB",
+      "name": "rich_text_literals_and_template_emphasis",
+      "passed": true,
+      "failed": [],
+      "evidence": {
+        "ok_text": true,
+        "ok_emphasis": true,
+        "ok_break": true,
+        "ok_inert": true,
+        "ok_italics": true
+      }
+    },
+    {
+      "locale": "en-GB",
+      "name": "rich_catalogue_rejects_tags_and_attributes",
+      "passed": false,
+      "failed": [
+        "ok_text",
+        "ok_inert",
+        "ok_no_attributes"
+      ],
+      "evidence": {
+        "ok_text": false,
+        "ok_inert": false,
+        "ok_no_attributes": false,
+        "ok_allowed": true
+      }
+    },
+    {
+      "locale": "en-GB",
+      "name": "password_change_boolean_storage",
+      "passed": true,
+      "failed": [],
+      "evidence": {
+        "ok_contract": true,
+        "outcomes": [
+          [
+            true,
+            "true"
+          ],
+          [
+            false,
+            "false"
+          ],
+          [
+            true,
+            "true"
+          ],
+          [
+            false,
+            "false"
+          ]
+        ]
+      }
+    },
+    {
+      "locale": "en-GB",
+      "name": "delivery_review_and_search_text_tokens",
+      "passed": false,
+      "failed": [
+        "ok_review_labels",
+        "ok_review_inert",
+        "ok_search_label",
+        "ok_search_inert"
+      ],
+      "evidence": {
+        "ok_review_visible": true,
+        "ok_review_labels": false,
+        "ok_review_inert": false,
+        "ok_search_label": false,
+        "ok_search_inert": false,
+        "ok_search_value": true
+      }
+    },
+    {
+      "locale": "en-GB",
+      "name": "no_api_writes_or_js_errors",
+      "passed": true,
+      "writes": [],
+      "errors": []
+    },
+    {
+      "locale": "es-ES",
+      "name": "interactive_tabs_text_and_token",
+      "passed": false,
+      "failed": [
+        "ok_label",
+        "ok_inert"
+      ],
+      "evidence": {
+        "ok_label": false,
+        "ok_inert": false,
+        "ok_token": true
+      }
+    },
+    {
+      "locale": "es-ES",
+      "name": "navigation_tree_and_breadcrumb",
+      "passed": false,
+      "failed": [
+        "ok_tree_label",
+        "ok_crumb_label",
+        "ok_tree_inert",
+        "ok_crumb_inert"
+      ],
+      "evidence": {
+        "ok_tree_label": false,
+        "ok_crumb_label": false,
+        "ok_tree_inert": false,
+        "ok_crumb_inert": false
+      }
+    },
+    {
+      "locale": "es-ES",
+      "name": "joinventure_labels_tokens_scope",
+      "passed": false,
+      "failed": [
+        "ok_value",
+        "ok_token",
+        "ok_label",
+        "ok_inert"
+      ],
+      "evidence": {
+        "ok_value": false,
+        "ok_hidden": true,
+        "ok_token": false,
+        "ok_label": false,
+        "ok_inert": false,
+        "ok_foreign_filtered": true
+      }
+    },
+    {
+      "locale": "es-ES",
+      "name": "rich_text_literals_and_template_emphasis",
+      "passed": true,
+      "failed": [],
+      "evidence": {
+        "ok_text": true,
+        "ok_emphasis": true,
+        "ok_break": true,
+        "ok_inert": true,
+        "ok_italics": true
+      }
+    },
+    {
+      "locale": "es-ES",
+      "name": "rich_catalogue_rejects_tags_and_attributes",
+      "passed": false,
+      "failed": [
+        "ok_text",
+        "ok_inert",
+        "ok_no_attributes"
+      ],
+      "evidence": {
+        "ok_text": false,
+        "ok_inert": false,
+        "ok_no_attributes": false,
+        "ok_allowed": true
+      }
+    },
+    {
+      "locale": "es-ES",
+      "name": "password_change_boolean_storage",
+      "passed": true,
+      "failed": [],
+      "evidence": {
+        "ok_contract": true,
+        "outcomes": [
+          [
+            true,
+            "true"
+          ],
+          [
+            false,
+            "false"
+          ],
+          [
+            true,
+            "true"
+          ],
+          [
+            false,
+            "false"
+          ]
+        ]
+      }
+    },
+    {
+      "locale": "es-ES",
+      "name": "delivery_review_and_search_text_tokens",
+      "passed": false,
+      "failed": [
+        "ok_review_labels",
+        "ok_review_inert",
+        "ok_search_label",
+        "ok_search_inert"
+      ],
+      "evidence": {
+        "ok_review_visible": true,
+        "ok_review_labels": false,
+        "ok_review_inert": false,
+        "ok_search_label": false,
+        "ok_search_inert": false,
+        "ok_search_value": true
+      }
+    },
+    {
+      "locale": "es-ES",
+      "name": "no_api_writes_or_js_errors",
+      "passed": true,
+      "writes": [],
+      "errors": []
+    },
+    {
+      "locale": "fr-FR",
+      "name": "interactive_tabs_text_and_token",
+      "passed": false,
+      "failed": [
+        "ok_label",
+        "ok_inert"
+      ],
+      "evidence": {
+        "ok_label": false,
+        "ok_inert": false,
+        "ok_token": true
+      }
+    },
+    {
+      "locale": "fr-FR",
+      "name": "navigation_tree_and_breadcrumb",
+      "passed": false,
+      "failed": [
+        "ok_tree_label",
+        "ok_crumb_label",
+        "ok_tree_inert",
+        "ok_crumb_inert"
+      ],
+      "evidence": {
+        "ok_tree_label": false,
+        "ok_crumb_label": false,
+        "ok_tree_inert": false,
+        "ok_crumb_inert": false
+      }
+    },
+    {
+      "locale": "fr-FR",
+      "name": "joinventure_labels_tokens_scope",
+      "passed": false,
+      "failed": [
+        "ok_value",
+        "ok_token",
+        "ok_label",
+        "ok_inert"
+      ],
+      "evidence": {
+        "ok_value": false,
+        "ok_hidden": true,
+        "ok_token": false,
+        "ok_label": false,
+        "ok_inert": false,
+        "ok_foreign_filtered": true
+      }
+    },
+    {
+      "locale": "fr-FR",
+      "name": "rich_text_literals_and_template_emphasis",
+      "passed": true,
+      "failed": [],
+      "evidence": {
+        "ok_text": true,
+        "ok_emphasis": true,
+        "ok_break": true,
+        "ok_inert": true,
+        "ok_italics": true
+      }
+    },
+    {
+      "locale": "fr-FR",
+      "name": "rich_catalogue_rejects_tags_and_attributes",
+      "passed": false,
+      "failed": [
+        "ok_text",
+        "ok_inert",
+        "ok_no_attributes"
+      ],
+      "evidence": {
+        "ok_text": false,
+        "ok_inert": false,
+        "ok_no_attributes": false,
+        "ok_allowed": true
+      }
+    },
+    {
+      "locale": "fr-FR",
+      "name": "password_change_boolean_storage",
+      "passed": true,
+      "failed": [],
+      "evidence": {
+        "ok_contract": true,
+        "outcomes": [
+          [
+            true,
+            "true"
+          ],
+          [
+            false,
+            "false"
+          ],
+          [
+            true,
+            "true"
+          ],
+          [
+            false,
+            "false"
+          ]
+        ]
+      }
+    },
+    {
+      "locale": "fr-FR",
+      "name": "delivery_review_and_search_text_tokens",
+      "passed": false,
+      "failed": [
+        "ok_review_labels",
+        "ok_review_inert",
+        "ok_search_label",
+        "ok_search_inert"
+      ],
+      "evidence": {
+        "ok_review_visible": true,
+        "ok_review_labels": false,
+        "ok_review_inert": false,
+        "ok_search_label": false,
+        "ok_search_inert": false,
+        "ok_search_value": true
+      }
+    },
+    {
+      "locale": "fr-FR",
+      "name": "no_api_writes_or_js_errors",
+      "passed": true,
+      "writes": [],
+      "errors": []
+    },
+    {
+      "locale": "nb-NO",
+      "name": "interactive_tabs_text_and_token",
+      "passed": false,
+      "failed": [
+        "ok_label",
+        "ok_inert"
+      ],
+      "evidence": {
+        "ok_label": false,
+        "ok_inert": false,
+        "ok_token": true
+      }
+    },
+    {
+      "locale": "nb-NO",
+      "name": "navigation_tree_and_breadcrumb",
+      "passed": false,
+      "failed": [
+        "ok_tree_label",
+        "ok_crumb_label",
+        "ok_tree_inert",
+        "ok_crumb_inert"
+      ],
+      "evidence": {
+        "ok_tree_label": false,
+        "ok_crumb_label": false,
+        "ok_tree_inert": false,
+        "ok_crumb_inert": false
+      }
+    },
+    {
+      "locale": "nb-NO",
+      "name": "joinventure_labels_tokens_scope",
+      "passed": false,
+      "failed": [
+        "ok_value",
+        "ok_token",
+        "ok_label",
+        "ok_inert"
+      ],
+      "evidence": {
+        "ok_value": false,
+        "ok_hidden": true,
+        "ok_token": false,
+        "ok_label": false,
+        "ok_inert": false,
+        "ok_foreign_filtered": true
+      }
+    },
+    {
+      "locale": "nb-NO",
+      "name": "rich_text_literals_and_template_emphasis",
+      "passed": true,
+      "failed": [],
+      "evidence": {
+        "ok_text": true,
+        "ok_emphasis": true,
+        "ok_break": true,
+        "ok_inert": true,
+        "ok_italics": true
+      }
+    },
+    {
+      "locale": "nb-NO",
+      "name": "rich_catalogue_rejects_tags_and_attributes",
+      "passed": false,
+      "failed": [
+        "ok_text",
+        "ok_inert",
+        "ok_no_attributes"
+      ],
+      "evidence": {
+        "ok_text": false,
+        "ok_inert": false,
+        "ok_no_attributes": false,
+        "ok_allowed": true
+      }
+    },
+    {
+      "locale": "nb-NO",
+      "name": "password_change_boolean_storage",
+      "passed": true,
+      "failed": [],
+      "evidence": {
+        "ok_contract": true,
+        "outcomes": [
+          [
+            true,
+            "true"
+          ],
+          [
+            false,
+            "false"
+          ],
+          [
+            true,
+            "true"
+          ],
+          [
+            false,
+            "false"
+          ]
+        ]
+      }
+    },
+    {
+      "locale": "nb-NO",
+      "name": "delivery_review_and_search_text_tokens",
+      "passed": false,
+      "failed": [
+        "ok_review_labels",
+        "ok_review_inert",
+        "ok_search_label",
+        "ok_search_inert"
+      ],
+      "evidence": {
+        "ok_review_visible": true,
+        "ok_review_labels": false,
+        "ok_review_inert": false,
+        "ok_search_label": false,
+        "ok_search_inert": false,
+        "ok_search_value": true
+      }
+    },
+    {
+      "locale": "nb-NO",
+      "name": "no_api_writes_or_js_errors",
+      "passed": true,
+      "writes": [],
+      "errors": []
+    }
+  ],
+  "passed": 15,
+  "failed": 25
+}

@@ -22,10 +22,13 @@
 
   // ── Helpers puros ─────────────────────────────────────────────────────────
 
-  function createApiError(message, response, payload, code = '') {
-    const error = new Error(message);
+  function createApiError(message, response, payload, code = '', presentation = {}) {
+    const source = presentation.preferMessage ? {error:message, code} : payload;
+    const localized = globalThis.EpiI18n?.describeApiError?.(source, message);
+    const error = new Error(localized?.text || message);
+    if (localized?.key) {error.i18n = localized;}
     error.status = response.status;
-    error.code = code || payload?.code || '';
+    error.code = code || payload?.code || payload?.error?.code || payload?.validation?.code || '';
     error.payload = payload;
     return error;
   }
@@ -52,7 +55,7 @@
     if (response.ok) {return;}
     const serverError = payload?.error;
     const serverMessage = typeof serverError === 'string' ? serverError : serverError?.message;
-    const normalizedCode = payload?.code || serverError?.code || '';
+    const normalizedCode = payload?.code || serverError?.code || payload?.validation?.code || '';
     const isGatewayError = [502, 503, 504].includes(response.status);
 
     let fallbackMessage;
@@ -69,7 +72,7 @@
     }
 
     const message = isGatewayError ? fallbackMessage : (serverMessage || fallbackMessage);
-    const apiError = createApiError(message, response, payload, normalizedCode);
+    const apiError = createApiError(message, response, payload, normalizedCode, {preferMessage:isGatewayError});
     if (isBootstrapApiPath(path) || isGatewayError) {apiError.nonFatal = true;}
     throw apiError;
   }
@@ -81,6 +84,7 @@
     const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
     return {
       'Content-Type': 'application/json',
+      ...(globalThis.EpiI18n?.lang ? {'Accept-Language':globalThis.EpiI18n.lang} : {}),
       ...authHeader,
       ...options.headers
     };

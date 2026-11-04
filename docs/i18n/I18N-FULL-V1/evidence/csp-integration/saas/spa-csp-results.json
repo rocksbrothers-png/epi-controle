@@ -1,0 +1,148 @@
+{
+ "locales": [
+  {
+   "locale": "pt-BR",
+   "status": "passed",
+   "checks": {
+    "login": true,
+    "sweep": true,
+    "actions": true,
+    "images": true,
+    "employee_portal": true,
+    "supplier_portal": true,
+    "ficha": true
+   },
+   "screens_visited": 37,
+   "violations": [],
+   "violation_count": 0,
+   "lazy_libs_loaded": 3
+  },
+  {
+   "locale": "en-GB",
+   "status": "passed",
+   "checks": {
+    "login": true,
+    "sweep": true,
+    "actions": true,
+    "images": true,
+    "employee_portal": true,
+    "supplier_portal": true,
+    "ficha": true
+   },
+   "screens_visited": 37,
+   "violations": [],
+   "violation_count": 0,
+   "lazy_libs_loaded": 3
+  },
+  {
+   "locale": "es-ES",
+   "status": "passed",
+   "checks": {
+    "login": true,
+    "sweep": true,
+    "actions": true,
+    "images": true,
+    "employee_portal": true,
+    "supplier_portal": true,
+    "ficha": true
+   },
+   "screens_visited": 37,
+   "violations": [],
+   "violation_count": 0,
+   "lazy_libs_loaded": 3
+  },
+  {
+   "locale": "fr-FR",
+   "status": "passed",
+   "checks": {
+    "login": true,
+    "sweep": true,
+    "actions": true,
+    "images": true,
+    "employee_portal": true,
+    "supplier_portal": true,
+    "ficha": true
+   },
+   "screens_visited": 37,
+   "violations": [],
+   "violation_count": 0,
+   "lazy_libs_loaded": 3
+  },
+  {
+   "locale": "nb-NO",
+   "status": "passed",
+   "checks": {
+    "login": true,
+    "sweep": true,
+    "actions": true,
+    "images": true,
+    "employee_portal": true,
+    "supplier_portal": true,
+    "ficha": true
+   },
+   "screens_visited": 37,
+   "violations": [],
+   "violation_count": 0,
+   "lazy_libs_loaded": 3
+  }
+ ],
+ "negative": {
+  "enforce/spa": {
+   "executed": [],
+   "violations": 7,
+   "evil_requested": false,
+   "status": "passed"
+  },
+  "enforce/fornecedor": {
+   "executed": [],
+   "violations": 7,
+   "evil_requested": false,
+   "status": "passed"
+  },
+  "none/spa": {
+   "executed": [
+    "eval",
+    "javascript-url",
+    "onclick",
+    "onerror",
+    "script-inline",
+    "setTimeout-string"
+   ],
+   "violations": 0,
+   "evil_requested": true,
+   "status": "passed"
+  },
+  "none/fornecedor": {
+   "executed": [
+    "eval",
+    "javascript-url",
+    "onclick",
+    "onerror",
+    "script-inline",
+    "setTimeout-string"
+   ],
+   "violations": 0,
+   "evil_requested": true,
+   "status": "passed"
+  },
+  "report-only/spa": {
+   "executed": [
+    "eval",
+    "javascript-url",
+    "onclick",
+    "onerror",
+    "script-inline",
+    "setTimeout-string"
+   ],
+   "violations": 8,
+   "evil_requested": true,
+   "status": "passed"
+  },
+  "report-only/fornecedor": {
+   "executed": [],
+   "violations": 7,
+   "evil_requested": false,
+   "status": "passed"
+  }
+ }
+}

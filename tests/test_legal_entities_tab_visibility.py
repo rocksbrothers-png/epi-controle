@@ -127,6 +127,11 @@ def test_flutter_nav_item_uses_the_same_permission_as_the_route():
     barra na entrada.
     """
     shell = _read('flutter', 'apps', 'epi_admin', 'lib', 'core', 'shell', 'app_shell.dart')
-    match = re.search(r'Routes\.legalEntities,[^\n]*?\'([a-z_]+:[a-z_]+)\'', shell)
+    # A tupla Dart pode ser formatada em várias linhas; a permissão continua
+    # sendo o quarto campo, depois da rota e dos dois ícones.
+    match = re.search(
+        r"Routes\.legalEntities,\s*Icons\.\w+,\s*Icons\.\w+,\s*'([a-z_]+:[a-z_]+)'",
+        shell,
+    )
     assert match, 'item de menu de CNPJs não encontrado em app_shell.dart'
     assert match.group(1) == PERM_LEGAL_ENTITIES_VIEW

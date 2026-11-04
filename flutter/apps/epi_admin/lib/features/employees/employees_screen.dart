@@ -1,3 +1,5 @@
+import 'package:epi_admin/core/i18n/presentation_formatters.dart';
+import 'package:epi_admin/core/i18n/localized_epi_badge.dart';
 import 'package:epi_design/epi_design.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -46,7 +48,8 @@ class _EmployeesBodyState extends State<_EmployeesBody> {
     // atribuição do Administrador de Registro/Geral (docs/PAPEIS_E_ATRIBUICOES.md
     // #3 vs #4). O backend já bloqueia sem employees:create; isto só evita
     // mostrar uma ação que falharia ao confirmar.
-    final canCreate = authState is AuthAuthenticated &&
+    final canCreate =
+        authState is AuthAuthenticated &&
         authState.permissions.contains('employees:create');
     return Scaffold(
       appBar: AppBar(
@@ -56,8 +59,8 @@ class _EmployeesBodyState extends State<_EmployeesBody> {
             buildWhen: (prev, curr) => prev.showArchived != curr.showArchived,
             builder: (ctx, state) => IconButton(
               tooltip: state.showArchived
-                  ? 'Ver colaboradores ativos'
-                  : 'Ver colaboradores arquivados',
+                  ? l10n.employeeShowActive
+                  : l10n.employeeShowArchived,
               icon: Icon(
                 state.showArchived
                     ? Icons.people_outline
@@ -91,7 +94,10 @@ class _EmployeesBodyState extends State<_EmployeesBody> {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(
-              EpiSpacing.lg, EpiSpacing.lg, EpiSpacing.lg, 0,
+              EpiSpacing.lg,
+              EpiSpacing.lg,
+              EpiSpacing.lg,
+              0,
             ),
             child: TextField(
               controller: _searchController,
@@ -130,16 +136,17 @@ class _EmployeesBodyState extends State<_EmployeesBody> {
                 if (state.showArchived) {
                   final archived = state.filteredArchived;
                   if (archived.isEmpty) {
-                    return const EpiEmptyState(
-                      title: 'Nenhum colaborador arquivado.',
-                    );
+                    return EpiEmptyState(title: l10n.employeeArchivedEmpty);
                   }
                   return RefreshIndicator(
                     onRefresh: () => context.read<EmployeesCubit>().load(),
                     child: ListView.separated(
-                      padding: const EdgeInsets.symmetric(vertical: EpiSpacing.md),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: EpiSpacing.md,
+                      ),
                       itemCount: archived.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1, indent: 72),
+                      separatorBuilder: (_, __) =>
+                          const Divider(height: 1, indent: 72),
                       itemBuilder: (_, i) =>
                           _ArchivedEmployeeTile(employee: archived[i]),
                     ),
@@ -152,9 +159,12 @@ class _EmployeesBodyState extends State<_EmployeesBody> {
                 return RefreshIndicator(
                   onRefresh: () => context.read<EmployeesCubit>().load(),
                   child: ListView.separated(
-                    padding: const EdgeInsets.symmetric(vertical: EpiSpacing.md),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: EpiSpacing.md,
+                    ),
                     itemCount: items.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1, indent: 72),
+                    separatorBuilder: (_, __) =>
+                        const Divider(height: 1, indent: 72),
                     itemBuilder: (_, i) => _EmployeeTile(employee: items[i]),
                   ),
                 );
@@ -172,30 +182,27 @@ class _EmployeeTile extends StatelessWidget {
   final Employee employee;
 
   Future<void> _confirmArchive(BuildContext context) async {
-    final l10n = AppLocalizations.of(context);
     final cubit = context.read<EmployeesCubit>();
     final reasonCtrl = TextEditingController();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogCtx) => AlertDialog(
-        title: const Text('Arquivar Colaborador'),
+        scrollable: true,
+        title: Text(AppLocalizations.of(dialogCtx).employeeArchiveTitle),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'O colaborador "${employee.name}" será arquivado e deixará de '
-              'receber novas operações (entregas, requisições e movimentações).\n\n'
-              'Todo o histórico permanecerá preservado pelo período mínimo de '
-              'retenção configurado (mínimo de 5 anos).',
+              AppLocalizations.of(dialogCtx).employeeArchiveBody(employee.name),
             ),
             const SizedBox(height: EpiSpacing.md),
             TextField(
               controller: reasonCtrl,
               maxLines: 2,
-              decoration: const InputDecoration(
-                labelText: 'Motivo do arquivamento (auditoria)',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: AppLocalizations.of(dialogCtx).archiveReasonLabel,
+                border: const OutlineInputBorder(),
                 isDense: true,
               ),
             ),
@@ -204,12 +211,12 @@ class _EmployeeTile extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogCtx).pop(false),
-            child: Text(l10n.cancel),
+            child: Text(AppLocalizations.of(dialogCtx).cancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogCtx).pop(true),
             style: TextButton.styleFrom(foregroundColor: EpiColors.danger),
-            child: const Text('Arquivar'),
+            child: Text(AppLocalizations.of(dialogCtx).archive),
           ),
         ],
       ),
@@ -221,9 +228,10 @@ class _EmployeeTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final subtitle = [employee.code, employee.sector]
-        .whereType<String>()
-        .join(' • ');
+    final subtitle = [
+      employee.code,
+      employee.sector,
+    ].whereType<String>().join(' • ');
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(
         horizontal: EpiSpacing.lg,
@@ -235,7 +243,7 @@ class _EmployeeTile extends StatelessWidget {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          EpiBadge(
+          LocalizedEpiBadge(
             status: employee.isActive
                 ? EpiBadgeStatus.active
                 : EpiBadgeStatus.inactive,
@@ -248,8 +256,10 @@ class _EmployeeTile extends StatelessWidget {
                 final cubit = context.read<EmployeesCubit>();
                 Navigator.of(context).push(
                   MaterialPageRoute<void>(
-                    builder: (_) =>
-                        EmployeeFormScreen(cubit: cubit, employeeId: employee.id),
+                    builder: (_) => EmployeeFormScreen(
+                      cubit: cubit,
+                      employeeId: employee.id,
+                    ),
                   ),
                 );
               }
@@ -257,13 +267,18 @@ class _EmployeeTile extends StatelessWidget {
             itemBuilder: (_) => [
               PopupMenuItem<String>(
                 value: 'edit',
-                child: Text(AppLocalizations.of(context).edit),
+                child: Builder(
+                  builder: (i18nContext) =>
+                      Text(AppLocalizations.of(i18nContext).edit),
+                ),
               ),
-              const PopupMenuItem<String>(
+              PopupMenuItem<String>(
                 value: 'archive',
-                child: Text(
-                  'Arquivar',
-                  style: TextStyle(color: EpiColors.danger),
+                child: Builder(
+                  builder: (i18nContext) => Text(
+                    AppLocalizations.of(i18nContext).archive,
+                    style: const TextStyle(color: EpiColors.danger),
+                  ),
                 ),
               ),
             ],
@@ -271,7 +286,10 @@ class _EmployeeTile extends StatelessWidget {
         ],
       ),
       onTap: () {
-        final path = Routes.employeeDetail.replaceFirst(':id', '${employee.id}');
+        final path = Routes.employeeDetail.replaceFirst(
+          ':id',
+          '${employee.id}',
+        );
         context.push(path, extra: employee);
       },
     );
@@ -283,26 +301,22 @@ class _ArchivedEmployeeTile extends StatelessWidget {
   final Map<String, dynamic> employee;
 
   Future<void> _confirmRestore(BuildContext context) async {
-    final l10n = AppLocalizations.of(context);
     final cubit = context.read<EmployeesCubit>();
     final name = employee['name'] as String? ?? '';
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogCtx) => AlertDialog(
-        title: const Text('Desarquivar Colaborador'),
-        content: Text(
-          'O colaborador "$name" será desarquivado e voltará a ficar ativo, '
-          'podendo receber novas operações.\n\nTodo o histórico preservado '
-          'permanece intacto.',
-        ),
+        scrollable: true,
+        title: Text(AppLocalizations.of(dialogCtx).employeeRestoreTitle),
+        content: Text(AppLocalizations.of(dialogCtx).employeeRestoreBody(name)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogCtx).pop(false),
-            child: Text(l10n.cancel),
+            child: Text(AppLocalizations.of(dialogCtx).cancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogCtx).pop(true),
-            child: const Text('Desarquivar'),
+            child: Text(AppLocalizations.of(dialogCtx).restore),
           ),
         ],
       ),
@@ -312,22 +326,31 @@ class _ArchivedEmployeeTile extends StatelessWidget {
     }
   }
 
-  String _subtitle() {
+  String _subtitle(AppLocalizations l10n) {
     final parts = <String>[];
     final code = employee['employee_id_code'] as String? ?? '';
     if (code.isNotEmpty) parts.add(code);
     final unitName = employee['unit_name'] as String? ?? '';
     if (unitName.isNotEmpty) parts.add(unitName);
-    final archivedAt =
-        (employee['archived_at'] as String? ?? '').split('T').first;
-    if (archivedAt.isNotEmpty) parts.add('Arquivado em $archivedAt');
+    final archivedAt = (employee['archived_at'] as String? ?? '')
+        .split('T')
+        .first;
+    if (archivedAt.isNotEmpty)
+      parts.add(
+        l10n.archivedOnDate(formatDisplayDate(archivedAt, l10n.localeName)),
+      );
     final reason = employee['archive_reason'] as String? ?? '';
     if (reason.isNotEmpty) parts.add(reason);
     final remaining = employee['retention_days_remaining'];
     if (remaining is num) {
-      parts.add(remaining > 0
-          ? 'Retenção restante: ${remaining.toInt()} dia(s)'
-          : 'Retenção cumprida');
+      parts.add(
+        remaining > 0
+            ? l10n.retentionRemainingDays(
+                remaining.toInt(),
+                formatDisplayCount(remaining.toInt(), l10n.localeName),
+              )
+            : l10n.retentionSatisfied,
+      );
     }
     return parts.join(' · ');
   }
@@ -343,18 +366,17 @@ class _ArchivedEmployeeTile extends StatelessWidget {
       leading: EpiAvatar(name: name, size: 44),
       title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: Text(
-        _subtitle(),
-        style: Theme.of(context)
-            .textTheme
-            .bodySmall
-            ?.copyWith(color: EpiColors.textMuted),
+        _subtitle(AppLocalizations.of(context)),
+        style: Theme.of(
+          context,
+        ).textTheme.bodySmall?.copyWith(color: EpiColors.textMuted),
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
       ),
       trailing: TextButton.icon(
         onPressed: () => _confirmRestore(context),
         icon: const Icon(Icons.unarchive_outlined, size: 18),
-        label: const Text('Desarquivar'),
+        label: Text(AppLocalizations.of(context).restore),
       ),
     );
   }
@@ -370,14 +392,21 @@ class _RetryView extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.wifi_off_rounded, size: 48, color: EpiColors.textMuted),
+          const Icon(
+            Icons.wifi_off_rounded,
+            size: 48,
+            color: EpiColors.textMuted,
+          ),
           const SizedBox(height: EpiSpacing.lg),
           Text(
             AppLocalizations.of(context).errorNetwork,
             style: Theme.of(context).textTheme.bodyLarge,
           ),
           const SizedBox(height: EpiSpacing.xl),
-          EpiButton(label: AppLocalizations.of(context).retry, onPressed: onRetry),
+          EpiButton(
+            label: AppLocalizations.of(context).retry,
+            onPressed: onRetry,
+          ),
         ],
       ),
     );

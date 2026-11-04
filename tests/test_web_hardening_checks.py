@@ -20,7 +20,7 @@ def test_local_script_paths_strip_querystrings_and_skip_external_sources():
 def test_i18n_module_exposes_safe_dynamic_translation_helper():
     source = hardening.I18N_PATH.read_text(encoding="utf-8")
 
-    assert "function trEpi(key, fallback)" in source
+    assert "function trEpi(key, fallback, vars)" in source
     assert "window.trEpi = trEpi" in source
     assert "trEpi," in source
 
@@ -36,7 +36,7 @@ def test_i18n_helper_owns_legacy_translation_fallback_resolution():
 
     assert "function resolveLegacyTranslator()" in source
     assert "const existingTranslator = global.trEpi;" in source
-    assert "if (typeof existingTranslator !== 'function') global.trEpi = translator;" in source
+    assert "if (typeof existingTranslator !== 'function') {global.trEpi = translator;}" in source
     assert "fallbackTranslate," in source
     assert "resolveLegacyTranslator," in source
 

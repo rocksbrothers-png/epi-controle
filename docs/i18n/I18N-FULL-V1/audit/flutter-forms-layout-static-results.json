@@ -1,0 +1,129 @@
+{
+  "baseline": "624d8915",
+  "phase": "Static review followed by one explicitly authorized independent Flutter execution (two tests).",
+  "sha256": {
+    "flutter/apps/epi_admin/lib/features/auth/change_password_screen.dart": "f85aad6784a526959ee8c7def565b109a19408411c74bff3401531f3e2ef4cab",
+    "flutter/apps/epi_admin/lib/features/dashboard/dashboard_screen.dart": "bf345d78d39dc753af324a6df9b11e32c94abc630142bf09f895e9a89cdf1eff",
+    "flutter/apps/epi_admin/lib/features/purchases/po_supplier_screen.dart": "572e946e9e28887041c473cd0ed5788c53c5d08062de7102fff8c2591524fcec",
+    "flutter/apps/epi_admin/lib/features/reports/reports_screen.dart": "1a1bad79724922199dbd956fb4d939d5495e03f07c38e445c70ca96ddca5ba94",
+    "flutter/packages/epi_design/lib/components/atoms/epi_button.dart": "fa85a5bb1cb7fa7f18f30b9db578b3b3a572494cadfe49353656aa3cf14b8e27",
+    "flutter/packages/epi_design/lib/components/molecules/epi_kpi_card.dart": "bdaeb9457bbf8e54818b350c490f9c74fd5c2d1f719c6369179365ba503760da"
+  },
+  "critical_files_exactly_equal": [
+    "flutter/apps/epi_admin/lib/core/api/api_client.dart",
+    "flutter/apps/epi_admin/lib/core/bloc/auth_cubit.dart",
+    "flutter/apps/epi_admin/lib/core/bloc/dashboard_cubit.dart",
+    "flutter/apps/epi_admin/lib/core/bloc/reports_cubit.dart",
+    "flutter/apps/epi_admin/lib/core/session/session_context.dart",
+    "flutter/apps/epi_admin/lib/core/router/navigation_policy.dart"
+  ],
+  "locale_resources": [
+    {
+      "locale": "pt_BR",
+      "new_resources": {
+        "passwordChangeTitle": "Defina uma nova senha",
+        "passwordChangeIntro": "Sua senha é temporária. Por segurança, defina uma nova senha para continuar.",
+        "passwordChangeCurrent": "Senha atual (temporária)",
+        "passwordChangeNew": "Nova senha",
+        "passwordChangeConfirm": "Confirmar nova senha",
+        "passwordChangeSave": "Salvar nova senha",
+        "passwordChangeLogout": "Sair",
+        "passwordChangeCurrentRequired": "Informe a senha atual",
+        "passwordChangeMinLength": "A nova senha deve ter ao menos 6 caracteres",
+        "passwordChangeMustDiffer": "A nova senha deve ser diferente da temporária",
+        "passwordChangeMismatch": "As senhas não coincidem",
+        "passwordChangeFailed": "Erro ao trocar a senha",
+        "poSupplierConfirmed": "Confirmado",
+        "poSupplierDeliveryUpdated": "Entrega atualizada",
+        "poSupplierRejected": "Recusado",
+        "poSupplierIsoDateHint": "AAAA-MM-DD"
+      }
+    },
+    {
+      "locale": "en_US",
+      "new_resources": {
+        "passwordChangeTitle": "Set a new password",
+        "passwordChangeIntro": "Your password is temporary. For security, set a new password to continue.",
+        "passwordChangeCurrent": "Current password (temporary)",
+        "passwordChangeNew": "New password",
+        "passwordChangeConfirm": "Confirm new password",
+        "passwordChangeSave": "Save new password",
+        "passwordChangeLogout": "Sign out",
+        "passwordChangeCurrentRequired": "Enter your current password",
+        "passwordChangeMinLength": "The new password must contain at least 6 characters",
+        "passwordChangeMustDiffer": "The new password must differ from the temporary password",
+        "passwordChangeMismatch": "The passwords do not match",
+        "passwordChangeFailed": "Could not change the password",
+        "poSupplierConfirmed": "Confirmed",
+        "poSupplierDeliveryUpdated": "Delivery updated",
+        "poSupplierRejected": "Rejected",
+        "poSupplierIsoDateHint": "YYYY-MM-DD"
+      }
+    },
+    {
+      "locale": "es_ES",
+      "new_resources": {
+        "passwordChangeTitle": "Establezca una nueva contraseña",
+        "passwordChangeIntro": "Su contraseña es temporal. Por seguridad, establezca una nueva contraseña para continuar.",
+        "passwordChangeCurrent": "Contraseña actual (temporal)",
+        "passwordChangeNew": "Nueva contraseña",
+        "passwordChangeConfirm": "Confirmar nueva contraseña",
+        "passwordChangeSave": "Guardar nueva contraseña",
+        "passwordChangeLogout": "Cerrar sesión",
+        "passwordChangeCurrentRequired": "Introduzca su contraseña actual",
+        "passwordChangeMinLength": "La nueva contraseña debe tener al menos 6 caracteres",
+        "passwordChangeMustDiffer": "La nueva contraseña debe ser distinta de la temporal",
+        "passwordChangeMismatch": "Las contraseñas no coinciden",
+        "passwordChangeFailed": "No se pudo cambiar la contraseña",
+        "poSupplierConfirmed": "Confirmado",
+        "poSupplierDeliveryUpdated": "Entrega actualizada",
+        "poSupplierRejected": "Rechazado",
+        "poSupplierIsoDateHint": "AAAA-MM-DD"
+      }
+    },
+    {
+      "locale": "fr_FR",
+      "new_resources": {
+        "passwordChangeTitle": "Définissez un nouveau mot de passe",
+        "passwordChangeIntro": "Votre mot de passe est temporaire. Par sécurité, définissez un nouveau mot de passe pour continuer.",
+        "passwordChangeCurrent": "Mot de passe actuel (temporaire)",
+        "passwordChangeNew": "Nouveau mot de passe",
+        "passwordChangeConfirm": "Confirmer le nouveau mot de passe",
+        "passwordChangeSave": "Enregistrer le nouveau mot de passe",
+        "passwordChangeLogout": "Se déconnecter",
+        "passwordChangeCurrentRequired": "Saisissez votre mot de passe actuel",
+        "passwordChangeMinLength": "Le nouveau mot de passe doit comporter au moins 6 caractères",
+        "passwordChangeMustDiffer": "Le nouveau mot de passe doit être différent du mot de passe temporaire",
+        "passwordChangeMismatch": "Les mots de passe ne correspondent pas",
+        "passwordChangeFailed": "Impossible de modifier le mot de passe",
+        "poSupplierConfirmed": "Confirmé",
+        "poSupplierDeliveryUpdated": "Livraison mise à jour",
+        "poSupplierRejected": "Refusé",
+        "poSupplierIsoDateHint": "AAAA-MM-JJ"
+      }
+    },
+    {
+      "locale": "no_NO",
+      "new_resources": {
+        "passwordChangeTitle": "Angi et nytt passord",
+        "passwordChangeIntro": "Passordet ditt er midlertidig. Angi et nytt passord for å fortsette av sikkerhetshensyn.",
+        "passwordChangeCurrent": "Gjeldende passord (midlertidig)",
+        "passwordChangeNew": "Nytt passord",
+        "passwordChangeConfirm": "Bekreft nytt passord",
+        "passwordChangeSave": "Lagre nytt passord",
+        "passwordChangeLogout": "Logg ut",
+        "passwordChangeCurrentRequired": "Skriv inn gjeldende passord",
+        "passwordChangeMinLength": "Det nye passordet må inneholde minst 6 tegn",
+        "passwordChangeMustDiffer": "Det nye passordet må være forskjellig fra det midlertidige",
+        "passwordChangeMismatch": "Passordene samsvarer ikke",
+        "passwordChangeFailed": "Kunne ikke endre passordet",
+        "poSupplierConfirmed": "Bekreftet",
+        "poSupplierDeliveryUpdated": "Levering oppdatert",
+        "poSupplierRejected": "Avslått",
+        "poSupplierIsoDateHint": "YYYY-MM-DD"
+      }
+    }
+  ],
+  "initial_static_gap": "Already rendered password errors are cached as strings/FormField.errorText; locale rebuild does not revalidate disabled-autovalidate FormFields or relocalize _error. Runtime transition not executed yet.",
+  "gap_status": "Fixed in source; independent real-widget PT→FR→EN transition passed. Generic fallback bool inspected statically."
+}

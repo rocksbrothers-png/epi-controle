@@ -185,7 +185,7 @@ def render(root):
     elif suffix == '.pdf':
         if not source.read_bytes().startswith(b'%PDF-'):
             raise ValueError('Conteúdo não corresponde a PDF.')
-        parts = [{'name': 'Documento', 'file': source.name}]
+        parts = [{'name': 'Documento', 'name_i18n_key': 'safetyLibrary.preview.document', 'file': source.name}]
     else:
         Image.MAX_IMAGE_PIXELS = 32_000_000
         with Image.open(source) as image:
@@ -200,7 +200,7 @@ def render(root):
             if image.width * image.height > 32_000_000:
                 raise ValueError('Imagem excede o limite de pixels.')
             image.save(root / 'page-0-0.png')
-            return {'parts': [{'index': 0, 'name': 'Imagem', 'pages': [{'index': 0, 'width': image.width, 'height': image.height}]}], 'renderer': 'safe-raster-v1'}
+            return {'parts': [{'index': 0, 'name': 'Imagem', 'name_i18n_key': 'safetyLibrary.preview.image', 'pages': [{'index': 0, 'width': image.width, 'height': image.height}]}], 'renderer': 'safe-raster-v1'}
     manifest = {'parts': [], 'renderer': 'libreoffice-pymupdf-raster-v1' if suffix != '.pdf' else 'pymupdf-raster-v1', 'warnings': warnings if suffix != '.pdf' else []}
     count = 0
     stored_bytes = 0
@@ -210,6 +210,8 @@ def render(root):
                 raise ValueError('PDF cifrado ou sem páginas.')
             validate_pdf_content(pdf)
             info = {'index': index, 'name': part['name'], 'pages': []}
+            if part.get('name_i18n_key'):
+                info['name_i18n_key'] = part['name_i18n_key']
             for page_index, page in enumerate(pdf):
                 count += 1
                 if count > 160 or page.rect.width * page.rect.height * 16 > 32_000_000:

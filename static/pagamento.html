@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Pagamento — EPI Controle</title>
+  <title data-i18n="ui.pagamento.pagamento_epi_controle_563aa2">Pagamento — EPI Controle</title>
   <!--
     Checkout servido pelo BACKEND Python (mesma origem da API /api/payments/*).
 
@@ -39,9 +39,9 @@
       border-radius: 10px; padding: 12px 14px; cursor: pointer; transition: border-color .15s, background .15s; }
     .pay-opt:hover { border-color: #b9cde6; }
     .pay-opt.selected { border-color: var(--c-primary); background: var(--c-soft); box-shadow: 0 0 0 1px var(--c-primary) inset; }
-    .pay-opt input { margin-top: 3px; }
-    .pay-opt .opt-body { flex: 1; }
-    .pay-opt .opt-title { font-weight: 600; display: flex; justify-content: space-between; gap: 8px; }
+    .pay-opt input[type=radio] { margin-top: 3px; width: auto; flex: 0 0 auto; }
+    .pay-opt .opt-body { flex: 1; min-width: 0; }
+    .pay-opt .opt-title { font-weight: 600; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
     .pay-opt .opt-price { font-weight: 700; white-space: nowrap; }
     .pay-opt .opt-desc { font-size: 12.5px; color: var(--c-muted); margin-top: 3px; line-height: 1.4; }
     .badge { font-size: 11px; font-weight: 700; color: var(--c-ok); background: #e7f6ee;
@@ -76,38 +76,38 @@
 </head>
 <body>
   <main class="checkout">
-    <h1>Finalizar Assinatura</h1>
-    <p class="muted">Plano selecionado: <strong id="plan-name">—</strong></p>
+    <h1 data-i18n="ui.pagamento.finalizar_assinatura_d2d5ff">Finalizar Assinatura</h1>
+    <p class="muted" data-i18n="ui.pagamento.plano_selecionado_538c1a">Plano selecionado: <strong id="plan-name">—</strong></p>
 
     <div class="grid">
       <!-- Coluna principal -->
       <div>
         <div class="card" style="margin-bottom:16px">
-          <h2>Seus dados</h2>
-          <label class="field" for="payer_email">E-mail</label>
-          <input id="payer_email" type="email" placeholder="voce@empresa.com" autocomplete="email" />
+          <h2 data-i18n="ui.pagamento.seus_dados_580425">Seus dados</h2>
+          <label class="field" for="payer_email" data-i18n="employee.email">E-mail</label>
+          <input id="payer_email" type="email" placeholder="voce@empresa.com" data-i18n-placeholder="checkout.emailExample" autocomplete="email" />
         </div>
 
         <div class="card" id="methods-card" style="margin-bottom:16px">
-          <h2>Forma de pagamento</h2>
-          <div class="pay-options" id="pay-options"><p class="muted">Carregando…</p></div>
+          <h2 data-i18n="ui.pagamento.forma_de_pagamento_faf708">Forma de pagamento</h2>
+          <div class="pay-options" id="pay-options"><p class="muted" data-i18n="ui.pagamento.carregando_6cc1bb">Carregando…</p></div>
 
-          <div class="renew-note" id="renew-note" hidden>
-            <strong>Renovação Automática</strong>
+          <div class="renew-note" id="renew-note" hidden data-i18n="ui.pagamento.ao_contratar_este_plano_sua_assinatura_sera_renovada_automaticamente_confor_3adcda">
+            <strong data-i18n="ui.pagamento.renovacao_automatica_e8ec6d">Renovação Automática</strong>
             Ao contratar este plano, sua assinatura será renovada automaticamente conforme o período escolhido.
             <ul>
-              <li>Você pode cancelar a qualquer momento.</li>
-              <li>Não existe multa por cancelamento.</li>
-              <li>O acesso permanece ativo até o final do período já pago.</li>
-              <li>Nenhuma cobrança será realizada após o cancelamento.</li>
+              <li data-i18n="ui.pagamento.voce_pode_cancelar_a_qualquer_momento_a61a8b">Você pode cancelar a qualquer momento.</li>
+              <li data-i18n="ui.pagamento.nao_existe_multa_por_cancelamento_5bc265">Não existe multa por cancelamento.</li>
+              <li data-i18n="ui.pagamento.o_acesso_permanece_ativo_ate_o_final_do_periodo_ja_pago_bfdafd">O acesso permanece ativo até o final do período já pago.</li>
+              <li data-i18n="ui.pagamento.nenhuma_cobranca_sera_realizada_apos_o_cancelamento_d63fa8">Nenhuma cobrança será realizada após o cancelamento.</li>
             </ul>
           </div>
         </div>
 
         <div class="card" id="card-fields" hidden>
-          <h2>Cartão</h2>
+          <h2 data-i18n="ui.pagamento.cartao_4bef4f">Cartão</h2>
           <div id="cardPaymentBrick_container"></div>
-          <p class="muted" style="font-size:12px">
+          <p class="muted" style="font-size:12px" data-i18n="ui.pagamento.os_dados_do_cartao_sao_tokenizados_pelo_mercado_pago_no_seu_navegador_com_a_2b0db3">
             Os dados do cartão são tokenizados pelo Mercado Pago no seu navegador
             com a Public Key. O backend recebe apenas o token — nunca o número do cartão.
           </p>
@@ -117,22 +117,22 @@
       <!-- Resumo do pedido -->
       <aside>
         <div class="card summary">
-          <h2>Resumo do pedido</h2>
+          <h2 data-i18n="ui.pagamento.resumo_do_pedido_3ddce8">Resumo do pedido</h2>
           <div id="summary-body">
-            <div class="row"><span class="k">Plano</span><span class="v" id="s-plan">—</span></div>
-            <div class="row"><span class="k">Valor</span><span class="v" id="s-value">—</span></div>
-            <div class="row"><span class="k">Periodicidade</span><span class="v" id="s-cycle">—</span></div>
-            <div class="row"><span class="k">Forma de pagamento</span><span class="v" id="s-method">—</span></div>
-            <div class="row"><span class="k">Próxima cobrança</span><span class="v" id="s-next">—</span></div>
+            <div class="row"><span class="k" data-i18n="company.plan">Plano</span><span class="v" id="s-plan">—</span></div>
+            <div class="row"><span class="k" data-i18n="ui.pagamento.valor_b2f530">Valor</span><span class="v" id="s-value">—</span></div>
+            <div class="row"><span class="k" data-i18n="ui.pagamento.periodicidade_61f479">Periodicidade</span><span class="v" id="s-cycle">—</span></div>
+            <div class="row"><span class="k" data-i18n="ui.pagamento.forma_de_pagamento_faf708">Forma de pagamento</span><span class="v" id="s-method">—</span></div>
+            <div class="row"><span class="k" data-i18n="ui.pagamento.proxima_cobranca_6c26b1">Próxima cobrança</span><span class="v" id="s-next">—</span></div>
             <div class="row" style="display:block">
-              <span class="k">Benefícios inclusos</span>
+              <span class="k" data-i18n="ui.pagamento.beneficios_inclusos_d879c3">Benefícios inclusos</span>
               <ul class="benefits" id="s-benefits"></ul>
             </div>
-            <div class="total"><span>Total</span><span id="s-total">—</span></div>
+            <div class="total"><span data-i18n="evaluation.total">Total</span><span id="s-total">—</span></div>
           </div>
 
-          <button id="payBtn" type="button">Assinar Agora</button>
-          <p class="secure">🔒 Pagamento processado com segurança pelo Mercado Pago.</p>
+          <button id="payBtn" type="button" data-i18n="ui.pagamento.assinar_agora_36acb1">Assinar Agora</button>
+          <p class="secure" data-i18n="ui.pagamento.pagamento_processado_com_seguranca_pelo_mercado_pago_4eb689">🔒 Pagamento processado com segurança pelo Mercado Pago.</p>
           <div class="status-line" id="status-line"></div>
           <div class="qr" id="qr"></div>
           <div class="result" id="result"></div>
@@ -141,6 +141,7 @@
     </div>
   </main>
 
+  <script src="/i18n.js"></script>
   <script src="https://sdk.mercadopago.com/js/v2"></script>
   <script src="/js/pagamento.js" type="module"></script>
 </body>

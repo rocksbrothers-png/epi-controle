@@ -2,6 +2,16 @@
   if (globalThis.__EPI_ENTREGA_EPI_BOUND__) return;
   globalThis.__EPI_ENTREGA_EPI_BOUND__ = true;
 
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  // I18N-FULL-V1: textos do fluxo guiado vêm do catálogo (fallback pt-BR sem o motor).
+  function tr(key, fallback) {
+    try { return typeof globalThis.trEpi === 'function' ? globalThis.trEpi(key, fallback) : fallback; } catch (_e) { return fallback; }
+  }
+
   function safeOn(target, eventName, handler, options) {
     try {
       if (typeof globalThis.safeOn === 'function') return globalThis.safeOn(target, eventName, handler, options);
@@ -69,7 +79,7 @@
       function setLoading(value, text) {
         if (!loading) return;
         loading.hidden = !value;
-        loading.textContent = text || 'Atualizando dados...';
+        loading.textContent = text || (globalThis.trEpi?.("delivery.updatingData","Atualizando dados...",{}) ?? "Atualizando dados...");
       }
 
       function setFeedback(message, tone) {
@@ -98,28 +108,28 @@
         });
 
         if (step === 1) {
-          stepTitle.textContent = 'Etapa 1: selecionar colaborador';
-          stepHelper.textContent = 'Use busca rápida ou selecione diretamente na lista.';
-          submitBtn.textContent = 'Ir para seleção de EPI';
+          stepTitle.textContent = tr('delivery.guided.step1Title', 'Etapa 1: selecionar colaborador');
+          stepHelper.textContent = tr('delivery.guided.step1Help', 'Use busca rápida ou selecione diretamente na lista.');
+          submitBtn.textContent = tr('delivery.guided.step1Next', 'Ir para seleção de EPI');
           submitBtn.type = 'button';
           reviewBox.hidden = true;
         } else if (step === 2) {
-          stepTitle.textContent = 'Etapa 2: selecionar EPI';
-          stepHelper.textContent = 'Filtre por nome e fabricante para acelerar.';
-          submitBtn.textContent = 'Ir para revisão';
+          stepTitle.textContent = tr('delivery.guided.step2Title', 'Etapa 2: selecionar EPI');
+          stepHelper.textContent = tr('delivery.guided.step2Help', 'Filtre por nome e fabricante para acelerar.');
+          submitBtn.textContent = tr('delivery.guided.step2Next', 'Ir para revisão');
           submitBtn.type = 'button';
           reviewBox.hidden = true;
         } else if (step === 3) {
-          stepTitle.textContent = 'Etapa 3: conferir dados';
-          stepHelper.textContent = 'Revise colaborador, EPI e datas antes de confirmar.';
-          submitBtn.textContent = 'Ir para confirmação';
+          stepTitle.textContent = tr('delivery.guided.step3Title', 'Etapa 3: conferir dados');
+          stepHelper.textContent = tr('delivery.guided.step3Help', 'Revise colaborador, EPI e datas antes de confirmar.');
+          submitBtn.textContent = tr('delivery.guided.step3Next', 'Ir para confirmação');
           submitBtn.type = 'button';
           reviewBox.hidden = false;
           renderReview();
         } else {
-          stepTitle.textContent = 'Etapa 4: confirmar entrega';
-          stepHelper.textContent = 'Nenhuma informação será salva sem esta confirmação.';
-          submitBtn.textContent = 'Confirmar entrega';
+          stepTitle.textContent = tr('delivery.guided.step4Title', 'Etapa 4: confirmar entrega');
+          stepHelper.textContent = tr('delivery.guided.step4Help', 'Nenhuma informação será salva sem esta confirmação.');
+          submitBtn.textContent = tr('delivery.guided.step4Next', 'Confirmar entrega');
           submitBtn.type = 'submit';
           reviewBox.hidden = false;
           renderReview();
@@ -135,26 +145,26 @@
       function renderReview() {
         if (!reviewBox) return;
         reviewBox.innerHTML = [
-          '<strong>Resumo da entrega</strong>',
-          '<div>Empresa: ' + selectedText(companyField) + '</div>',
-          '<div>Unidade: ' + selectedText(unitField) + '</div>',
-          '<div>Colaborador: ' + selectedText(employeeField) + '</div>',
-          '<div>EPI: ' + selectedText(epiField) + '</div>',
-          '<div>Qtd: ' + (qtyField?.value || '1') + '</div>',
-          '<div>Data entrega: ' + (dateField?.value || '-') + '</div>',
-          '<div>Próxima troca: ' + (nextField?.value || '-') + '</div>',
-          '<div>Código lido: ' + (qrCodeField?.value || 'pendente') + '</div>'
+          '<strong>' + escapeHtml(tr('delivery.guided.reviewTitle', 'Resumo da entrega')) + '</strong>',
+          '<div>' + escapeHtml(tr('delivery.guided.reviewCompany', 'Empresa: ')) + escapeHtml(selectedText(companyField)) + '</div>',
+          '<div>' + escapeHtml(tr('delivery.guided.reviewUnit', 'Unidade: ')) + escapeHtml(selectedText(unitField)) + '</div>',
+          '<div>' + escapeHtml(tr('delivery.guided.reviewEmployee', 'Colaborador: ')) + escapeHtml(selectedText(employeeField)) + '</div>',
+          '<div>' + escapeHtml(tr('delivery.guided.reviewEpi', 'EPI: ')) + escapeHtml(selectedText(epiField)) + '</div>',
+          '<div>' + escapeHtml(tr('delivery.guided.reviewQty', 'Qtd: ')) + escapeHtml(qtyField?.value || '1') + '</div>',
+          '<div>' + escapeHtml(tr('delivery.guided.reviewDate', 'Data entrega: ')) + escapeHtml(dateField?.value || '-') + '</div>',
+          '<div>' + escapeHtml(tr('delivery.guided.reviewNext', 'Próxima troca: ')) + escapeHtml(nextField?.value || '-') + '</div>',
+          '<div>' + escapeHtml(tr('delivery.guided.reviewCode', 'Código lido: ')) + escapeHtml(qrCodeField?.value || tr('delivery.guided.reviewPending', 'pendente')) + '</div>'
         ].join('');
       }
 
       function canAdvanceTo(nextStep) {
         if (nextStep <= 1) return true;
         if (nextStep >= 2 && !String(employeeField?.value || '').trim()) {
-          setFeedback('Selecione um colaborador para avançar.', 'error');
+          setFeedback(tr('delivery.guided.selectEmployee', 'Selecione um colaborador para avançar.'), 'error');
           return false;
         }
         if (nextStep >= 3 && !String(epiField?.value || '').trim()) {
-          setFeedback('Selecione um EPI para avançar.', 'error');
+          setFeedback(tr('delivery.guided.selectEpi', 'Selecione um EPI para avançar.'), 'error');
           return false;
         }
         if (nextStep >= 4) {
@@ -163,11 +173,11 @@
             return required && !String(field.value || '').trim();
           });
           if (missing) {
-            setFeedback('Preencha os campos obrigatórios destacados antes de confirmar.', 'error');
+            setFeedback(tr('delivery.guided.fillRequired', 'Preencha os campos obrigatórios destacados antes de confirmar.'), 'error');
             return false;
           }
         }
-        setFeedback('Etapa validada com sucesso.', 'success');
+        setFeedback(tr('delivery.guided.stepValidated', 'Etapa validada com sucesso.'), 'success');
         return true;
       }
 
@@ -183,7 +193,7 @@
         if (epiField) epiField.value = '';
         if (qrCodeField) qrCodeField.value = '';
         setStep(1);
-        setFeedback('Seleções limpas. Fluxo reiniciado.', '');
+        setFeedback(tr('delivery.guided.reset', 'Seleções limpas. Fluxo reiniciado.'), '');
         watchedFields.forEach(function (field) { field?.dispatchEvent(new Event('change', { bubbles: true })); });
       }
 
@@ -205,12 +215,12 @@
             .filter(function (option) { return !term || String(option.textContent || '').toLowerCase().includes(term); })
             .slice(0, 8);
           if (!options.length) {
-            dropdown.innerHTML = '<button type="button" class="ghost" data-empty="1">' + emptyText + '</button>';
+            dropdown.innerHTML = '<button type="button" class="ghost" data-empty="1">' + escapeHtml(emptyText) + '</button>';
             open();
             return;
           }
           dropdown.innerHTML = options.map(function (option) {
-            return '<button type="button" data-value="' + String(option.value) + '">' + String(option.textContent || '') + '</button>';
+            return '<button type="button" data-value="' + escapeHtml(option.value) + '">' + escapeHtml(option.textContent || '') + '</button>';
           }).join('');
           open();
         }
@@ -224,7 +234,7 @@
           input.value = String(btn.textContent || '');
           close();
           selectField.dispatchEvent(new Event('change', { bubbles: true }));
-          setFeedback('Seleção atualizada sem recarregar a página.', 'success');
+          setFeedback(tr('delivery.guided.selectionUpdated', 'Seleção atualizada sem recarregar a página.'), 'success');
         });
       }
 
@@ -232,8 +242,8 @@
         searchDropdowns.forEach(function (box) { box.classList.remove('open'); });
       }
 
-      mountSearchDropdown(employeeSearch, employeeField, 'Nenhum colaborador encontrado para este filtro.');
-      mountSearchDropdown(epiSearch, epiField, 'Nenhum EPI encontrado para este filtro.');
+      mountSearchDropdown(employeeSearch, employeeField, tr('delivery.guided.noEmployeeMatch', 'Nenhum colaborador encontrado para este filtro.'));
+      mountSearchDropdown(epiSearch, epiField, tr('delivery.guided.noEpiMatch', 'Nenhum EPI encontrado para este filtro.'));
 
       safeOn(document, 'keydown', function (event) {
         if (event.key === 'Escape') closeAllDropdowns();
@@ -244,17 +254,17 @@
       });
 
       safeOn(companyField, 'change', function () {
-        setLoading(true, 'Carregando colaboradores e EPIs por empresa...');
+        setLoading(true, tr('delivery.guided.loadingCompany', 'Carregando colaboradores e EPIs por empresa...'));
         setTimeout(function () { setLoading(false); }, 280);
       });
       safeOn(unitField, 'change', function () {
-        setLoading(true, 'Atualizando filtros por unidade...');
+        setLoading(true, tr('delivery.guided.loadingUnit', 'Atualizando filtros por unidade...'));
         setTimeout(function () { setLoading(false); }, 260);
       });
 
       safeOn(backBtn, 'click', function () {
         setStep(step - 1);
-        setFeedback('Etapa anterior carregada.', '');
+        setFeedback(tr('delivery.guided.previousStep', 'Etapa anterior carregada.'), '');
       });
       safeOn(clearBtn, 'click', clearSelections);
 
@@ -282,10 +292,10 @@
           if (canAdvanceTo(step + 1)) setStep(step + 1);
           return;
         }
-        setFeedback('Confirmando entrega... aguarde.', 'success');
+        setFeedback(tr('delivery.guided.confirming', 'Confirmando entrega... aguarde.'), 'success');
       }, true);
 
-      setFeedback('Fluxo interativo ativo. O modo clássico permanece disponível via flag OFF.', 'success');
+      setFeedback(tr('delivery.guided.interactiveActive', 'Fluxo interativo ativo. O modo clássico permanece disponível via flag OFF.'), 'success');
       updateStepsUi();
     } catch (error) {
       console.error('[entrega-epi] Falha ao ativar fluxo guiado. Mantendo fluxo clássico.', error);

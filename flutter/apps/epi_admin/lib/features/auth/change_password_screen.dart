@@ -1,3 +1,4 @@
+import 'package:epi_admin/core/i18n/generated/app_localizations.dart';
 import 'package:epi_design/epi_design.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -23,6 +24,25 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   bool _obscure = true;
   bool _saving = false;
   String? _error;
+  bool _genericError = false;
+  bool _hasValidated = false;
+  Locale? _validationLocale;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final locale = Localizations.localeOf(context);
+    if (_validationLocale != null &&
+        _validationLocale != locale &&
+        _hasValidated) {
+      // Refresh only errors that the user has already requested through submit.
+      // Controllers, validation rules and API/session state stay untouched.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _hasValidated) _formKey.currentState?.validate();
+      });
+    }
+    _validationLocale = locale;
+  }
 
   @override
   void dispose() {
@@ -33,7 +53,11 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   }
 
   Future<void> _submit() async {
-    setState(() => _error = null);
+    setState(() {
+      _error = null;
+      _genericError = false;
+    });
+    _hasValidated = true;
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
     try {
@@ -48,7 +72,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       if (!mounted) return;
       setState(() {
         _saving = false;
-        _error = e is ApiException ? e.message : 'Erro ao trocar a senha';
+        _error = e is ApiException ? e.message : null;
+        _genericError = e is! ApiException;
       });
     }
   }
@@ -68,11 +93,14 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Icon(Icons.lock_reset_rounded,
-                        size: 72, color: EpiColors.brand),
+                    const Icon(
+                      Icons.lock_reset_rounded,
+                      size: 72,
+                      color: EpiColors.brand,
+                    ),
                     const SizedBox(height: EpiSpacing.lg),
                     Text(
-                      'Defina uma nova senha',
+                      AppLocalizations.of(context).passwordChangeTitle,
                       textAlign: TextAlign.center,
                       style: theme.textTheme.headlineSmall?.copyWith(
                         color: EpiColors.brand,
@@ -81,22 +109,27 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     ),
                     const SizedBox(height: EpiSpacing.xs),
                     Text(
-                      'Sua senha é temporária. Por segurança, defina uma nova senha para continuar.',
+                      AppLocalizations.of(context).passwordChangeIntro,
                       textAlign: TextAlign.center,
-                      style: theme.textTheme.bodyMedium
-                          ?.copyWith(color: EpiColors.textMuted),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: EpiColors.textMuted,
+                      ),
                     ),
                     const SizedBox(height: EpiSpacing.xl2),
                     TextFormField(
                       controller: _currentCtrl,
                       obscureText: _obscure,
-                      decoration: const InputDecoration(
-                        labelText: 'Senha atual (temporária)',
-                        prefixIcon: Icon(Icons.lock_outline_rounded),
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: AppLocalizations.of(
+                          context,
+                        ).passwordChangeCurrent,
+                        prefixIcon: const Icon(Icons.lock_outline_rounded),
+                        border: const OutlineInputBorder(),
                       ),
                       validator: (v) => (v == null || v.isEmpty)
-                          ? 'Informe a senha atual'
+                          ? AppLocalizations.of(
+                              context,
+                            ).passwordChangeCurrentRequired
                           : null,
                     ),
                     const SizedBox(height: EpiSpacing.lg),
@@ -104,22 +137,30 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                       controller: _newCtrl,
                       obscureText: _obscure,
                       decoration: InputDecoration(
-                        labelText: 'Nova senha',
+                        labelText: AppLocalizations.of(
+                          context,
+                        ).passwordChangeNew,
                         prefixIcon: const Icon(Icons.lock_reset_rounded),
                         border: const OutlineInputBorder(),
                         suffixIcon: IconButton(
-                          icon: Icon(_obscure
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined),
+                          icon: Icon(
+                            _obscure
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                          ),
                           onPressed: () => setState(() => _obscure = !_obscure),
                         ),
                       ),
                       validator: (v) {
                         if (v == null || v.length < 6) {
-                          return 'A nova senha deve ter ao menos 6 caracteres';
+                          return AppLocalizations.of(
+                            context,
+                          ).passwordChangeMinLength;
                         }
                         if (v == _currentCtrl.text) {
-                          return 'A nova senha deve ser diferente da temporária';
+                          return AppLocalizations.of(
+                            context,
+                          ).passwordChangeMustDiffer;
                         }
                         return null;
                       },
@@ -129,26 +170,32 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                       controller: _confirmCtrl,
                       obscureText: _obscure,
                       onFieldSubmitted: (_) => _submit(),
-                      decoration: const InputDecoration(
-                        labelText: 'Confirmar nova senha',
-                        prefixIcon: Icon(Icons.check_circle_outline_rounded),
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: AppLocalizations.of(
+                          context,
+                        ).passwordChangeConfirm,
+                        prefixIcon: const Icon(
+                          Icons.check_circle_outline_rounded,
+                        ),
+                        border: const OutlineInputBorder(),
                       ),
                       validator: (v) => (v != _newCtrl.text)
-                          ? 'As senhas não coincidem'
+                          ? AppLocalizations.of(context).passwordChangeMismatch
                           : null,
                     ),
-                    if (_error != null) ...[
+                    if (_error != null || _genericError) ...[
                       const SizedBox(height: EpiSpacing.lg),
                       Text(
-                        _error!,
+                        _genericError
+                            ? AppLocalizations.of(context).passwordChangeFailed
+                            : _error!,
                         style: const TextStyle(color: EpiColors.danger),
                         textAlign: TextAlign.center,
                       ),
                     ],
                     const SizedBox(height: EpiSpacing.xl),
                     EpiButton(
-                      label: 'Salvar nova senha',
+                      label: AppLocalizations.of(context).passwordChangeSave,
                       onPressed: _saving ? null : _submit,
                       loading: _saving,
                       fullWidth: true,
@@ -159,7 +206,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                       onPressed: _saving
                           ? null
                           : () => context.read<AuthCubit>().logout(),
-                      child: const Text('Sair'),
+                      child: Text(
+                        AppLocalizations.of(context).passwordChangeLogout,
+                      ),
                     ),
                   ],
                 ),

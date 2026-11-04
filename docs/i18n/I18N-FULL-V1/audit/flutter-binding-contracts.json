@@ -1,0 +1,54 @@
+{
+  "verification": "Implementer source verification, not independent audit or live RBAC proof",
+  "files": [
+    {
+      "file": "flutter/apps/epi_admin/lib/features/employees/employees_screen.dart",
+      "conditions": 14,
+      "canonicalNamedValues": 2,
+      "actions": 2,
+      "result": "AST exactly equal for compared elements"
+    },
+    {
+      "file": "flutter/apps/epi_admin/lib/features/epis/epis_screen.dart",
+      "conditions": 18,
+      "canonicalNamedValues": 2,
+      "actions": 5,
+      "result": "AST exactly equal for compared elements"
+    },
+    {
+      "file": "flutter/apps/epi_admin/lib/features/units/units_screen.dart",
+      "conditions": 26,
+      "canonicalNamedValues": 8,
+      "actions": 15,
+      "result": "AST exactly equal for compared elements"
+    },
+    {
+      "file": "flutter/apps/epi_admin/lib/features/users/users_screen.dart",
+      "conditions": 26,
+      "canonicalNamedValues": 6,
+      "actions": 11,
+      "result": "AST exactly equal for compared elements"
+    },
+    {
+      "file": "flutter/apps/epi_admin/lib/features/feedback/feedback_screen.dart",
+      "conditions": 6,
+      "canonicalNamedValues": 0,
+      "actions": 3,
+      "result": "AST exactly equal for compared elements"
+    },
+    {
+      "file": "flutter/apps/epi_admin/lib/features/qr/qr_scanner_screen.dart",
+      "conditions": 3,
+      "canonicalNamedValues": 1,
+      "actions": 3,
+      "result": "AST exactly equal for compared elements"
+    },
+    {
+      "file": "flutter/apps/epi_admin/lib/features/purchases/suppliers_screen.dart",
+      "conditions": 4,
+      "canonicalNamedValues": 6,
+      "actions": 3,
+      "result": "AST exactly equal for compared elements"
+    }
+  ]
+}

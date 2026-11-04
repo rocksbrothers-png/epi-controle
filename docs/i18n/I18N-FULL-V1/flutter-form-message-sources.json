@@ -1,0 +1,86 @@
+[
+  {
+    "file": "flutter/apps/epi_admin/lib/features/auth/change_password_screen.dart",
+    "source": "Defina uma nova senha",
+    "key": "passwordChangeTitle"
+  },
+  {
+    "file": "flutter/apps/epi_admin/lib/features/auth/change_password_screen.dart",
+    "source": "Sua senha é temporária. Por segurança, defina uma nova senha para continuar.",
+    "key": "passwordChangeIntro"
+  },
+  {
+    "file": "flutter/apps/epi_admin/lib/features/auth/change_password_screen.dart",
+    "source": "Senha atual (temporária)",
+    "key": "passwordChangeCurrent"
+  },
+  {
+    "file": "flutter/apps/epi_admin/lib/features/auth/change_password_screen.dart",
+    "source": "Nova senha",
+    "key": "passwordChangeNew"
+  },
+  {
+    "file": "flutter/apps/epi_admin/lib/features/auth/change_password_screen.dart",
+    "source": "Confirmar nova senha",
+    "key": "passwordChangeConfirm"
+  },
+  {
+    "file": "flutter/apps/epi_admin/lib/features/auth/change_password_screen.dart",
+    "source": "Salvar nova senha",
+    "key": "passwordChangeSave"
+  },
+  {
+    "file": "flutter/apps/epi_admin/lib/features/auth/change_password_screen.dart",
+    "source": "Sair",
+    "key": "passwordChangeLogout"
+  },
+  {
+    "file": "flutter/apps/epi_admin/lib/features/auth/change_password_screen.dart",
+    "source": "Informe a senha atual",
+    "key": "passwordChangeCurrentRequired"
+  },
+  {
+    "file": "flutter/apps/epi_admin/lib/features/auth/change_password_screen.dart",
+    "source": "A nova senha deve ter ao menos 6 caracteres",
+    "key": "passwordChangeMinLength"
+  },
+  {
+    "file": "flutter/apps/epi_admin/lib/features/auth/change_password_screen.dart",
+    "source": "A nova senha deve ser diferente da temporária",
+    "key": "passwordChangeMustDiffer"
+  },
+  {
+    "file": "flutter/apps/epi_admin/lib/features/auth/change_password_screen.dart",
+    "source": "As senhas não coincidem",
+    "key": "passwordChangeMismatch"
+  },
+  {
+    "file": "flutter/apps/epi_admin/lib/features/auth/change_password_screen.dart",
+    "source": "Erro ao trocar a senha",
+    "key": "passwordChangeFailed"
+  },
+  {
+    "file": "flutter/apps/epi_admin/lib/features/purchases/po_supplier_screen.dart",
+    "source": "confirmed",
+    "key": "poSupplierConfirmed",
+    "note": "Display label only; canonical status/date payload unchanged."
+  },
+  {
+    "file": "flutter/apps/epi_admin/lib/features/purchases/po_supplier_screen.dart",
+    "source": "delivery_update",
+    "key": "poSupplierDeliveryUpdated",
+    "note": "Display label only; canonical status/date payload unchanged."
+  },
+  {
+    "file": "flutter/apps/epi_admin/lib/features/purchases/po_supplier_screen.dart",
+    "source": "rejected",
+    "key": "poSupplierRejected",
+    "note": "Display label only; canonical status/date payload unchanged."
+  },
+  {
+    "file": "flutter/apps/epi_admin/lib/features/purchases/po_supplier_screen.dart",
+    "source": "AAAA-MM-DD",
+    "key": "poSupplierIsoDateHint",
+    "note": "Display label only; canonical status/date payload unchanged."
+  }
+]

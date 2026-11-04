@@ -1,7 +1,837 @@
 {
   "@@locale": "pt",
-  "@@last_modified": "2026-06-02",
-  "@@comment": "Alias para pt_BR — use app_pt_BR.arb para traduções completas",
+  "@@last_modified": "2026-06-05",
+  "appName": "EPI Controle",
+  "@appName": {
+    "description": "Nome da aplicação"
+  },
+  "loading": "Carregando...",
+  "save": "Salvar",
+  "cancel": "Cancelar",
+  "reportsExportPdf": "Exportar PDF",
+  "feedbackForward": "Encaminhar",
+  "feedbackReject": "Rejeitar",
+  "feedbackApprove": "Aprovar",
+  "feedbackJustification": "Justificativa",
+  "feedbackRejectReason": "Motivo da rejeição",
+  "confirm": "Confirmar",
+  "delete": "Excluir",
+  "edit": "Editar",
+  "add": "Adicionar",
+  "search": "Buscar",
+  "filter": "Filtrar",
+  "export": "Exportar",
+  "print": "Imprimir",
+  "close": "Fechar",
+  "back": "Voltar",
+  "next": "Próximo",
+  "previous": "Anterior",
+  "finish": "Concluir",
+  "retry": "Tentar novamente",
+  "refresh": "Atualizar",
+  "seeAll": "Ver todos",
+  "noResults": "Nenhum resultado encontrado",
+  "required": "Campo obrigatório",
+  "optional": "Opcional",
+  "navDashboard": "Dashboard",
+  "navCompanies": "Empresas",
+  "navUsers": "Usuários",
+  "navUnits": "Unidades",
+  "navEmployees": "Colaboradores",
+  "navEpis": "EPIs",
+  "navStock": "Estoque",
+  "navDeliveries": "Entregas",
+  "navReturns": "Devoluções",
+  "navRecords": "Fichas",
+  "navPurchases": "Compras",
+  "navReports": "Relatórios",
+  "navSettings": "Configurações",
+  "navPortal": "Portal",
+  "navFeedback": "Avaliações",
+  "@navFeedback": {
+    "description": "Rótulo do menu de avaliações/feedback"
+  },
+  "loginTitle": "Entrar",
+  "loginUsername": "Usuário",
+  "loginPassword": "Senha",
+  "loginUsernameHint": "Informe seu usuário",
+  "loginPasswordHint": "Informe sua senha",
+  "loginButton": "Entrar",
+  "loginForgotPassword": "Esqueci minha senha",
+  "loginShowPassword": "Mostrar senha",
+  "loginHidePassword": "Ocultar senha",
+  "loginError": "Usuário ou senha incorretos",
+  "loginErrorEmpty": "Preencha usuário e senha",
+  "loginBiometric": "Biometria",
+  "@loginBiometric": {
+    "description": "Rótulo do botão de autenticação biométrica na tela de login"
+  },
+  "dashboardTitle": "Dashboard",
+  "dashboardDeliveriesToday": "Entregas hoje",
+  "dashboardExpiringEpis": "EPIs vencendo",
+  "dashboardCriticalStock": "Estoque crítico",
+  "dashboardPendingPurchases": "Compras pendentes",
+  "dashboardQuickDelivery": "Nova Entrega",
+  "dashboardQuickReturn": "Devolução",
+  "dashboardQuickScan": "QR Scan",
+  "dashboardAlertsTitle": "Alertas do Dia",
+  "dashboardNoAlerts": "Nenhum alerta no momento",
+  "dashboardWeeklyChartTitle": "Entregas — últimos 7 dias",
+  "@dashboardWeeklyChartTitle": {
+    "description": "Título do gráfico de entregas semanal no dashboard"
+  },
+  "dayMon": "Seg",
+  "@dayMon": {
+    "description": "Abreviação de segunda-feira"
+  },
+  "dayTue": "Ter",
+  "@dayTue": {
+    "description": "Abreviação de terça-feira"
+  },
+  "dayWed": "Qua",
+  "@dayWed": {
+    "description": "Abreviação de quarta-feira"
+  },
+  "dayThu": "Qui",
+  "@dayThu": {
+    "description": "Abreviação de quinta-feira"
+  },
+  "dayFri": "Sex",
+  "@dayFri": {
+    "description": "Abreviação de sexta-feira"
+  },
+  "daySat": "Sáb",
+  "@daySat": {
+    "description": "Abreviação de sábado"
+  },
+  "daySun": "Dom",
+  "@daySun": {
+    "description": "Abreviação de domingo"
+  },
+  "employeesTitle": "Colaboradores",
+  "employeesNew": "Novo Colaborador",
+  "employeesSearchHint": "Buscar por nome, matrícula ou setor",
+  "employeeNameLabel": "Nome completo",
+  "employeeCodeLabel": "Matrícula",
+  "employeeCpfLabel": "CPF",
+  "employeeSectorLabel": "Setor",
+  "employeeRoleLabel": "Função",
+  "employeeUnitLabel": "Unidade",
+  "employeeUnitLockedHint": "Unidade definida pelo seu perfil de acesso.",
+  "employeeLegalEntityLabel": "CNPJ",
+  "employeeAdmissionLabel": "Admissão",
+  "employeeScheduleLabel": "Escala",
+  "employeeStatusActive": "Ativo",
+  "employeeStatusInactive": "Inativo",
+  "employeeDeleteConfirm": "Excluir colaborador {name}?",
+  "@employeeDeleteConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "episTitle": "EPIs",
+  "episNew": "Novo EPI",
+  "episSearchHint": "Buscar por nome, CA brasileiro ou código",
+  "epiNameLabel": "Nome do EPI",
+  "epiCodeLabel": "Código de compra",
+  "epiCaLabel": "CA — Certificado de Aprovação",
+  "epiSectorLabel": "Setor",
+  "epiSectionLabel": "Seção do EPI",
+  "epiModelLabel": "Modelo/referência",
+  "epiManufacturerLabel": "Fabricante",
+  "epiSupplierLabel": "Fornecedor",
+  "epiUnitMeasureLabel": "Unidade de medida",
+  "epiValidityDateLabel": "Data de validade",
+  "epiManufacturerValidityLabel": "Validade (meses)",
+  "epiCaExpiryLabel": "Validade do CA",
+  "epiValidityDaysLabel": "Validade (dias)",
+  "epiStockLabel": "Estoque atual",
+  "epiMinStockLabel": "Estoque mínimo",
+  "epiStatusValid": "CA Válido",
+  "epiStatusExpiring": "Vencendo em {days} dias",
+  "@epiStatusExpiring": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "epiStatusExpired": "CA Vencido",
+  "epiStatusNoStock": "Sem estoque",
+  "stockTitle": "Estoque",
+  "stockScan": "Escanear QR",
+  "stockMoveIn": "Entrada",
+  "stockMoveOut": "Saída",
+  "stockBatch": "Operação em lote",
+  "stockMinimumAlert": "Estoque mínimo atingido",
+  "stockCriticalAlert": "Estoque crítico — {name}",
+  "@stockCriticalAlert": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "deliveriesTitle": "Entregas",
+  "deliveryNew": "Nova Entrega",
+  "deliveryStep1": "Colaborador",
+  "deliveryStep2": "EPI",
+  "deliveryStep3": "Revisão",
+  "deliveryStep4": "Assinatura",
+  "deliveryConfirm": "Confirmar entrega",
+  "deliverySuccess": "Entrega registrada com sucesso",
+  "deliveryOfflineQueued": "Entrega salva — será sincronizada quando houver conexão",
+  "deliverySignatureRequired": "Assinatura obrigatória",
+  "deliveryClearSignature": "Limpar assinatura",
+  "returnsTitle": "Devoluções",
+  "returnNew": "Nova Devolução",
+  "returnStep1": "Selecionar EPI",
+  "returnStep2": "Condição",
+  "returnStep3": "Confirmar",
+  "returnConditionGood": "Bom estado",
+  "returnConditionDamaged": "Danificado",
+  "returnConditionLost": "Extraviado",
+  "returnSuccess": "Devolução registrada com sucesso.",
+  "returnOfflineQueued": "Devolução salva — será sincronizada quando houver conexão.",
+  "recordsTitle": "Fichas",
+  "recordsPreview": "Visualizar ficha",
+  "recordsPrint": "Imprimir ficha",
+  "recordsSearchHint": "Buscar por funcionário, código ou unidade…",
+  "recordsStatusComplete": "Completo",
+  "recordsStatusPending": "Pendente",
+  "recordsStatusOverdue": "Atrasado",
+  "purchasesTitle": "Compras",
+  "purchaseOrdersTitle": "Ordens de Compra",
+  "poApprove": "Aprovar",
+  "poReceive": "Receber",
+  "poQuantityReceived": "Qtd. recebida",
+  "poReceiveNotes": "Observação",
+  "poManufacturerValidity": "Validade do fabricante",
+  "poManufacturerValidityHint": "Informar data",
+  "poManufacturerValidityRequired": "Informe a validade do fabricante de todos os EPIs recebidos.",
+  "poOcrDateNotFound": "Não foi possível identificar a data. Tente novamente.",
+  "poOcrCameraFailed": "Falha na leitura por câmera.",
+  "poPickDate": "Selecionar data",
+  "poReadDateCamera": "Ler data por câmera (OCR)",
+  "poCheck": "Conferir",
+  "purchasesNew": "Novo Pedido",
+  "purchaseStatusDraft": "Rascunho",
+  "purchaseStatusSent": "Enviado",
+  "purchaseStatusPending": "Aguardando aprovação",
+  "purchaseStatusApproved": "Aprovado",
+  "purchaseStatusRejected": "Rejeitado",
+  "purchaseStatusOrdering": "Em pedido",
+  "purchaseStatusReceived": "Recebido",
+  "reportsTitle": "Relatórios",
+  "reportsGenerate": "Gerar relatório",
+  "reportsPeriod": "Período",
+  "reportsExport": "Exportar",
+  "reportsSummaryTab": "Resumo",
+  "reportsRequestsTab": "Solicitações",
+  "reportsTotalDeliveries": "Total de entregas",
+  "reportsTopEpis": "Top EPIs entregues",
+  "reportsTopSectors": "Entregas por setor",
+  "reportsRequestStatusPending": "Aguardando",
+  "reportsRequestStatusProcessing": "Processando",
+  "reportsRequestStatusCompleted": "Concluído",
+  "reportsRequestStatusFailed": "Falhou",
+  "reportsAllUnits": "Todas as unidades",
+  "reportsRequestDialogTitle": "Solicitar relatório",
+  "reportsRequestYear": "Ano",
+  "reportsRequestMonth": "Mês",
+  "reportsRequestNotes": "Observações (opcional)",
+  "reportsRequestSubmit": "Solicitar",
+  "reportsNoRequests": "Nenhuma solicitação",
+  "reportsNoData": "Nenhum dado disponível",
+  "reportsRequestSuccess": "Solicitação enviada com sucesso.",
+  "companiesTitle": "Empresas",
+  "companiesSearchHint": "Buscar por nome ou CNPJ",
+  "companyStatusActive": "Ativo",
+  "companyStatusInactive": "Inativo",
+  "companyStatusSuspended": "Suspenso",
+  "settingsTitle": "Configurações",
+  "settingsLanguage": "Idioma",
+  "settingsLanguageUser": "Idioma do usuário",
+  "settingsLanguageCompany": "Idioma da empresa",
+  "settingsTheme": "Tema",
+  "settingsThemeLight": "Claro",
+  "settingsThemeDark": "Escuro",
+  "settingsThemeSystem": "Sistema",
+  "settingsAppSection": "Aplicativo",
+  "settingsFichaSection": "Ficha",
+  "settingsFichaTitle": "Título da ficha",
+  "settingsFichaDeclaration": "Declaração",
+  "settingsFichaObservations": "Observações",
+  "settingsFichaTracking": "Rastreabilidade",
+  "settingsSaved": "Configurações salvas com sucesso.",
+  "portalTitle": "Portal do Colaborador",
+  "portalScanQr": "Escanear QR Code",
+  "portalEnterCpf": "Informe seu CPF",
+  "portalCpfHint": "Ex: 000.000.000-00",
+  "portalCpfVerify": "Acessar portal",
+  "portalHistory": "Meu histórico de EPIs",
+  "portalSignature": "Confirmar assinatura",
+  "portalSignatureInstruction": "Assine no espaço abaixo para confirmar o recebimento",
+  "portalDeliveries": "Entregas",
+  "portalFichas": "Fichas",
+  "portalSignDelivery": "Assinar",
+  "portalSignAll": "Assinar todas",
+  "portalSigned": "Assinado",
+  "portalUnsigned": "Pendente",
+  "portalSignSuccess": "Assinatura registrada com sucesso.",
+  "portalNoDeliveries": "Nenhuma entrega encontrada",
+  "portalQty": "Qtd",
+  "errorGeneric": "Ocorreu um erro. Tente novamente.",
+  "errorNetwork": "Sem conexão com a internet",
+  "errorUnauthorized": "Sessão expirada. Faça login novamente.",
+  "errorNotFound": "Registro não encontrado",
+  "errorServerError": "Erro no servidor. Tente mais tarde.",
+  "statusActive": "Ativo",
+  "statusInactive": "Inativo",
+  "statusExpired": "Vencido",
+  "statusExpiring": "Vencendo",
+  "statusPending": "Pendente",
+  "statusApproved": "Aprovado",
+  "statusRejected": "Rejeitado",
+  "statusInReview": "Em análise",
+  "confirmDeleteTitle": "Confirmar exclusão",
+  "confirmDeleteMessage": "Esta ação não pode ser desfeita.",
+  "confirmDeleteButton": "Excluir",
+  "employeeContactTitle": "Contatar colaborador",
+  "employeeContactWhatsapp": "WhatsApp",
+  "employeeContactEmail": "E-mail",
+  "employeeContactPdf": "Baixar PDF",
+  "employeeContactLaunching": "Abrindo...",
+  "employeeContactPdfDownloading": "Baixando PDF...",
+  "employeeContactErrorNoApp": "Nenhum app disponível para abrir este link",
+  "employeeContactErrorGeneric": "Falha ao contatar colaborador. Tente novamente.",
+  "employeeContactPdfError": "Falha ao baixar o PDF. Tente novamente.",
+  "offlineBanner": "Sem conexão — dados salvos localmente",
+  "syncingBanner": "Sincronizando dados...",
+  "syncDone": "Dados sincronizados",
+  "searchEmployeeHint": "Buscar colaborador...",
+  "searchEpiHint": "Buscar EPI...",
+  "fieldQuantity": "Quantidade",
+  "filterAll": "Todos",
+  "deliveryStockAvailable": "Estoque: {qty}",
+  "@deliveryStockAvailable": {
+    "placeholders": {
+      "qty": {
+        "type": "int"
+      }
+    }
+  },
+  "deliveryDateLabel": "Data da entrega",
+  "deliveryNextReplacement": "Próxima substituição",
+  "deliveryDateValue": "Data: {date}",
+  "@deliveryDateValue": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "returnSelectDelivery": "Selecionar entrega para devolver",
+  "returnDeliveredInfo": "Entregue em {date} · Qtd: {qty}",
+  "@returnDeliveredInfo": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "qty": {
+        "type": "int"
+      }
+    }
+  },
+  "returnConditionTitle": "Condição do EPI",
+  "returnDestinationTitle": "Destino",
+  "returnDestDiscard": "Descarte",
+  "returnDestRepair": "Manutenção",
+  "returnDestStock": "Retornar ao estoque",
+  "returnSubmit": "Registrar Devolução",
+  "returnDeliveryDateInfo": "Entrega: {date}",
+  "@returnDeliveryDateInfo": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "returnQuantityInfo": "Quantidade: {qty}",
+  "@returnQuantityInfo": {
+    "placeholders": {
+      "qty": {
+        "type": "int"
+      }
+    }
+  },
+  "purchaseTitleLabel": "Título da requisição",
+  "purchaseSelectUnit": "Selecione uma unidade",
+  "purchaseItemsTitle": "Itens da requisição",
+  "purchaseAddEpi": "Adicionar EPI",
+  "purchaseNoItems": "Nenhum item adicionado",
+  "purchaseCreate": "Criar Requisição",
+  "purchaseAddAtLeastOne": "Adicione pelo menos um item",
+  "purchaseQuantityColon": "Quantidade:",
+  "purchaseItemsCount": "{count} itens",
+  "@purchaseItemsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "purchaseStatusAwaiting": "Aguardando",
+  "purchaseStatusCorrection": "Correção solicitada",
+  "purchaseStatusAwaitingReceipt": "Aguardando recebimento",
+  "purchaseStatusCompleted": "Concluído",
+  "purchaseStatusCancelled": "Cancelado",
+  "suppliersTitle": "Fornecedores",
+  "supplierNew": "Novo fornecedor",
+  "supplierEdit": "Editar fornecedor",
+  "supplierCnpjLabel": "CNPJ",
+  "supplierPhoneLabel": "Telefone",
+  "supplierPaymentTermsLabel": "Condições de pagamento",
+  "supplierIntegrationLevelLabel": "Nível de integração",
+  "supplierInactiveLabel": "Inativo",
+  "supplierCatalogTitle": "Catálogo do fornecedor",
+  "catalogNewProduct": "Novo produto",
+  "catalogSkuLabel": "SKU",
+  "catalogDescriptionLabel": "Descrição",
+  "catalogLastPriceLabel": "Último preço",
+  "catalogLeadTimeLabel": "Prazo (dias)",
+  "quotesTitle": "Cotações",
+  "quotesNew": "Nova cotação",
+  "quotesSelectSuppliers": "Selecione os fornecedores",
+  "quoteSendEmail": "Enviar por e-mail",
+  "quoteSendPortal": "Enviar pelo portal",
+  "quoteAnswerAction": "Registrar resposta",
+  "quoteSelectWinner": "Selecionar vencedora",
+  "quoteComparisonTitle": "Comparação de cotações",
+  "quoteFreightLabel": "Frete",
+  "quoteUnitPriceLabel": "Preço unitário",
+  "quoteDeclinedLabel": "Recusado",
+  "quoteBestPriceLabel": "Melhor preço",
+  "quoteBestLeadTimeLabel": "Melhor prazo",
+  "quoteCreatePo": "Gerar PO a partir da cotação vencedora?",
+  "poSupplierActionsTitle": "Fornecedor e entrega",
+  "poSendToSupplier": "Enviar ao fornecedor",
+  "poPortalLinkAction": "Enviar link do portal",
+  "poRegisterConfirmation": "Registrar confirmação",
+  "poTrackingTitle": "Acompanhamento",
+  "poDeliveryForecastLabel": "Previsão de entrega",
+  "poCarrierLabel": "Transportadora",
+  "poTrackingCodeLabel": "Código de rastreio",
+  "commentLabel": "Comentário",
+  "actionSentSuccess": "Enviado com sucesso",
+  "myCompanyTitle": "Minha Empresa",
+  "myCompanySubtitle": "Dados, identidade visual e domínio da sua empresa",
+  "myCompanySaved": "Configurações da empresa salvas com sucesso.",
+  "myCompanyLoadError": "Não foi possível carregar os dados da empresa.",
+  "myCompanyContractSection": "Contrato (somente leitura)",
+  "myCompanyPlan": "Plano",
+  "myCompanyUserLimit": "Limite de usuários",
+  "myCompanyLicense": "Licença",
+  "myCompanyRegistrationSection": "Dados cadastrais",
+  "myCompanyName": "Nome fantasia",
+  "myCompanyLegalName": "Razão social",
+  "myCompanyCnpj": "CNPJ",
+  "myCompanyStateRegistration": "Inscrição estadual",
+  "myCompanyMunicipalRegistration": "Inscrição municipal",
+  "myCompanyAddress": "Endereço",
+  "myCompanyPhone": "Telefone",
+  "myCompanyWhatsapp": "WhatsApp",
+  "myCompanyEmail": "E-mail institucional",
+  "myCompanyWebsite": "Website",
+  "myCompanyIdentitySection": "Identidade e tema",
+  "myCompanyDisplayName": "Nome exibido no sistema",
+  "myCompanyInstitutionalMessage": "Mensagem institucional",
+  "myCompanyPrimaryColor": "Cor principal (hex)",
+  "myCompanySecondaryColor": "Cor secundária (hex)",
+  "myCompanyPreferencesSection": "Preferências",
+  "myCompanyTimezone": "Fuso horário",
+  "myCompanySave": "Salvar configurações da empresa",
+  "myCompanyDomainsSection": "Domínios",
+  "myCompanyDomainField": "Domínio",
+  "myCompanyDomainTypePlatform": "Subdomínio da plataforma",
+  "myCompanyDomainTypeCustomSub": "Subdomínio personalizado",
+  "myCompanyDomainTypeCustom": "Domínio personalizado",
+  "myCompanyDomainAdd": "Registrar domínio",
+  "myCompanyDomainVerify": "Verificar",
+  "myCompanyDomainDelete": "Remover",
+  "myCompanyDomainPending": "Pendente",
+  "myCompanyDomainVerified": "Verificado",
+  "myCompanyDomainFailed": "Falhou",
+  "myCompanyDomainPrimary": "Principal",
+  "myCompanyDomainCname": "Aponte o CNAME para",
+  "myCompanyDomainTxt": "Crie o registro TXT",
+  "myCompanyDomainToken": "Valor do TXT",
+  "epiArchiveBlockTitle": "Arquivar com bloqueio de saldo",
+  "epiArchiveBlockBody": "Este EPI possui saldo disponível ou vínculos vivos. Ao confirmar, o saldo disponível será movido para Estoque Bloqueado (rastreável) e o EPI será arquivado.",
+  "epiArchiveBlockConfirm": "Bloquear saldo e arquivar",
+  "epiArchiveReasonLabel": "Motivo do arquivamento (auditoria)",
+  "epiArchiveReasonRequired": "Informe o motivo para prosseguir.",
+  "epiArchiveBlockableLabel": "Saldo a bloquear",
+  "epiArchiveLiveLinksTitle": "Vínculos vivos",
+  "epiArchiveAvailable": "Disponível",
+  "epiArchiveInTransit": "Em trânsito",
+  "epiArchiveInPossession": "Em posse",
+  "epiArchivePendingRequests": "Requisições abertas",
+  "epiArchivePendingPurchase": "Compras abertas",
+  "dashboardComplianceTitle": "Conformidade de estoque",
+  "dashboardComplianceAllOk": "Estoque em conformidade",
+  "complianceCaExpired": "CA vencido",
+  "complianceCaExpiring": "CA a vencer",
+  "complianceProductExpired": "Produto vencido",
+  "complianceProductExpiring": "Produto a vencer",
+  "complianceMissingManufacture": "Sem fabricação",
+  "complianceMissingLot": "Sem lote",
+  "complianceAdminBlocked": "Bloqueado",
+  "handoverTitle": "Conferência de entrega",
+  "handoverPrompt": "Escaneie o QR da entrega ou informe o código.",
+  "handoverCodeLabel": "Código da entrega",
+  "handoverLookupButton": "Buscar entrega",
+  "handoverScanButton": "Escanear QR",
+  "handoverConfirmButton": "Confirmar recebimento",
+  "handoverConfirmedTitle": "Recebimento confirmado",
+  "handoverAlreadyConfirmed": "Esta entrega já foi confirmada.",
+  "handoverNotFound": "Entrega não encontrada para este código.",
+  "handoverConfirmError": "Não foi possível confirmar o recebimento.",
+  "handoverEmployeeLabel": "Colaborador",
+  "handoverEpiLabel": "EPI",
+  "handoverQuantityLabel": "Quantidade",
+  "handoverSectorLabel": "Setor",
+  "handoverRoleLabel": "Função",
+  "handoverUnitLabel": "Unidade",
+  "handoverDeliveryDateLabel": "Data da entrega",
+  "handoverReceiverNameLabel": "Nome de quem recebe (opcional)",
+  "handoverScanAgain": "Nova conferência",
+  "legalEntitiesTitle": "CNPJs",
+  "legalEntitiesNew": "Novo CNPJ",
+  "legalEntityLegalNameLabel": "Razão social",
+  "legalEntityTradeNameLabel": "Nome fantasia",
+  "legalEntityTypeLabel": "Tipo",
+  "legalEntityInactiveBadge": "Inativo",
+  "legalEntityDeactivate": "Inativar CNPJ",
+  "legalEntityDeactivateHint": "O histórico jurídico é preservado. O CNPJ deixa de ser usado em novas operações.",
+  "legalEntityShowInactive": "Mostrar inativos",
+  "legalEntitiesEmpty": "Nenhum CNPJ cadastrado.",
+  "legalEntityMunicipalityLabel": "Município",
+  "legalEntityCnpjLabel": "CNPJ",
+  "legalEntityUfLabel": "UF",
+  "legalEntitiesImportColumnsHint": "CNPJ\tRazão social\tNome fantasia\tTipo",
+  "legalEntitiesImport": "Importar planilha",
+  "legalEntitiesImportHint": "Copie as linhas da planilha (com a linha de cabeçalho) e cole abaixo. Aceita colunas em português ou inglês.",
+  "legalEntitiesImportResult": "Importação concluída",
+  "dashboardFilterLegalEntity": "CNPJ",
+  "dashboardFilterUnit": "Unidade",
+  "dashboardFilterSector": "Setor",
+  "dashboardFilterAll": "Todos",
+  "dashboardFilterClear": "Limpar filtros",
+  "legalEntityTransferTitle": "Transferir vínculo jurídico",
+  "legalEntityTransferHint": "O CNPJ é o vínculo do contrato de trabalho e não muda em transferência de unidade. Esta alteração é auditada e exige justificativa.",
+  "legalEntityTransferReason": "Justificativa",
+  "legalEntityTransferTarget": "Novo CNPJ",
+  "legalEntityTransferAction": "Transferir",
+  "legalEntityTransferHistory": "Histórico de vínculo",
+  "unitTransferTitle": "Transferir de unidade",
+  "unitTransferHint": "Movimentação de unidade operacional — temporária ou definitiva. Gera vínculo auditável e não altera o CNPJ do colaborador.",
+  "unitTransferTarget": "Unidade destino",
+  "unitTransferType": "Tipo de movimentação",
+  "unitTransferTypeTemporary": "Temporária",
+  "unitTransferTypeDefinitive": "Definitiva",
+  "unitTransferStartDate": "Data início",
+  "unitTransferEndDate": "Data fim (opcional)",
+  "unitTransferNotes": "Observação (opcional)",
+  "unitTransferAction": "Transferir",
+  "myCompanyStockScope": "Consolidar saldos de estoque por",
+  "myCompanyStockScopeHint": "Esta configuração altera apenas a visualização consolidada dos saldos. Entradas, reservas, saídas, entregas e demais movimentações permanecem vinculadas ao estoque de cada unidade.",
+  "myCompanyStockScopeUnit": "Unidade",
+  "myCompanyStockScopeLegalEntity": "CNPJ",
+  "myCompanyStockScopeCompany": "Empresa",
+  "navLegalEntities": "CNPJs",
+  "unitLegalEntityLabel": "CNPJ responsável",
+  "unitLegalEntityHint": "Pessoa jurídica que responde pelas operações e pelo estoque desta unidade.",
+  "employeeEmploymentTypeLabel": "Tipo de Vínculo",
+  "employeeSourceCompanyLabel": "Empresa de Origem",
+  "employeeSourceCompanyHint": "Nome da empresa de origem do colaborador",
+  "employmentTypeClt": "CLT",
+  "employmentTypeOutsourced": "Terceirizado",
+  "employmentTypeTemporary": "Temporário",
+  "employmentTypeServiceProvider": "Prestador de Serviço",
+  "employmentTypeApprentice": "Menor Aprendiz",
+  "employmentTypeTrainee": "Praticante",
+  "employmentTypeIntern": "Estagiário",
+  "navTerceirizados": "Terceirizados e Prestadores",
+  "outsourcedCompaniesTitle": "Terceirizados e Prestadores",
+  "outsourcedCompaniesEmpty": "Nenhuma empresa terceirizada cadastrada.",
+  "outsourcedCompaniesSearchHint": "Buscar por nome ou CNPJ",
+  "outsourcedCompanyNew": "Nova empresa",
+  "outsourcedCompanyLegalNameLabel": "Razão Social",
+  "outsourcedCompanyTradeNameLabel": "Nome Fantasia",
+  "outsourcedCompanyCnpjLabel": "CNPJ",
+  "outsourcedCompanyCnpjHint": "Opcional no Cadastro Simplificado",
+  "outsourcedCompanyKindLabel": "Tipo da Empresa",
+  "outsourcedCompanyKindOutsourced": "Terceirizada",
+  "outsourcedCompanyKindServiceProvider": "Prestadora de Serviço",
+  "outsourcedCompanyKindOther": "Outro",
+  "outsourcedCompanyResponsibilityLabel": "Responsabilidade pelo Fornecimento de EPI",
+  "outsourcedCompanyUnitLabel": "Unidade",
+  "outsourcedCompanyUnitAll": "Todas as unidades (padrão)",
+  "outsourcedCompanyLinkTitle": "Vincular empresa a esta Unidade",
+  "outsourcedCompanyLinkHint": "Buscar empresa já cadastrada no tenant…",
+  "outsourcedCompanyLinkSectionLinked": "Já vinculadas a esta Unidade",
+  "outsourcedCompanyLinkSectionAvailable": "Disponíveis para vincular",
+  "outsourcedCompanyLinkLink": "Vincular a esta Unidade",
+  "outsourcedCompanyLinkActivate": "Reativar nesta Unidade",
+  "outsourcedCompanyLinkDeactivate": "Arquivar nesta Unidade",
+  "outsourcedCompanyLinkDeactivateReason": "Motivo do arquivamento (opcional):",
+  "outsourcedCompanyLinkUsedByUnits": "Usada por {count} Unidade(s)",
+  "@outsourcedCompanyLinkUsedByUnits": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "outsourcedCompanyLinkOriginUnit": "Unidade de origem",
+  "outsourcedCompanyLinkEmpty": "Nenhuma empresa encontrada com esse termo.",
+  "outsourcedCompanyLinkNotInformed": "Vínculo não informado para o seu perfil",
+  "outsourcedCompanyStatusLabel": "Situação",
+  "outsourcedCompanySave": "Salvar",
+  "outsourcedCompanyCancel": "Cancelar",
+  "outsourcedCompanyPromote": "Promover a Cadastro Padrão",
+  "outsourcedCompanyPromoteConfirmTitle": "Promover ao Cadastro Padrão?",
+  "outsourcedCompanyPromoteConfirmBody": "A empresa passa a ser tratada como Cadastro Padrão. É preciso ter um CNPJ preenchido.",
+  "outsourcedCompanySimplifiedBadge": "Simplificado",
+  "outsourcedCompanyStandardBadge": "Padrão",
+  "outsourcedTabCompanies": "Empresas",
+  "outsourcedTabEmployees": "Cadastro de Colaboradores",
+  "outsourcedTabReports": "Relatórios",
+  "outsourcedShowActive": "Ver ativos",
+  "outsourcedShowArchived": "Ver arquivados",
+  "archive": "Arquivar",
+  "restore": "Desarquivar",
+  "archivedAt": "Arquivado em",
+  "archiveReasonLabel": "Motivo do arquivamento (auditoria)",
+  "outsourcedCompanyArchive": "Arquivar empresa",
+  "outsourcedCompanyArchiveConfirmTitle": "Arquivar esta empresa?",
+  "outsourcedCompanyRestore": "Desarquivar",
+  "outsourcedCompanyRestoreConfirmTitle": "Desarquivar esta empresa?",
+  "outsourcedCompaniesArchivedEmpty": "Nenhuma empresa terceirizada arquivada.",
+  "outsourcedEmployeeNew": "Novo colaborador",
+  "outsourcedEmployeesEmpty": "Nenhum colaborador terceirizado/prestador cadastrado.",
+  "outsourcedEmployeesArchivedEmpty": "Nenhum colaborador terceirizado/prestador arquivado.",
+  "outsourcedEmployeeCompanyLabel": "Empresa terceirizada/prestadora",
+  "outsourcedEmployeeOriginRegistrationLabel": "Matrícula da empresa de origem",
+  "outsourcedEmployeeBadgeLabel": "Crachá",
+  "outsourcedEmployeeNotesLabel": "Observações",
+  "outsourcedEmployeeArchiveConfirmTitle": "Arquivar este colaborador?",
+  "outsourcedEmployeeRestoreConfirmTitle": "Desarquivar este colaborador?",
+  "employeeUnitLinkColumn": "Vínculo local",
+  "employeeUnitLink": "Vincular à minha unidade",
+  "employeeUnitLinkActivate": "Reativar nesta Unidade",
+  "employeeUnitLinkDeactivate": "Arquivar nesta Unidade",
+  "employeeUnitLinkDeactivateReason": "Motivo do arquivamento (opcional):",
+  "employeeUnitLinkActive": "Vinculado",
+  "employeeUnitLinkArchived": "Arquivado nesta Unidade",
+  "employeeUnitLinkAbsent": "Não vinculado",
+  "employeeUnitLinksTitle": "Vínculos por Unidade",
+  "employeeUnitLinksEmpty": "Este colaborador não tem vínculo com nenhuma Unidade que você pode consultar.",
+  "employeeUnitLinksError": "Não foi possível carregar os vínculos.",
+  "outsourcedReportsError": "Não foi possível carregar o relatório.",
+  "outsourcedReportsEmpty": "Nenhuma empresa terceirizada/prestadora cadastrada.",
+  "outsourcedReportsActive": "Ativos",
+  "outsourcedReportsArchived": "Arquivados",
+  "moduleVisibilityTitle": "Visibilidade por Módulo",
+  "moduleVisibilityDescription": "Permissões padrão: cada perfil possui permissões padrão definidas pelo sistema. Personalizações: o Administrador Geral pode personalizar a visualização e a utilização dos módulos por perfil e por unidade, sem alterar a estrutura padrão do sistema.",
+  "moduleVisibilityRoleLabel": "Perfil",
+  "moduleVisibilityDefaultPanelTitle": "Permissões padrão deste perfil",
+  "moduleVisibilityDefaultPanelHint": "Estas permissões representam o comportamento padrão do sistema. As configurações abaixo permitem apenas personalizações realizadas pelo Administrador Geral.",
+  "moduleVisibilityNoDefaultModules": "Nenhum módulo por padrão",
+  "moduleVisibilityUnitLabel": "Unidade",
+  "moduleVisibilityUnitHint": "Um módulo não marcado especificamente para esta Unidade herda o valor de \"Todas as unidades\".",
+  "moduleVisibilityAllUnitsOption": "Todas as unidades (padrão)",
+  "stockTabAvailable": "Disponíveis",
+  "stockTabBlocked": "Bloqueados",
+  "stockAvailableSelectEpi": "Selecione um EPI para ver os itens disponíveis",
+  "stockAvailableEmpty": "Nenhum item disponível para este EPI nesta unidade",
+  "stockBlockedEmpty": "Nenhum item bloqueado",
+  "stockNoOperationalUnit": "Seu perfil não tem unidade operacional ativa. Fale com o administrador para liberar o acesso ao estoque.",
+  "stockItemLotLabel": "Lote",
+  "stockStatusBlockedExpired": "Vencido",
+  "stockStatusBlockedDiscard": "Aguardando descarte",
+  "stockStatusBlockedReturn": "Aguardando devolução ao fornecedor",
+  "stockStatusBlockedAnalysis": "Em análise",
+  "stockStatusBlockedRejected": "Reprovado",
+  "stockStatusBlockedArchived": "EPI arquivado",
+  "stockStatusUnknown": "Status não reconhecido",
+  "stockUnitBalanceSuffix": "na unidade",
+  "stockCompanyBalanceLabel": "empresa",
+  "stockMinimumShort": "mín",
+  "deliveryStepItem": "Item",
+  "deliveryItemTitle": "Selecione a unidade etiquetada",
+  "deliveryItemEmpty": "Nenhum item disponível nesta Unidade.",
+  "deliveryItemScan": "Ler QR do item",
+  "deliveryUnitStockAvailable": "Estoque na Unidade: {qty}",
+  "@deliveryUnitStockAvailable": {
+    "description": "Saldo do EPI na Unidade do colaborador que vai receber.",
+    "placeholders": {
+      "qty": {
+        "type": "int"
+      }
+    }
+  },
+  "deliveryEmployeeWithoutUnit": "Colaborador sem Unidade operacional: não é possível registrar entrega.",
+  "deliveryQrOtherEpi": "O código lido pertence a outro EPI.",
+  "stockUnitRequiredToMove": "Selecione uma Unidade para movimentar o estoque.",
+  "stockAttentionSectionTitle": "Estoque",
+  "stockAttentionCompanyTitle": "Faixa de atenção — padrão da empresa",
+  "stockAttentionCompanyHelp": "Aplica-se às Unidades que não definiram um percentual próprio. Não altera nenhuma Unidade já configurada.",
+  "stockAttentionPercentageLabel": "Percentual da faixa de atenção",
+  "stockAttentionOriginLabel": "Origem",
+  "stockAttentionOriginCompany": "Configurado pela empresa",
+  "stockAttentionOriginSystem": "Padrão do sistema",
+  "stockAttentionSave": "Salvar padrão da empresa",
+  "stockAttentionRestore": "Restaurar padrão do sistema",
+  "stockAttentionSaved": "Padrão da empresa salvo.",
+  "stockAttentionRestored": "Padrão da empresa removido. A empresa voltou ao padrão do sistema.",
+  "stockAttentionSystemDefaultHint": "Padrão do sistema: {value}%",
+  "stockConfigTitle": "Configuração de estoque",
+  "stockConfigIntro": "Defina estoque mínimo, faixa de atenção e monitoramento de alerta de um EPI em uma Unidade. Cada parâmetro é salvo separadamente.",
+  "stockConfigUnitLabel": "Unidade a configurar",
+  "stockConfigSelectUnit": "Selecione a Unidade para configurar os parâmetros.",
+  "stockConfigSelectEpi": "Selecione o EPI para ver e editar os parâmetros desta Unidade.",
+  "stockConfigEpiLabel": "EPI",
+  "stockConfigEpisLoadError": "Não foi possível carregar os EPIs desta Unidade.",
+  "stockConfigNoEpisInUnit": "Nenhum EPI visível nesta Unidade.",
+  "stockConfigUnitBalance": "Saldo na Unidade",
+  "stockConfigAttentionLimit": "Limite da faixa de atenção",
+  "stockConfigUnderlyingStatus": "Condição física",
+  "stockConfigDerivedUnavailable": "Os valores calculados não puderam ser atualizados agora. Os parâmetros salvos acima estão corretos.",
+  "stockConfigStatusCritical": "Crítico",
+  "stockConfigStatusNearMinimum": "Próximo do mínimo",
+  "stockConfigStatusNormal": "Normal",
+  "stockConfigStatusDisabled": "Alerta desabilitado",
+  "stockConfigMinimumTitle": "Estoque mínimo",
+  "stockConfigMinimumHelp": "Quantidade abaixo da qual o EPI é considerado crítico nesta Unidade. Vale só para esta Unidade.",
+  "stockConfigMinimumLabel": "Estoque mínimo",
+  "stockConfigMinimumNegativeError": "Informe um número inteiro maior ou igual a zero.",
+  "stockConfigMinimumSaved": "Estoque mínimo salvo para esta Unidade.",
+  "stockConfigMinimumRestored": "Estoque mínimo restaurado. A Unidade voltou a herdar o padrão da empresa.",
+  "stockConfigAttentionTitle": "Faixa de atenção",
+  "stockConfigAttentionHelp": "Percentual acima do mínimo em que o EPI já entra em atenção nesta Unidade. Independente do estoque mínimo.",
+  "stockConfigAttentionRangeError": "O percentual deve estar entre 0 e 100.",
+  "stockConfigAttentionSaved": "Faixa de atenção salva para esta Unidade.",
+  "stockConfigAttentionRestored": "Faixa de atenção restaurada. A Unidade voltou a herdar o padrão da empresa.",
+  "stockConfigAlertTitle": "Monitoramento de alerta",
+  "stockConfigAlertHelp": "Desligar interrompe o alerta de estoque baixo e a reposição automática deste EPI nesta Unidade. Não altera saldo, mínimo nem percentual.",
+  "stockConfigAlertToggle": "Monitorar o estoque deste EPI",
+  "stockConfigAlertPending": "Alteração pendente. Clique em Salvar para aplicar.",
+  "stockConfigAlertDisableTitle": "Desabilitar o alerta?",
+  "stockConfigAlertDisableBody": "Este EPI deixará de gerar alerta de estoque baixo e reposição automática nesta Unidade. A condição física continuará sendo exibida.",
+  "stockConfigAlertDisableConfirm": "Desabilitar",
+  "stockConfigAlertSaved": "Monitoramento de alerta salvo para esta Unidade.",
+  "stockConfigAlertRestored": "Monitoramento restaurado. A Unidade voltou ao padrão do sistema.",
+  "stockConfigOriginUnit": "Configurado por esta Unidade",
+  "stockConfigOriginCompany": "Herdado do padrão da empresa",
+  "stockConfigOriginUnknown": "Não informada",
+  "stockConfigSave": "Salvar",
+  "stockConfigRestore": "Restaurar herança",
+  "@stockAttentionSystemDefaultHint": {
+    "placeholders": {
+      "value": {
+        "type": "int"
+      }
+    }
+  },
+  "stockAttentionRangeError": "Informe um percentual inteiro entre 0 e {max}.",
+  "@stockAttentionRangeError": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "stockAttentionLoadError": "Não foi possível carregar o padrão da empresa.",
+  "unitSelectorLabel": "Unidade",
+  "unitSelectorAllUnits": "Todas as Unidades",
+  "unitSelectorLockedHint": "Seu perfil opera numa Unidade fixa.",
+  "unitSelectorLoadError": "Não foi possível carregar as Unidades.",
+  "unitSelectorNoUnitsAssigned": "Você não tem Unidade atribuída. Fale com o administrador.",
+  "unitSelectorCompanyHasNoUnits": "A empresa ainda não tem Unidades cadastradas.",
+  "settingsSectionCompany": "Empresa",
+  "settingsSectionOperation": "Operação",
+  "settingsSectionSubscription": "Assinatura",
+  "settingsCompanyLabel": "Empresa",
+  "settingsCompanyScopeBanner": "Administrando a empresa: {name}",
+  "@settingsCompanyScopeBanner": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsSelectCompanyFirst": "Selecione uma empresa em Configurações para continuar.",
+  "settingsFichaTileTitle": "Ficha de EPI",
+  "settingsFichaTileSubtitle": "Título, declaração, observações e rastreabilidade",
+  "settingsStockTileSubtitle": "Faixa de atenção padrão da empresa",
+  "settingsModulesTileSubtitle": "Módulos visíveis por perfil e por Unidade",
+  "settingsArchivalTitle": "Arquivamento e retenção",
+  "settingsArchivalSubtitle": "Anos de preservação dos registros arquivados",
+  "settingsAppearanceTitle": "Aparência e idioma",
+  "settingsAppearanceSubtitle": "Tema da interface e idioma do aplicativo",
+  "settingsSubscriptionTileTitle": "Minha Assinatura",
+  "settingsSubscriptionTileSubtitle": "Plano, cobranças e cancelamento",
+  "settingsInvoicesTileTitle": "Histórico Financeiro",
+  "settingsInvoicesTileSubtitle": "Todas as cobranças e recibos",
+  "settingsNoPermission": "Você não tem permissão para alterar esta configuração.",
+  "stockPhysicalValidityUnknown": "Validade física desconhecida",
+  "stockNoPhysicalStock": "Sem estoque físico",
+  "stockRegularizeValidityTitle": "Regularizar validade física",
+  "stockRegularizeValiditySubtitle": "Identifique a peça e informe a validade comprovada. A classificação é feita pelo sistema.",
+  "stockRegularizeQrLabel": "QR ou código da peça",
+  "stockRegularizeExpiryLabel": "Validade física comprovada",
+  "stockRegularizeExpirySelect": "Selecionar data",
+  "stockRegularizeEvidenceLabel": "Evidência (documento ou registro verificável)",
+  "stockRegularizeJustificationLabel": "Justificativa",
+  "stockRegularizeSubmit": "Regularizar",
+  "stockRegularizeIncomplete": "Preencha a peça, a validade, a evidência e a justificativa.",
+  "stockRegularizeResultEligible": "Validade regularizada. A peça está apta para entrega e reserva.",
+  "stockRegularizeResultBlocked": "Validade regularizada. A peça está vencida e permanece bloqueada para entrega.",
+  "stockRegularizeResultDone": "Validade regularizada.",
+  "stockComplianceEpiCount": "{label} — EPIs distintos: {count}",
+  "@stockComplianceEpiCount": {
+    "description": "Filter counts distinct PPE types; piece counts are provided separately by the backend.",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "stockPhysicalPieceCounts": "Peças físicas: válidas {valid}, próximas {expiring}, vencidas {expired}, desconhecidas {unknown}.",
+  "@stockPhysicalPieceCounts": {
+    "placeholders": {
+      "valid": {
+        "type": "int"
+      },
+      "expiring": {
+        "type": "int"
+      },
+      "expired": {
+        "type": "int"
+      },
+      "unknown": {
+        "type": "int"
+      }
+    }
+  },
+  "deliveryPhysicalItemIneligible": "Item indisponível para entrega. Verifique validade física, status, reservas e saldo.",
   "safetyTitle": "Biblioteca de Segurança",
   "safetyApproved": "EPIs Aprovados",
   "safetyRetry": "Tentar novamente",
@@ -140,5 +970,625 @@
   "safetyStateDraft": "Rascunho",
   "safetyStatePublished": "Publicado",
   "safetyStateSuperseded": "Substituído",
-  "safetyStateArchived": "Arquivado"
+  "safetyStateArchived": "Arquivado",
+  "prConfTitle": "Conferência de Recebimento",
+  "prConfIntro": "Marque cada item conforme o recebimento real. Informe a validade física do fabricante e a evidência verificável; use \"Separar em lotes\" para validades diferentes ou exceções individuais. Peças sem validade comprovada entram BLOQUEADAS.",
+  "prConfReceivedYes": "Recebido",
+  "prConfReceivedNo": "Não recebido",
+  "prConfEvidence": "Evidência verificável",
+  "prConfEvidenceHint": "Etiqueta / NF / foto",
+  "prConfEvidenceRequired": "Evidência verificável é obrigatória quando há validade.",
+  "prConfSplitLots": "Separar em lotes",
+  "prConfSingleDate": "Usar data única",
+  "prConfAddLot": "Adicionar lote",
+  "prConfAddException": "Exceção (1 peça)",
+  "prConfLotQty": "Qtd",
+  "prConfLotCode": "Identificação",
+  "prConfRemoveLot": "Remover lote",
+  "prConfPreview": "Prévia — validade física por peça",
+  "prConfBlocked": "SEM validade → BLOQUEADAS",
+  "prConfExpired": "vencida",
+  "prConfPiece": "peça(s)",
+  "prConfSumMismatch": "A soma das quantidades dos lotes não confere com a quantidade recebida.",
+  "prConfLotQtyPositive": "Cada lote precisa de quantidade maior que zero.",
+  "prConfNotes": "Observações sobre itens não recebidos",
+  "prConfNotesRequired": "Informe as observações sobre os itens não recebidos.",
+  "prConfSubmit": "Registrar Conferência",
+  "prConfDone": "Conferência registrada.",
+  "prConfEmpty": "Nenhum item elegível para conferência.",
+  "prConfInvalidQuantity": "Quantidade efetivamente recebida inválida ou não positiva. Corrija o recebimento antes de confirmar.",
+  "prConfNoPersistedPieces": "Nenhuma peça efetivamente registrada ou resposta inconsistente. A entrada em estoque não foi confirmada.",
+  "prConfDoneQuantity": "{count} peças efetivamente registradas no estoque.",
+  "@prConfDoneQuantity": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "prConfNoStockEntry": "Conferência salva sem entrada de peças no estoque.",
+  "prConfInvalidQuantityLine": "Linha {line} — {item} (item #{id}): quantidade efetivamente recebida inválida ou não positiva. Corrija o recebimento antes de confirmar.",
+  "@prConfInvalidQuantityLine": {
+    "placeholders": {
+      "line": {
+        "type": "int"
+      },
+      "item": {
+        "type": "String"
+      },
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertStockNearMinimum": "Estoque próximo do mínimo: {epi}",
+  "@operationalAlertStockNearMinimum": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "epi": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertStockNegative": "Saldo negativo: {epi}",
+  "@operationalAlertStockNegative": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "epi": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertStockZero": "Estoque zerado: {epi}",
+  "@operationalAlertStockZero": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "epi": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertStockBelowMinimum": "Estoque abaixo do mínimo: {epi}",
+  "@operationalAlertStockBelowMinimum": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "epi": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertStockAtMinimum": "Estoque no limite mínimo: {epi}",
+  "@operationalAlertStockAtMinimum": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "epi": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertStockDescription": "{company} / {unit} - saldo atual de {stock} {measure}, mínimo {minimum}.",
+  "@operationalAlertStockDescription": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "company": {
+        "type": "String"
+      },
+      "unit": {
+        "type": "String"
+      },
+      "stock": {
+        "type": "String"
+      },
+      "measure": {
+        "type": "String"
+      },
+      "minimum": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertCaTitle": "CA próximo do vencimento: {epi}",
+  "@operationalAlertCaTitle": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "epi": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertCaDescription": "{company} - vence em {date}.",
+  "@operationalAlertCaDescription": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "company": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertManufacturerExpiredTitle": "Validade do fabricante vencida: {epi}",
+  "@operationalAlertManufacturerExpiredTitle": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "epi": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertManufacturerExpiringTitle": "Validade do fabricante próxima: {epi}",
+  "@operationalAlertManufacturerExpiringTitle": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "epi": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertManufacturerExpiredDescription": "{company} - validade do fabricante venceu em {date}. Retire do estoque ({stock} {measure}): EPI vencido não pode ser entregue ao trabalhador.",
+  "@operationalAlertManufacturerExpiredDescription": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "company": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      },
+      "stock": {
+        "type": "String"
+      },
+      "measure": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertManufacturerExpiringDescription": "{company} - validade do fabricante vence em {date} (em {daysLabel}). Priorize a entrega deste lote ({stock} {measure} em estoque) antes do vencimento (PEPS).",
+  "@operationalAlertManufacturerExpiringDescription": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "company": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      },
+      "daysLabel": {
+        "type": "String"
+      },
+      "stock": {
+        "type": "String"
+      },
+      "measure": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertSizes": "Tamanhos em estoque:",
+  "operationalAlertSizeGlove": "Luva:{value}",
+  "@operationalAlertSizeGlove": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertSizeSize": "Tam:{value}",
+  "@operationalAlertSizeSize": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertSizeUniform": "Unif:{value}",
+  "@operationalAlertSizeUniform": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertSizeUnspecified": "S/Tam",
+  "operationalAlertQuantity": "{count}",
+  "@operationalAlertQuantity": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertMeasureUnit": "{count, plural, one{unidade} other{unidades}}",
+  "@operationalAlertMeasureUnit": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "count": {
+        "type": "num"
+      }
+    }
+  },
+  "operationalAlertMeasurePair": "{count, plural, one{par} other{pares}}",
+  "@operationalAlertMeasurePair": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "count": {
+        "type": "num"
+      }
+    }
+  },
+  "operationalAlertDays": "{count, plural, one{{countLabel} dia} other{{countLabel} dias}}",
+  "@operationalAlertDays": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "count": {
+        "type": "num"
+      },
+      "countLabel": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertPhysicalDescription": "{count, plural, one{{epi}: {countLabel} peça física.} other{{epi}: {countLabel} peças físicas.}}",
+  "@operationalAlertPhysicalDescription": {
+    "description": "Operational alert presentation; canonical metadata and original names stay unchanged.",
+    "placeholders": {
+      "count": {
+        "type": "num"
+      },
+      "countLabel": {
+        "type": "String"
+      },
+      "epi": {
+        "type": "String"
+      }
+    }
+  },
+  "operationalAlertPhysicalUnknownTitle": "Validade física desconhecida",
+  "operationalAlertPhysicalExpiringTitle": "Lotes próximos do vencimento",
+  "passwordChangeTitle": "Defina uma nova senha",
+  "passwordChangeIntro": "Sua senha é temporária. Por segurança, defina uma nova senha para continuar.",
+  "passwordChangeCurrent": "Senha atual (temporária)",
+  "passwordChangeNew": "Nova senha",
+  "passwordChangeConfirm": "Confirmar nova senha",
+  "passwordChangeSave": "Salvar nova senha",
+  "passwordChangeLogout": "Sair",
+  "passwordChangeCurrentRequired": "Informe a senha atual",
+  "passwordChangeMinLength": "A nova senha deve ter ao menos 6 caracteres",
+  "passwordChangeMustDiffer": "A nova senha deve ser diferente da temporária",
+  "passwordChangeMismatch": "As senhas não coincidem",
+  "passwordChangeFailed": "Erro ao trocar a senha",
+  "poSupplierConfirmed": "Confirmado",
+  "poSupplierDeliveryUpdated": "Entrega atualizada",
+  "poSupplierRejected": "Recusado",
+  "poSupplierIsoDateHint": "AAAA-MM-DD",
+  "billingActive": "Ativa",
+  "billingPending": "Pendente",
+  "billingPaused": "Pausada",
+  "billingCancelled": "Cancelada",
+  "billingExpired": "Expirada",
+  "billingAnnual": "Anual",
+  "billingMonthly": "Mensal",
+  "billingRecurringCard": "Cartão (recorrente)",
+  "billingCard": "Cartão",
+  "billingBoleto": "Boleto",
+  "billingConfirmTitle": "Tem certeza?",
+  "billingConfirmBody": "Seu acesso continuará disponível até o final do período já pago.\nNenhuma nova cobrança será realizada.",
+  "billingConfirmCancel": "Confirmar Cancelamento",
+  "billingCancelledNotice": "Assinatura cancelada.",
+  "billingCancelFailed": "Não foi possível cancelar: {detail}",
+  "@billingCancelFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "billingAmount": "Valor",
+  "billingCycle": "Periodicidade",
+  "billingMethod": "Forma de pagamento",
+  "billingStarted": "Data da contratação",
+  "billingNextPayment": "Próxima cobrança",
+  "billingLastPayment": "Última cobrança",
+  "billingCancelDate": "Cancelada em",
+  "billingManualRenewal": "Renovação manual",
+  "billingMpSubscriptionId": "ID da assinatura (MP)",
+  "billingMpStatus": "Status Mercado Pago",
+  "billingTenant": "Tenant",
+  "billingCancelAction": "Cancelar assinatura",
+  "billingCancelledBody": "Assinatura cancelada. O acesso permanece ativo até o final do período já pago; nenhuma nova cobrança será realizada.",
+  "billingEmptyTitle": "Nenhuma assinatura ativa",
+  "billingEmptyBody": "Quando uma assinatura for contratada, os detalhes aparecerão aqui.",
+  "billingLoadFailed": "Não foi possível carregar a assinatura.",
+  "billingInvoicePaid": "Pago",
+  "billingInvoicePending": "Pendente",
+  "billingInvoiceCancelled": "Cancelado",
+  "billingInvoiceRefunded": "Reembolsado",
+  "billingInvoiceFailed": "Falhou",
+  "billingOpenReceipt": "Abrir recibo",
+  "billingReceiptOpenFailed": "Não foi possível abrir o recibo.",
+  "billingHistoryLoadFailed": "Não foi possível carregar o histórico.",
+  "billingInvoicesEmptyTitle": "Nenhuma cobrança encontrada",
+  "billingInvoicesEmptyBody": "As cobranças da sua assinatura aparecerão aqui.",
+  "feedbackTitle": "Avaliações de EPIs",
+  "feedbackLoadFailed": "Erro ao carregar avaliações",
+  "feedbackEmpty": "Nenhuma avaliação encontrada",
+  "feedbackValidate": "Validar",
+  "feedbackStatusOpen": "Aberto",
+  "feedbackStatusResolved": "Resolvido",
+  "feedbackStatusClosed": "Fechado",
+  "feedbackStatusReceived": "Recebido",
+  "feedbackStatusManagerReview": "Em Análise pelo Gestor de EPI",
+  "feedbackStatusAwaitingHseq": "Aguardando HSEQ",
+  "feedbackStatusHseqCompleted": "Análise HSEQ Concluída",
+  "feedbackStatusForwardedAdmin": "Encaminhado para Administração",
+  "feedbackStatusAwaitingAdmin": "Aguardando Aprovação Administrativa",
+  "feedbackStatusCorrectiveAction": "Ação Corretiva Aberta",
+  "feedbackStatusMoreInformation": "Solicitada Mais Informação",
+  "feedbackStatusEnded": "Encerrado",
+  "feedbackStatusNotApproved": "Reprovado",
+  "qrInstruction": "Aponte para um código QR ou de barras",
+  "qrDetected": "Código detectado",
+  "qrScanAgain": "Escanear novamente",
+  "qrTorchOn": "Ligar lanterna",
+  "qrTorchOff": "Desligar lanterna",
+  "formNameLabel": "Nome",
+  "formCityLabel": "Cidade",
+  "formSaveFailed": "Erro ao salvar",
+  "formExample": "Ex: {value}",
+  "@formExample": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "userNewTitle": "Novo usuário",
+  "userTemporaryPassword": "Senha temporária",
+  "userPasswordHint": "Digite ou use o botão para gerar",
+  "userCopyPassword": "Copiar senha",
+  "userGeneratePassword": "Gerar senha segura",
+  "userPasswordCopied": "Senha copiada para a área de transferência.",
+  "userEmployeeIdRequired": "ID do Colaborador (obrigatório)",
+  "userIdentityRequired": "Preencha usuário e nome completo",
+  "userDeleteNamed": "Excluir usuário \"{name}\"?",
+  "@userDeleteNamed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "unitNewTitle": "Nova unidade",
+  "unitFieldsRequired": "Preencha nome, cidade e empresa",
+  "archivalLoadFailed": "Não foi possível carregar a política de arquivamento.",
+  "archivalInvalidPeriods": "Informe períodos válidos (mínimo 5 anos).",
+  "archivalSaved": "Política de arquivamento salva com sucesso.",
+  "archivalSave": "Salvar política de arquivamento",
+  "archivalYearsSuffix": "anos",
+  "archivalPolicyIntro": "Defina, conforme a política interna da empresa, por quantos anos os registros arquivados de cada item permanecem preservados antes de a exclusão definitiva ser habilitada (mínimo legal: 5 anos).",
+  "archivalPpeRecordRule": "Ficha de EPI: retenção fixa de 5 anos (NR-6) — regra própria, não alterada por esta política.",
+  "roleMasterAdmin": "Administrador Master",
+  "roleGeneralAdmin": "Administrador Geral",
+  "roleRegistryAdmin": "Administrador de Registro",
+  "roleLocalAdmin": "Administrador Local",
+  "rolePpeManager": "Gestor de EPI",
+  "roleEmployee": "Funcionário",
+  "roleBuyer": "Comprador",
+  "roleApprover": "Aprovador",
+  "roleCertificationReadOnly": "Certificação (somente leitura)",
+  "unitNameHint": "Ex: Plataforma P-40",
+  "unitTypeBase": "Base",
+  "unitTypeVessel": "Embarcação",
+  "unitTypePlatform": "Plataforma",
+  "employeeShowActive": "Ver colaboradores ativos",
+  "employeeShowArchived": "Ver colaboradores arquivados",
+  "employeeArchivedEmpty": "Nenhum colaborador arquivado.",
+  "employeeArchiveTitle": "Arquivar Colaborador",
+  "employeeRestoreTitle": "Desarquivar Colaborador",
+  "employeeArchiveBody": "O colaborador \"{name}\" será arquivado e deixará de receber novas operações (entregas, requisições e movimentações).\n\nTodo o histórico permanecerá preservado pelo período mínimo de retenção configurado (mínimo de 5 anos).",
+  "@employeeArchiveBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "employeeRestoreBody": "O colaborador \"{name}\" será desarquivado e voltará a ficar ativo, podendo receber novas operações.\n\nTodo o histórico preservado permanece intacto.",
+  "@employeeRestoreBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "epiShowActive": "Ver EPIs ativos",
+  "epiShowArchived": "Ver EPIs arquivados",
+  "epiArchivedEmpty": "Nenhum EPI arquivado.",
+  "epiArchiveTitle": "Arquivar EPI",
+  "epiRestoreTitle": "Desarquivar EPI",
+  "epiArchiveBody": "O EPI \"{name}\" será arquivado e deixará de receber novas operações (entregas, estoque, requisições e compras).\n\nTodo o histórico permanecerá preservado pelo período mínimo de retenção configurado (mínimo de 5 anos).",
+  "@epiArchiveBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "epiRestoreBody": "O EPI \"{name}\" será desarquivado e voltará a ficar ativo, podendo receber novas operações.\n\nTodo o histórico preservado permanece intacto.",
+  "@epiRestoreBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "unitArchivedTitle": "{title} · Arquivadas",
+  "@unitArchivedTitle": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "unitShowActive": "Ver unidades ativas",
+  "unitShowArchived": "Ver unidades arquivadas",
+  "unitArchivedEmpty": "Nenhuma unidade arquivada.",
+  "unitArchiveTitle": "Arquivar Unidade",
+  "unitRestoreTitle": "Desarquivar Unidade",
+  "unitArchiveBody": "A unidade \"{name}\" será arquivada e deixará de receber novas operações.\n\nTodo o histórico permanecerá preservado pelo período mínimo de retenção configurado (mínimo de 5 anos) para consultas, relatórios e auditorias.",
+  "@unitArchiveBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "unitRestoreBody": "A unidade \"{name}\" será desarquivada e voltará a ficar ativa, podendo receber novas operações.\n\nTodo o histórico preservado permanece intacto.",
+  "@unitRestoreBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "archivedOnDate": "Arquivado em {date}",
+  "@archivedOnDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "retentionRemainingDays": "{count, plural, one{Retenção restante: {countLabel} dia} other{Retenção restante: {countLabel} dias}}",
+  "@retentionRemainingDays": {
+    "placeholders": {
+      "count": {
+        "type": "num"
+      },
+      "countLabel": {
+        "type": "String"
+      }
+    }
+  },
+  "retentionSatisfied": "Retenção cumprida",
+  "employeeDetailsSection": "Dados do colaborador",
+  "epiDaysRemaining": "Dias restantes",
+  "epiIdentificationSection": "Identificação",
+  "recordsPendingCount": "{count, plural, one{{countLabel} pendente} other{{countLabel} pendentes}}",
+  "@recordsPendingCount": {
+    "placeholders": {
+      "count": {
+        "type": "num"
+      },
+      "countLabel": {
+        "type": "String"
+      }
+    }
+  },
+  "stockPpeCount": "{count, plural, one{{countLabel} EPI} other{{countLabel} EPIs}}",
+  "@stockPpeCount": {
+    "placeholders": {
+      "count": {
+        "type": "num"
+      },
+      "countLabel": {
+        "type": "String"
+      }
+    }
+  },
+  "stockManufacturerExpiring": "Validade do fabricante próxima",
+  "stockManufacturerExpired": "Validade do fabricante vencida",
+  "stockManufacturerExpiredNote": "Validade do fabricante vencida — retirar do estoque (não entregar).",
+  "stockManufacturerExpiringNote": "Validade do fabricante próxima — priorizar entrega (PEPS).",
+  "stockManufacturerExpiringInNote": "Validade do fabricante próxima (em {days}) — priorizar entrega (PEPS).",
+  "@stockManufacturerExpiringInNote": {
+    "placeholders": {
+      "days": {
+        "type": "String"
+      }
+    }
+  },
+  "moduleVisibilityLoadError": "Não foi possível carregar a visualização de módulos.",
+  "moduleRequests": "Solicitações",
+  "moduleAdministration": "Administração",
+  "importRowError": "Linha {row}: {detail}",
+  "@importRowError": {
+    "placeholders": {
+      "row": {
+        "type": "String"
+      },
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "responsibilityContracting": "Empresa Contratante",
+  "responsibilityOutsourced": "Empresa Terceirizada",
+  "responsibilityProvider": "Empresa Prestadora de Serviço",
+  "responsibilityShared": "Responsabilidade Compartilhada",
+  "responsibilityContract": "Conforme Contrato",
+  "responsibilityUndefined": "Não Definido",
+  "purchaseCreated": "Requisição criada com sucesso",
+  "criticalStockTitle": "Estoque Crítico",
+  "criticalStockBody": "{count, plural, one{{countLabel} EPI abaixo do estoque mínimo} other{{countLabel} EPIs abaixo do estoque mínimo}}",
+  "@criticalStockBody": {
+    "placeholders": {
+      "count": {
+        "type": "num"
+      },
+      "countLabel": {
+        "type": "String"
+      }
+    }
+  },
+  "companyNewTitle": "Nova empresa",
+  "companyCnpjLength": "CNPJ deve ter 14 dígitos",
+  "companyUserLimit": "Limite de usuários",
+  "companyMinimumUsers": "Mínimo de {count} para este plano",
+  "@companyMinimumUsers": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "companyOwnerOptional": "Owner ({role}) — opcional",
+  "companyOwnerInviteHint": "Se informado, o Owner recebe por e-mail o convite com a chave de primeiro acesso. A senha nunca é conhecida pelo {role}.",
+  "companyOwnerName": "Nome do Owner",
+  "companyOwnerEmail": "E-mail do Owner (envia o convite)",
+  "companyPlanIndividual": "Individual (1 usuário)",
+  "companyPlanStart": "Start (até 10)",
+  "companyPlanBusiness": "Business (11 a 25)",
+  "companyPlanCorporate": "Corporate (26 a 100)",
+  "formValidNumber": "Informe um número válido",
+  "formValidEmail": "E-mail inválido",
+  "moduleEmployeeRegistration": "Cadastro de Colaboradores",
+  "unitArchivedOnDate": "Arquivada em {date}",
+  "@unitArchivedOnDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "@companyOwnerOptional": {
+    "placeholders": {
+      "role": {
+        "type": "String"
+      }
+    }
+  },
+  "@companyOwnerInviteHint": {
+    "placeholders": {
+      "role": {
+        "type": "String"
+      }
+    }
+  },
+  "@@comment": "Base-language mirror of pt_BR; generated by tool/sync_locale_aliases.py."
 }

@@ -1,3 +1,4 @@
+import 'package:intl/intl.dart';
 import 'package:epi_design/epi_design.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +11,7 @@ import '../../core/bloc/dashboard_cubit.dart';
 import '../../core/i18n/locale_provider.dart';
 import '../../core/router/navigation_policy.dart';
 import '../../core/router/routes.dart';
+import 'alert_presentation.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key, this.localeProvider});
@@ -134,17 +136,17 @@ class _DashboardContent extends StatelessWidget {
           physics: const NeverScrollableScrollPhysics(),
           crossAxisSpacing: EpiSpacing.md,
           mainAxisSpacing: EpiSpacing.md,
-          childAspectRatio: 1.6,
+          mainAxisExtent: 176 + MediaQuery.textScalerOf(context).scale(48) - 48,
           children: [
             EpiKpiCard(
               label: l10n.dashboardDeliveriesToday,
-              value: '${state.deliveriesToday}',
+              value: NumberFormat.decimalPattern(l10n.localeName).format(state.deliveriesToday),
               icon: Icons.local_shipping_outlined,
               iconColor: EpiColors.info,
             ),
             EpiKpiCard(
               label: l10n.dashboardExpiringEpis,
-              value: '${state.expiringEpis}',
+              value: NumberFormat.decimalPattern(l10n.localeName).format(state.expiringEpis),
               icon: Icons.warning_amber_rounded,
               iconColor: EpiColors.warning,
             ),
@@ -153,13 +155,15 @@ class _DashboardContent extends StatelessWidget {
             // nenhum EPI está crítico, quando a pergunta nem foi feita.
             EpiKpiCard(
               label: l10n.dashboardCriticalStock,
-              value: '${state.criticalStock ?? '—'}',
+              value: state.criticalStock == null
+                  ? '—'
+                  : NumberFormat.decimalPattern(l10n.localeName).format(state.criticalStock),
               icon: Icons.inventory_2_outlined,
               iconColor: EpiColors.danger,
             ),
             EpiKpiCard(
               label: l10n.dashboardPendingPurchases,
-              value: '${state.pendingPurchases}',
+              value: NumberFormat.decimalPattern(l10n.localeName).format(state.pendingPurchases),
               icon: Icons.shopping_cart_outlined,
               iconColor: EpiColors.brand,
             ),
@@ -355,9 +359,9 @@ class _AlertTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final title =
-        alert['title'] as String? ?? alert['message'] as String? ?? '—';
-    final description = alert['description'] as String?;
+    final presentation = presentOperationalAlert(alert, AppLocalizations.of(context));
+    final title = presentation.title;
+    final description = presentation.description;
     // O backend (compute_alerts) classifica o alerta na chave 'type'
     // (danger/warning); mantém-se 'severity' como fallback de compatibilidade.
     final severity =

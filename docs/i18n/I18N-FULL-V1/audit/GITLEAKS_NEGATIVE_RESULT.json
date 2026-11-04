@@ -1,0 +1,9 @@
+{
+  "synthetic_only": true,
+  "exact_ignore_fingerprints": 196,
+  "same_path_as_historical_exception": true,
+  "new_secret_detected": true,
+  "scanner_version": "8.30.1",
+  "returncode": 1,
+  "finding_count": 1
+}

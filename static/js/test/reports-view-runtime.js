@@ -188,6 +188,23 @@ function loadModules(env) {
   return ctx;
 }
 
+// I18N-FULL-V1: acrescenta somente os bindings de apresentação ao HTML
+// caracterizado. Payloads, filtros, permissões e demais campos seguem exatos.
+for (const expected of Object.values(EXPECTED)) {
+  if (expected.refs?.reportArchiveTable) {
+    for (const [action, key, label] of [
+      ['view', 'ui.compras.visualizar_1acb4b', 'Visualizar'],
+      ['print', 'records.print', 'Imprimir'], ['export', 'export', 'Exportar']
+    ]) {
+      expected.refs.reportArchiveTable[1] = expected.refs.reportArchiveTable[1].replace(
+        `data-archive-${action}="5">${label}`, `data-archive-${action}="5" data-i18n="${key}">${label}`);
+    }
+  }
+  if (expected.nodes?.['report-unit']?.[1] === '<option value="">Sem unidade operacional ativa</option>') {
+    expected.nodes['report-unit'][1] = '<option value="" data-i18n="employee.noActiveOperationalUnit">Sem unidade operacional ativa</option>';
+  }
+}
+
 module.exports = function ({ testAsync, test, assert, eq }) {
   testAsync('UBX-V3 relatórios: os módulos reproduzem as funções originais do app.js', async () => {
     const actual = await scenario(loadModules);

@@ -9,9 +9,9 @@
 //
 // Regras puras e corpos de gravação em ../business/company-rules.js; HTTP em
 // ../integrations/companies-api.js. Ficam no app.js, por serem compartilhados
-// ou de outro domínio: companyLogoSrc/companyLogoMarkup (topo, Comercial,
-// Fichas), formatCompanyCurrency (alterado pelo I18N-FULL-V1) e os filtros do
-// Comercial. Eram globais do app.js (Annex B), exceto saveCompany e
+// ou de outro domínio: formatCompanyCurrency (alterado pelo I18N-FULL-V1) e os
+// filtros do Comercial; companyLogoSrc/companyLogoMarkup estão em
+// ../../shared/ui/company-logo.js. Eram globais do app.js (Annex B), exceto saveCompany e
 // toggleCompany (async de bloco); continuam publicadas com os mesmos nomes.
 (function () {
   if (globalThis.__EPI_MODULE_COMPANIES_UI_LOADED__) { return; }

@@ -604,6 +604,11 @@ def not_found(handler):
     send_json(handler, 404, {'error': 'Rota não encontrada.'})
 
 
+PUBLIC_INTEGRITY_ERROR = (
+    'Erro de integridade: o registro conflita com dados existentes ou referências obrigatórias.'
+)
+
+
 def humanize_integrity_error(exc):
     message = str(exc or '')
     lowered = message.lower()
@@ -648,7 +653,9 @@ def humanize_integrity_error(exc):
         return 'Este colaborador já está vinculado a outro perfil de usuário.'
     if 'unique constraint' in lowered or 'duplicate key value' in lowered:
         return 'Registro duplicado: já existe um item com os mesmos identificadores.'
-    return f'Erro de integridade: {message}'
+    # Sem tradução conhecida: o texto bruto do banco (constraint, DETAIL com
+    # valores de outro registro) fica só no log do handler.
+    return PUBLIC_INTEGRITY_ERROR
 
 
 # ── HTTP Request Handler ─────────────────────────────────────────────────────

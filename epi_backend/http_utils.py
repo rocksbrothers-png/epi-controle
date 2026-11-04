@@ -6,17 +6,21 @@ from urllib.parse import unquote
 
 from epi_backend.config import UTC
 
-
 # ── Segredos em texto livre de erro (segurança 503/500) ──────────────────────
 #
 # Mensagens de driver/libpq podem trazer a URL de conexão (inclusive a senha,
 # quando a DATABASE_URL está malformada), host, usuário e SQL. Nos LOGS a
 # senha some e o resto fica para diagnóstico; no CLIENTE nada disso aparece.
 _SECRET_PATTERNS = (
-    # esquema://usuario:senha@host → esquema://usuario:***@host
-    (re.compile(r'([a-zA-Z][a-zA-Z0-9+.-]*://[^\s:/@]+:)[^\s@]+@'), r'\1***@'),
-    # password=..., pwd=..., secret=... em DSN chave=valor ou query
-    (re.compile(r'(?i)\b(password|passwd|pwd|secret|token|apikey|api_key)(\s*[=:]\s*)("[^"]*"|\'[^\']*\'|[^\s&;,]+)'), r'\1\2***'),
+    # esquema://usuario:senha@host (usuário pode ser vazio) → esquema://usuario:***@host
+    (re.compile(r'([a-zA-Z][a-zA-Z0-9+.-]*://[^\s:/@]*:)[^\s@/]+@'), r'\1***@'),
+    # Authorization: Bearer <token> / Basic <credencial>
+    (re.compile(r'(?i)\b(bearer|basic)\s+[A-Za-z0-9._~+/=-]{8,}'), r'\1 ***'),
+    # JWT solto (três segmentos base64url)
+    (re.compile(r'\beyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}'), '***'),
+    # password=..., pwd=..., secret=..., token=... em DSN chave=valor, query ou JSON
+    (re.compile(r'(?i)\b(password|passwd|pwd|secret|token|apikey|api_key|access_token)'
+                r'("?\s*[=:]\s*)("[^"]*"|\'[^\']*\'|[^\s&;,]+)'), r'\1\2***'),
 )
 
 
@@ -29,36 +33,28 @@ def redact_secrets(text):
 
 
 PUBLIC_INTERNAL_ERROR = 'Erro interno do servidor. Os detalhes técnicos ficam registrados nos logs.'
-_INTERNAL_EXCEPTION_NAMES = frozenset({'SchemaMigrationError'})
-# Indícios de texto de infraestrutura que nunca deve ir ao cliente.
-_INFRA_TEXT = re.compile(
-    r'(?i)://|database_url|connection to server|password authentication|could not connect|'
-    r'\bdsn\b|psycopg|sqlite3?\.|no such table|no such column|syntax error|violates .* constraint|'
-    r'duplicate key value|relation \"|column \"'
-)
 
 
-def _is_database_error(exc):
-    for cls in type(exc).__mro__:
-        module = getattr(cls, '__module__', '') or ''
-        if cls.__name__ in _INTERNAL_EXCEPTION_NAMES:
-            return True
-        if module.startswith(('sqlite3', 'psycopg2', 'psycopg')) and cls.__name__ != 'object':
-            return True
-    return False
+class PublicServerError(RuntimeError):
+    """Falha de servidor cuja mensagem é, por CONTRATO, segura para o cliente.
+
+    Só use com texto fixo de negócio escrito no código (nunca `str(exc)` de
+    terceiros, SQL, caminhos, URLs ou dados do usuário). Qualquer outra exceção
+    que chegue a um handler genérico de 500 vira PUBLIC_INTERNAL_ERROR.
+    """
 
 
 def public_error_message(exc):
-    """Texto do erro 500 que pode ir ao cliente.
+    """Texto do erro 500 que pode ir ao cliente: lista de PERMISSÃO, não de bloqueio.
 
-    Erros de banco/driver/migração e textos com cara de infraestrutura viram uma
-    mensagem fixa; mensagens de aplicação (ex.: `RuntimeError` com texto de
-    negócio) continuam como estão, para não mudar o que o usuário já vê.
+    Exceção não classificada → mensagem genérica. A mensagem original só passa
+    quando a exceção é `PublicServerError` (contrato explícito no ponto do raise).
     """
-    texto = str(exc)
-    if _is_database_error(exc) or _INFRA_TEXT.search(texto):
-        return PUBLIC_INTERNAL_ERROR
-    return texto
+    if isinstance(exc, PublicServerError):
+        texto = str(exc).strip()
+        if texto:
+            return texto
+    return PUBLIC_INTERNAL_ERROR
 
 
 def _json_safe(value):

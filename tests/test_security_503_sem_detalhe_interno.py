@@ -7,19 +7,26 @@ público — status, `code`, `kind`, chaves do JSON — continua igual; só o te
 livre vira uma frase fixa. O erro bruto segue no estado interno e no log, com a
 senha redigida.
 """
+import ast
 import io
 import json
 import sqlite3
 from contextlib import redirect_stdout
+from pathlib import Path
+
+import pytest
 
 import app
 from epi_backend import bootstrap
 from epi_backend.http_utils import (
     PUBLIC_INTERNAL_ERROR,
+    PublicServerError,
     public_error_message,
     redact_secrets,
     structured_log,
 )
+
+ROOT = Path(__file__).resolve().parents[1]
 
 # Valores fictícios, só para provar a redação.
 SEGREDO = 'SenhaFicticia123'
@@ -102,19 +109,204 @@ def test_health_saudavel_continua_sem_mensagem():
         _limpa()
 
 
-def test_500_de_banco_vira_mensagem_fixa():
-    assert public_error_message(sqlite3.OperationalError('no such table: users')) == PUBLIC_INTERNAL_ERROR
-    assert public_error_message(sqlite3.IntegrityError('UNIQUE constraint failed: users.email')) == PUBLIC_INTERNAL_ERROR
-    assert public_error_message(RuntimeError(BRUTO)) == PUBLIC_INTERNAL_ERROR
+# Lista de PERMISSÃO: exceção não classificada nunca leva o próprio texto ao cliente,
+# mesmo quando o texto parece inofensivo ou não bate em nenhum padrão conhecido.
+NAO_CLASSIFICADAS = [
+    sqlite3.OperationalError('no such table: users'),
+    sqlite3.IntegrityError('UNIQUE constraint failed: users.email'),
+    RuntimeError(BRUTO),
+    RuntimeError('Texto qualquer com aparência de negócio.'),
+    KeyError('company_id'),
+    TypeError("unsupported operand type(s) for +: 'int' and 'NoneType'"),
+    AttributeError("'NoneType' object has no attribute 'get'"),
+    OSError(2, 'No such file or directory', '/opt/render/project/src/segredo.pem'),
+    ZeroDivisionError('division by zero'),
+    # Montado em tempo de execução: um literal `chave=valor` dispararia o scanner de segredos.
+    Exception('https://api.exemplo.invalid/v1/x?' + 'access_' + 'token=' + 'x' * 12),
+]
 
+
+@pytest.mark.parametrize('exc', NAO_CLASSIFICADAS, ids=lambda e: type(e).__name__)
+def test_excecao_nao_classificada_vira_mensagem_generica(exc):
+    assert public_error_message(exc) == PUBLIC_INTERNAL_ERROR
+
+
+def test_schema_migration_error_vira_mensagem_generica():
     class SchemaMigrationError(Exception):
         pass
     assert public_error_message(SchemaMigrationError('Falha em migração x: y')) == PUBLIC_INTERNAL_ERROR
 
 
-def test_500_de_aplicacao_mantem_a_mensagem():
-    texto = 'Falha no OCR para os idiomas configurados: tesseract ausente'
-    assert public_error_message(RuntimeError(texto)) == texto
+def test_contrato_explicito_preserva_a_mensagem_de_negocio():
+    assert public_error_message(PublicServerError('Nenhum item da ficha foi assinado.')) == \
+        'Nenhum item da ficha foi assinado.'
+    assert public_error_message(PublicServerError('   ')) == PUBLIC_INTERNAL_ERROR
+    assert issubclass(PublicServerError, RuntimeError)  # `except RuntimeError` existentes continuam valendo
+
+
+def _raises_publicos():
+    achados = []
+    for path in sorted((ROOT / 'modules').rglob('*.py')) + sorted((ROOT / 'core').rglob('*.py')) + \
+            sorted((ROOT / 'epi_backend').rglob('*.py')) + [ROOT / 'app.py']:
+        for node in ast.walk(ast.parse(path.read_text(encoding='utf-8'))):
+            if isinstance(node, ast.Raise) and isinstance(node.exc, ast.Call) and \
+                    getattr(node.exc.func, 'id', getattr(node.exc.func, 'attr', '')) == 'PublicServerError':
+                achados.append((str(path.relative_to(ROOT)), node.exc.args))
+    return achados
+
+
+def test_mensagem_publica_e_sempre_texto_fixo_no_codigo():
+    """Contrato explícito: o texto de PublicServerError é literal (nunca f-string, str(exc) ou variável)."""
+    achados = _raises_publicos()
+    assert {arquivo for arquivo, _ in achados} == {'modules/portal/routes.py', 'modules/employees/service.py'}
+    assert len(achados) == 4
+    for arquivo, args in achados:
+        assert len(args) == 1 and isinstance(args[0], ast.Constant) and isinstance(args[0].value, str), arquivo
+
+
+def _HandlerHTTP(metodo, caminho, corpo=b'{}'):
+    """Instância real do EpiHandler, sem socket, para exercitar os métodos do servidor."""
+    handler = object.__new__(app.EpiHandler)
+    handler.command, handler.path = metodo, caminho
+    handler.headers = {'Content-Length': str(len(corpo)), 'Content-Type': 'application/json'}
+    handler.rfile = io.BytesIO(corpo)
+    handler.client_address = ('127.0.0.1', 0)
+    return handler
+
+
+@pytest.mark.parametrize('metodo', ['GET', 'POST', 'PUT', 'DELETE'])
+@pytest.mark.parametrize('exc', [RuntimeError(BRUTO), KeyError('company_id'),
+                                 sqlite3.OperationalError('no such column: senha_hash')],
+                         ids=['runtime', 'keyerror', 'sqlite'])
+def test_handler_real_responde_500_generico(monkeypatch, metodo, exc):
+    bootstrap._set_bootstrap_state(ready=True, error_code='', error_kind='', error_message='')
+    capturado = {}
+    monkeypatch.setattr(app, 'send_json', lambda h, status, payload: capturado.update(status=status, payload=payload))
+
+    def explode(*args, **kwargs):
+        raise exc
+    monkeypatch.setattr(app.router, 'dispatch', explode)
+    saida = io.StringIO()
+    try:
+        with redirect_stdout(saida):
+            getattr(app.EpiHandler, f'do_{metodo}')(_HandlerHTTP(metodo, '/api/qualquer-rota'))
+    finally:
+        _limpa()
+    assert capturado['status'] == 500
+    assert capturado['payload'] == {'error': PUBLIC_INTERNAL_ERROR}
+    assert SEGREDO not in saida.getvalue()  # log mantém diagnóstico, sem a senha
+
+
+def test_handler_real_preserva_mensagem_de_contrato(monkeypatch):
+    bootstrap._set_bootstrap_state(ready=True, error_code='', error_kind='', error_message='')
+    capturado = {}
+    monkeypatch.setattr(app, 'send_json', lambda h, status, payload: capturado.update(status=status, payload=payload))
+
+    def explode(*args, **kwargs):
+        raise PublicServerError('Nenhum item da ficha foi assinado.')
+    monkeypatch.setattr(app.router, 'dispatch', explode)
+    try:
+        with redirect_stdout(io.StringIO()):
+            app.EpiHandler.do_POST(_HandlerHTTP('POST', '/api/qualquer-rota'))
+    finally:
+        _limpa()
+    assert capturado == {'status': 500, 'payload': {'error': 'Nenhum item da ficha foi assinado.'}}
+
+
+def test_integridade_sem_traducao_nao_devolve_texto_do_banco():
+    bruto = ('insert or update on table "deliveries" violates foreign key constraint "x_fkey" '
+             'DETAIL: Key (employee_id)=(991) is not present in table "employees" (outro@exemplo.invalid).')
+    texto = app.humanize_integrity_error(sqlite3.IntegrityError(bruto))
+    assert texto == app.PUBLIC_INTEGRITY_ERROR
+    assert 'outro@exemplo.invalid' not in texto and 'x_fkey' not in texto
+    # Traduções conhecidas continuam iguais.
+    assert app.humanize_integrity_error(sqlite3.IntegrityError('UNIQUE constraint failed: units.company_id, units.name')) == \
+        'Já existe uma unidade com este nome nesta empresa.'
+
+
+def test_aviso_de_secao_do_bootstrap_nao_expoe_erro_bruto():
+    from modules.auth import service
+    avisos = []
+
+    def falha():
+        raise sqlite3.OperationalError('no such column: senha_hash in table users')
+    with redirect_stdout(io.StringIO()):
+        resultado = service._safe_bootstrap_section('units', falha, list, avisos, {'id': 1, 'role': 'admin', 'company_id': 1})
+    assert resultado == []
+    assert avisos == [{'section': 'units', 'message': PUBLIC_INTERNAL_ERROR, 'type': 'ServerError'}]
+
+
+def test_erro_do_mercado_pago_nao_ecoa_corpo_bruto(monkeypatch):
+    from modules.payments import routes as pay_routes
+    from modules.payments.mp_client import MercadoPagoError
+    resposta = {'message': 'invalid card', 'error': 'bad_request', 'status': 400,
+                'cause': [{'code': 2006, 'description': 'Card Token not found', 'data': 'payer@exemplo.invalid'}],
+                'request': {'payer': {'email': 'payer@exemplo.invalid'}, 'token': 'tok_ABCDEF'}}
+    capturado = {}
+    monkeypatch.setattr(pay_routes, 'send_json', lambda h, status, payload: capturado.update(status=status, payload=payload))
+    pay_routes._mp_error_response(object(), MercadoPagoError('Mercado Pago: invalid card', status=400, response=resposta))
+    erro = capturado['payload']['error']
+    assert capturado['status'] == 400 and erro['code'] == 'MERCADO_PAGO_ERROR'
+    assert erro['message'] == 'Mercado Pago: invalid card'
+    assert erro['details'] == {'error': 'bad_request', 'status': 400,
+                               'cause': [{'code': 2006, 'description': 'Card Token not found'}]}
+    assert 'payer@exemplo.invalid' not in json.dumps(capturado) and 'tok_ABCDEF' not in json.dumps(capturado)
+
+
+def test_falha_de_conexao_com_mercado_pago_nao_expoe_o_erro_de_rede(monkeypatch):
+    import urllib.error
+
+    from modules.payments import mp_client
+    monkeypatch.setattr(mp_client, 'MERCADO_PAGO_ACCESS_TOKEN', 'TESTE-token-ficticio')
+
+    def falha(*args, **kwargs):
+        raise urllib.error.URLError(f'proxy {HOST}:3128 recusou')
+    monkeypatch.setattr(mp_client.urllib.request, 'urlopen', falha)
+    saida = io.StringIO()
+    with redirect_stdout(saida), pytest.raises(mp_client.MercadoPagoError) as erro:
+        mp_client.get('/v1/payments/1')
+    assert str(erro.value) == 'Falha de conexão com o Mercado Pago.'
+    assert HOST in saida.getvalue()  # diagnóstico continua no log
+
+
+def test_webhook_assinado_com_falha_interna_nao_expoe_o_erro(monkeypatch):
+    from modules.payments import routes as pay_routes
+    monkeypatch.setattr(pay_routes.service, 'verify_webhook_signature', lambda headers, query: True)
+
+    def explode(*args, **kwargs):
+        raise sqlite3.OperationalError('no such table: subscriptions')
+    monkeypatch.setattr(pay_routes.service, 'handle_webhook', explode)
+
+    class _Conn:
+        def rollback(self):
+            pass
+
+        def close(self):
+            pass
+    monkeypatch.setattr(pay_routes, 'get_connection', lambda: _Conn())
+    capturado = {}
+    monkeypatch.setattr(pay_routes, 'send_json', lambda h, status, payload: capturado.update(status=status, payload=payload))
+
+    class _H:
+        def __init__(self):
+            self.headers = {}
+    with redirect_stdout(io.StringIO()):
+        pay_routes.handle_post_webhook(_H(), app.urlparse('/api/payments/webhook?type=payment&data.id=1'), {}, None)
+    assert capturado == {'status': 200, 'payload': {'ok': False, 'error': PUBLIC_INTERNAL_ERROR}}
+
+
+def test_webhook_sem_assinatura_continua_401(monkeypatch):
+    from modules.payments import routes as pay_routes
+    monkeypatch.setattr(pay_routes.service, 'verify_webhook_signature', lambda headers, query: False)
+    capturado = {}
+    monkeypatch.setattr(pay_routes, 'send_json', lambda h, status, payload: capturado.update(status=status, payload=payload))
+
+    class _H:
+        def __init__(self):
+            self.headers = {}
+    with redirect_stdout(io.StringIO()):
+        pay_routes.handle_post_webhook(_H(), app.urlparse('/api/payments/webhook'), {}, None)
+    assert capturado['status'] == 401 and capturado['payload']['error']['code'] == 'INVALID_SIGNATURE'
 
 
 def test_todos_os_500_genericos_usam_a_mensagem_publica():
@@ -133,3 +325,14 @@ def test_log_mantem_diagnostico_e_redige_a_senha():
     assert HOST in linha  # diagnóstico preservado para o operador
     assert redact_secrets('host=x password=abc user=y') == 'host=x password=*** user=y'
     assert redact_secrets('postgres://u:p@h/db') == 'postgres://u:***@h/db'
+    assert redact_secrets('postgresql://:p@h/db') == 'postgresql://:***@h/db'
+    assert redact_secrets('Authorization: Bearer abcdefghijklmnop') == 'Authorization: Bearer ***'
+    assert redact_secrets('jwt eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.abcdefghij fim') == 'jwt *** fim'
+    assert redact_secrets('{"password": "s3cr3t", "user": "x"}') == '{"password": ***, "user": "x"}'
+
+
+def test_log_redige_segredo_dentro_de_estruturas():
+    saida = io.StringIO()
+    with redirect_stdout(saida):
+        structured_log('error', 'x', detalhes={'dsn': f'postgresql://u:{SEGREDO}@h/db', 'lista': [f'token={SEGREDO}']})
+    assert SEGREDO not in saida.getvalue()

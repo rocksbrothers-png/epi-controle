@@ -30,18 +30,48 @@ from core.database import get_connection
 from core.repository import require_actor, require_master_actor
 from core.security import require_bearer_actor, resolve_actor_user_id
 from epi_backend.config import BASE_DIR
-from epi_backend.http_utils import public_error_message, require_fields, send_bytes, send_json, structured_log
+from epi_backend.http_utils import (
+    public_error_message,
+    redact_secrets,
+    require_fields,
+    send_bytes,
+    send_json,
+    structured_log,
+)
 from modules.payments import service, subscriptions_service
 from modules.payments.mp_client import MercadoPagoError
 
 _CHECKOUT_PAGE = Path(BASE_DIR) / 'pagamento.html'
 
 
+def _public_mp_details(response):
+    """Só os campos de diagnóstico do Mercado Pago que o cliente pode ver.
+
+    O corpo bruto da API de terceiro pode ecoar dados do pagador e da requisição;
+    a chave `details` continua no contrato, com uma lista de permissão.
+    """
+    if not isinstance(response, dict):
+        return {}
+    details = {}
+    for key in ('error', 'status'):
+        value = response.get(key)
+        if isinstance(value, (str, int)) and not isinstance(value, bool):
+            details[key] = value
+    causes = response.get('cause')
+    if isinstance(causes, list):
+        details['cause'] = [
+            {k: c[k] for k in ('code', 'description') if isinstance(c.get(k), (str, int)) and not isinstance(c.get(k), bool)}
+            for c in causes[:5] if isinstance(c, dict)
+        ]
+    return details
+
+
 def _mp_error_response(handler, exc):
     status = exc.status if isinstance(exc.status, int) and 400 <= exc.status < 600 else 502
     return send_json(handler, status, {
         'ok': False,
-        'error': {'code': 'MERCADO_PAGO_ERROR', 'message': str(exc), 'details': exc.response},
+        'error': {'code': 'MERCADO_PAGO_ERROR', 'message': redact_secrets(str(exc))[:300],
+                  'details': _public_mp_details(exc.response)},
     })
 
 

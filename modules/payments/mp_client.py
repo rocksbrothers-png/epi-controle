@@ -79,7 +79,8 @@ def _request(method, path, body=None, *, idempotency_key=None):
         ) from exc
     except urllib.error.URLError as exc:
         structured_log("error", "mercadopago.connection_error", method=method.upper(), path=path, error=str(exc))
-        raise MercadoPagoError(f"Falha de conexão com o Mercado Pago: {exc}") from exc
+        # O texto do URLError (host, proxy, caminho) fica só no log acima.
+        raise MercadoPagoError("Falha de conexão com o Mercado Pago.") from exc
 
 
 def post(path, body, *, idempotency_key=None):

@@ -2815,21 +2815,7 @@ function isMobileUserAgent() {
 // getCompanyFormField, setCompanyFieldValue e readCompanyFieldValue: static/js/modules/companies/ui/ (UBX-V5, Etapa 2).
 
 
-// SECURITY-LOGO-XSS-V1: o logotipo vem do banco e entra num atributo src via
-// innerHTML. Só uma data URL base64 de PNG/JPEG/SVG é usada (o alfabeto base64
-// não tem aspas, espaços nem < >); qualquer outro valor mostra o logotipo padrão.
-// O backend aplica a mesma regra ao gravar (modules/commercial/service.py).
-function companyLogoSrc(logoValue) {
-  const value = String(logoValue || '');
-  return /^data:image\/(?:png|jpeg|jpg|svg\+xml);base64,[A-Za-z0-9+/]+={0,2}$/.test(value) ? value : DEFAULT_COMPANY_LOGO;
-}
-
-function companyLogoMarkup(company, className = 'company-logo') {
-  const label = company?.name || 'Empresa';
-  // Nome da empresa e src vão escapados para atributo (aspas não fecham o atributo).
-  const attr = (text) => String(text).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
-  return `<img class="${attr(className)}" src="${attr(companyLogoSrc(company?.logo_type))}" alt="Logotipo de ${attr(label)}">`;
-}
+// companyLogoSrc e companyLogoMarkup: static/js/modules/shared/ui/company-logo.js (UBX-V5).
 
 function renderPlatformLogoPreview(logoValue) {
   if (!refs.platformLogoPreview) return;

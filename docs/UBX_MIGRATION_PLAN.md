@@ -269,6 +269,15 @@ Detalhes em [`UBX_APPJS_AUDITORIA.md` §16](UBX_APPJS_AUDITORIA.md#16-ubx-v5-eta
   (0 divergências), 27 sabotagens detectadas e Chromium 10/10 nos 5 idiomas.
   Auditoria independente aprovada; risco de segurança preexistente (logotipo) documentado na §16.4.
 
+## UBX-V5 — fatia do logotipo (2026-11-03)
+
+Detalhes em [`UBX_APPJS_AUDITORIA.md` §17](UBX_APPJS_AUDITORIA.md#17-ubx-v5--fatia-do-logotipo-2026-11-03-companylogosrccompanylogomarkup--shared).
+
+- `app.js` 16.979 → 16.965 linhas; 727 → 725 declarações; 104 endpoints (sem mudança).
+- `modules/shared/ui/company-logo.js`: original × módulo em 1.000+ combinações (0 divergências), 10 sabotagens
+  detectadas e Chromium 70/70 nos 5 idiomas (logotipo malicioso/legítimo, Empresas, Minha Empresa).
+
 ## Próximo passo
-UBX-V5, Etapa 2 (restante): Comercial (e `renderMyCompanyDomains`/`formatCompanyCurrency`), após a I18N-FULL-V1 e,
-por último, a Etapa 3 (navegação/bootstrap) com os pré-requisitos de auditoria de autorização.
+UBX-V5, Etapa 2 (restante): Comercial (e `renderMyCompanyDomains`/`formatCompanyCurrency`/`updateTopbarCompanyBadge`),
+após a I18N-FULL-V1 (o PR altera essas funções — §17) e, por último, a Etapa 3 (navegação/bootstrap) com os
+pré-requisitos de auditoria de autorização.

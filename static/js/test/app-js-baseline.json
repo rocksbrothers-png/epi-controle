@@ -272,6 +272,10 @@
       "domainStatusLabel",
       "addMyCompanyDomain",
       "handleMyCompanyDomainAction"
+    ],
+    "js/modules/shared/ui/company-logo.js": [
+      "companyLogoSrc",
+      "companyLogoMarkup"
     ]
   },
   "declarations": [
@@ -495,8 +499,6 @@
     "commercialActions",
     "commercialAlertTone",
     "commercialRiskMeta",
-    "companyLogoMarkup",
-    "companyLogoSrc",
     "configRoleOptions",
     "confirmOnboarding2fa",
     "consumePendingSessionMessage",

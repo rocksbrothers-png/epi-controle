@@ -15,6 +15,7 @@ from epi_backend.config import UTC
 # o caminho da requisição (controlado pelo cliente, sem autenticação) é logado
 # várias vezes por request. O texto acima do limite é truncado ANTES das regex.
 _REDACT_MAX_CHARS = 8192
+_REDACT_MARGIN = 1024
 _SENSITIVE_NAME = (
     r'(?:password|passwd|pwd|pgpassword|secret|client[_-]?secret|token|access[_-]?token|'
     r'refresh[_-]?token|api[_-]?key|x-api-key|apikey|authorization)'
@@ -25,13 +26,17 @@ _SECRET_PATTERNS = (
     # esquema://usuario:senha@host — a senha vai até o ÚLTIMO '@' do token (aceita '@' e '/').
     (re.compile(r'(?<![A-Za-z0-9+.-])([A-Za-z][A-Za-z0-9+.-]{0,31}://[^\s:/@]{0,256}:)\S{1,512}@(?=[^\s@]*(?:\s|$))'),
      r'\1***@'),
-    # Authorization: Bearer|Basic|Token <credencial>
-    (re.compile(r'(?i)(?<![A-Za-z0-9])(bearer|basic|token)\s+[A-Za-z0-9._~+/=-]{1,4096}'), r'\1 ***'),
+    # Bearer|Basic <credencial>; `Token` só logo após `Authorization:`. O valor precisa ter
+    # cara de credencial (≥ 8 caracteres com dígito ou símbolo), para não mascarar texto como
+    # "Invalid token signature" ou "basic validation failed".
+    (re.compile(r'(?i)(?<![A-Za-z0-9])(bearer|basic|(?<=:)\s*token)\s+'
+                r'(?=[A-Za-z0-9._~+/=-]{8,4096})(?=[A-Za-z0-9._~+/=-]{0,4095}?(?:[0-9._~+/=-]|(?-i:[a-z][A-Z])))[A-Za-z0-9._~+/=-]{8,4096}'),
+     r'\1 ***'),
     # JWT solto (três segmentos base64url)
     (re.compile(r'(?<![A-Za-z0-9_-])eyJ[A-Za-z0-9_-]{5,4096}\.[A-Za-z0-9_-]{5,4096}\.[A-Za-z0-9_-]{5,4096}'), '***'),
     # Cabeçalhos HTTP com credencial, mesmo sem aspas: `X-Api-Key: abc`, `Cookie: s=1`.
     (re.compile(r'(?im)(?<![A-Za-z0-9-])(x-api-key|authorization|proxy-authorization|cookie|set-cookie)'
-                r'([ \t]*:[ \t]*)(?![ \t]*(?:bearer|basic|token)\s|[ \t]*\*\*\*)([^\r\n]{1,4096})'), r'\1\2***'),
+                r'([ \t]*+:[ \t]*+)((?:bearer|basic|token)[ \t]+)?+(?!\*\*\*)([^\r\n]{1,4096})'), r'\1\2\3***'),
     # nome=valor (DSN chave=valor, query string, env): qualquer valor até o separador
     (re.compile(r'(?i)(?<![A-Za-z0-9])(' + _SENSITIVE_NAME + r')(\s*=\s*)("[^"]{0,4096}"|\'[^\']{0,4096}\'|[^\s&;,]{1,4096})'),
      r'\1\2***'),
@@ -46,14 +51,22 @@ _SENSITIVE_KEY = re.compile(r'(?i)(?:^|[^A-Za-z0-9])' + _SENSITIVE_NAME + r'$')
 def redact_secrets(text):
     """Remove senhas/tokens de um texto livre, preservando o resto para diagnóstico."""
     texto = str(text)
-    if len(texto) > _REDACT_MAX_CHARS:
-        texto = texto[:_REDACT_MAX_CHARS] + f'…[truncado: {len(texto) - _REDACT_MAX_CHARS} caracteres]'
+    excedente = len(texto) - _REDACT_MAX_CHARS
+    # Redige uma fatia com folga ANTES de cortar: um segredo que cruza o limite é
+    # mascarado inteiro, e o corte nunca deixa metade de uma senha no log.
+    if excedente > 0:
+        texto = texto[:_REDACT_MAX_CHARS + _REDACT_MARGIN]
     for pattern, replacement in _SECRET_PATTERNS:
         texto = pattern.sub(replacement, texto)
+    if excedente > 0:
+        texto = texto[:_REDACT_MAX_CHARS] + f'…[truncado: {excedente} caracteres]'
     return texto
 
 
-def _is_sensitive_key(key):
+def _is_sensitive_key(key, value=None):
+    # Booleanos, números e None não carregam credencial (`has_token: True`).
+    if isinstance(value, (bool, int, float)) or value is None:
+        return False
     return bool(_SENSITIVE_KEY.search(str(key)))
 
 
@@ -90,7 +103,7 @@ def _json_safe(value):
     if isinstance(value, (list, tuple)):
         return [_json_safe(item) for item in value]
     if isinstance(value, dict):
-        return {redact_secrets(key): ('***' if _is_sensitive_key(key) else _json_safe(item))
+        return {redact_secrets(key): ('***' if _is_sensitive_key(key, item) else _json_safe(item))
                 for key, item in value.items()}
     return redact_secrets(value)
 
@@ -190,7 +203,7 @@ def structured_log(level, event, **fields):
         "ts": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
         "level": str(level).lower(),
         "event": event,
-        **{key: ('***' if _is_sensitive_key(key) else _json_safe(value)) for key, value in fields.items()},
+        **{key: ('***' if _is_sensitive_key(key, value) else _json_safe(value)) for key, value in fields.items()},
     }
     print(json.dumps(payload, ensure_ascii=False), flush=True)
 

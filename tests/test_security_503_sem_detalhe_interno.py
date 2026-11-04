@@ -405,3 +405,33 @@ def test_log_redige_campo_e_chave_sensiveis():
         structured_log('error', 'x', password=SEGREDO, dados={'client_secret': SEGREDO, 'ok': 1})
     linha = json.loads(saida.getvalue())
     assert linha['password'] == '***' and linha['dados'] == {'client_secret': '***', 'ok': 1}
+
+
+@pytest.mark.parametrize('texto', ['Invalid token signature', 'token expired at 10:00', 'basic validation failed',
+                                   'Invalid token Signature', 'authorization header missing'])
+def test_redacao_nao_mascara_texto_comum_com_palavras_de_credencial(texto):
+    assert redact_secrets(texto) == texto
+
+
+@pytest.mark.parametrize('bruto,esperado', [
+    ('Authoriza' + 'tion: Bear' + 'er q1w2e3r4t5y6', 'Authorization: Bearer ***'),
+    ('Authoriza' + 'tion: bas' + 'ic dXNlcjpwYXNz', 'Authorization: basic ***'),
+    ('Bas' + 'ic dXNlcjpwYXNz', 'Basic ***'),
+    ('Authoriza' + 'tion:abc', 'Authorization:***'),
+])
+def test_redacao_de_cabecalho_preserva_o_esquema(bruto, esperado):
+    assert redact_secrets(bruto) == esperado
+
+
+def test_segredo_no_limite_do_corte_nao_vaza_metade():
+    texto = 'x' * 8180 + ' postgresql://u:' + 'Q' * 14 + '@h/db ' + 'y' * 100
+    saida = redact_secrets(texto)
+    assert 'Q' not in saida and saida.endswith('caracteres]')
+
+
+def test_chave_sensivel_com_valor_booleano_ou_numerico_fica_legivel():
+    saida = io.StringIO()
+    with redirect_stdout(saida):
+        structured_log('info', 'x', has_token=True, retry_token=3, dados={'has_secret': False})
+    linha = json.loads(saida.getvalue())
+    assert linha['has_token'] is True and linha['retry_token'] == 3 and linha['dados'] == {'has_secret': False}

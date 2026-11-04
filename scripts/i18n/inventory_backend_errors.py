@@ -74,6 +74,14 @@ WRAPPERS = {
         'message_index': 2, 'template': 'Linha {line} — {item} (item #{itemid}): {cause}', 'status': 400,
         'payload': "{'ok': False, 'error': <mensagem>, 'validation': {code, line_index, item_id, item_name, field}}",
     },
+    'RollbackConflict': {  # modules/data_migration/rollback.py: f'Reversão recusada: {reason}. Nenhum registro foi revertido.'
+        'message_index': 0, 'template': 'Reversão recusada: {cause}. Nenhum registro foi revertido.', 'status': 400,
+        'payload': "{'error': <mensagem>}", 'vars': ['cause'],
+    },
+    'SourceError': {  # modules/data_migration/sources.py: f'{message} (linha {row}).'
+        'message_index': 0, 'template': '{cause} (linha {line}).', 'status': 400,
+        'payload': "{'error': <mensagem>, 'diagnostics': [...]}", 'vars': ['cause', 'line'],
+    },
 }
 
 
@@ -178,7 +186,8 @@ class Collector(ast.NodeVisitor):
             name = exc.func.id if isinstance(exc.func, ast.Name) else getattr(exc.func, 'attr', '?')
             if name in WRAPPERS:
                 w = WRAPPERS[name]
-                self.add(node, w['template'], ['line', 'item', 'itemid', 'cause'], f'wrapper {name}', w['status'], w['payload'])
+                self.add(node, w['template'], w.get('vars', ['line', 'item', 'itemid', 'cause']), f'wrapper {name}',
+                         w['status'], w['payload'])
                 if len(exc.args) > w['message_index']:
                     text, names = template_of(exc.args[w['message_index']])
                     self.add(node, text, names, f'causa de {name}', w['status'], w['payload'])
@@ -274,11 +283,19 @@ class LiteralDomains:
         return sorted(values) or None
 
 
+# Nomes que coincidem com métodos de dict/list/str/conexão: no grafo global, por nome,
+# qualquer `payload.get(...)` pareceria chamar uma função `get` de serviço.
+GENERIC_METHOD_NAMES = {'get', 'set', 'update', 'pop', 'items', 'keys', 'values', 'append', 'add', 'remove',
+                        'format', 'strip', 'split', 'join', 'execute', 'fetchone', 'fetchall', 'commit', 'rollback',
+                        'close', 'run', 'copy', 'clear', 'count', 'index', 'insert', 'extend', 'sort', 'replace',
+                        'encode', 'decode', 'lower', 'upper', 'read', 'write', 'send', 'load', 'dump', 'parse'}
+
+
 class CallGraph:
     """Rotas registradas (router.register) e quem chama quem, por nome, em modules/**."""
 
     def __init__(self):
-        self.routes, self.callers = {}, {}
+        self.routes, self.callers, self.local_callers = {}, {}, {}
         sources = sorted((ROOT / 'modules').rglob('*.py')) + sorted((ROOT / 'epi_backend').rglob('*.py'))
         sources += [ROOT / name for name in ('app.py', 'server_postgres.py') if (ROOT / name).exists()]
         for path in sources:
@@ -307,14 +324,32 @@ class CallGraph:
                             callee = call.func.id if isinstance(call.func, ast.Name) else getattr(call.func, 'attr', None)
                             if callee and callee != node.name:
                                 self.callers.setdefault(callee, set()).add(node.name)
+                                self.local_callers.setdefault((self._package(path), callee), set()).add(node.name)
 
-    def endpoints(self, function, depth=5):
+    @staticmethod
+    def _package(path):
+        parts = Path(path).resolve().relative_to(ROOT).parts
+        return parts[1] if len(parts) > 2 and parts[0] == 'modules' else parts[0]
+
+    def endpoints(self, function, depth=5, package=None):
+        """Busca primeiro chamadores no próprio pacote (nomes genéricos como `get` ou
+        `_authorize` existem em vários módulos); só sem resultado local usa o grafo global."""
+        if package:
+            local = self._walk(function, depth, lambda fn: self.local_callers.get((package, fn), ()))
+            if local:
+                return local
+        if function in GENERIC_METHOD_NAMES:
+            return []  # `x.get(...)` em todo o código não é chamada desta função
+        return self._walk(function, depth,
+                          lambda fn: () if fn in GENERIC_METHOD_NAMES else self.callers.get(fn, ()))
+
+    def _walk(self, function, depth, callers_of):
         seen, frontier, found = {function}, [function], set()
         for _ in range(depth):
             nxt = []
             for fn in frontier:
                 found |= self.routes.get(fn, set())
-                for caller in self.callers.get(fn, ()):
+                for caller in callers_of(fn):
                     if caller not in seen:
                         seen.add(caller)
                         nxt.append(caller)
@@ -367,10 +402,12 @@ def main():
                         item['vars'] = ['line'] + [v for v in item['vars'] if v not in ('label', 'entry')]
                         item['expanded_prefix'] = f'{old.strip()} → {new.strip()}'
                 text = item['template']
-                eps = graph.endpoints(item['function'])
+                eps = graph.endpoints(item['function'], package=module)
+                # Proteção de contrato usa o grafo global (superconjunto, conservador).
+                eps_all = sorted(set(eps) | set(graph.endpoints(item['function'])))
                 fixed = re.sub(r'\{\w+\}', '', text)
                 logic = [f['where'] for f in FRONTEND_TEXT_LOGIC
-                         if f['needle'] in text.lower() and any(f['endpoint'] in e for e in eps)]
+                         if f['needle'] in text.lower() and any(f['endpoint'] in e for e in eps_all)]
                 # Contrato primeiro: uma mensagem que alimenta comparação textual continua
                 # "preservar" mesmo que alguém crie um template para ela (o gate então reprova).
                 if logic:

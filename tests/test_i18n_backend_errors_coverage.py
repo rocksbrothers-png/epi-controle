@@ -29,7 +29,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 LOCALES = ['pt-BR', 'en-GB', 'es-ES', 'fr-FR', 'nb-NO']
 # Módulos cujos lotes foram concluídos (cresce a cada lote).
-DONE = ['purchases', 'ppe_tests', 'stock']
+DONE = ['purchases', 'ppe_tests', 'stock', 'data_migration', 'employees', 'units', 'ficha', 'users']
 
 
 def _inventory():

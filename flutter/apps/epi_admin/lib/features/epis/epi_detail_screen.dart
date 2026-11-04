@@ -1,3 +1,5 @@
+import 'package:epi_admin/core/i18n/presentation_formatters.dart';
+import 'package:epi_admin/core/i18n/localized_epi_badge.dart';
 import 'package:epi_design/epi_design.dart';
 import 'package:flutter/material.dart';
 import 'package:epi_admin/core/i18n/generated/app_localizations.dart';
@@ -28,7 +30,11 @@ class EpiDetailScreen extends StatelessWidget {
                 color: EpiColors.brandSoft,
                 borderRadius: BorderRadius.circular(EpiRadius.lg),
               ),
-              child: const Icon(Icons.shield_outlined, size: 48, color: EpiColors.brand),
+              child: const Icon(
+                Icons.shield_outlined,
+                size: 48,
+                color: EpiColors.brand,
+              ),
             ),
           ),
           const SizedBox(height: EpiSpacing.lg),
@@ -40,7 +46,7 @@ class EpiDetailScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: EpiSpacing.lg),
-          Center(child: EpiBadge(status: badgeStatus)),
+          Center(child: LocalizedEpiBadge(status: badgeStatus)),
           const SizedBox(height: EpiSpacing.xl2),
 
           // KPIs de estoque — CORPORATIVOS. Esta é a ficha do catálogo da
@@ -74,30 +80,41 @@ class EpiDetailScreen extends StatelessWidget {
 
           // Detail fields
           _DetailSection(
-            title: 'Certificado de Aprovação (CA)',
+            title: l10n.epiCaLabel,
             items: [
               if (epi.caNumber != null)
                 _DetailRow(label: l10n.epiCaLabel, value: epi.caNumber!),
               if (epi.caExpiryDate != null)
-                _DetailRow(label: l10n.epiCaExpiryLabel, value: epi.caExpiryDate!),
+                _DetailRow(
+                  label: l10n.epiCaExpiryLabel,
+                  value: epi.caExpiryDate!,
+                ),
               if (days != null)
                 _DetailRow(
-                  label: 'Dias restantes',
-                  value: days < 0 ? 'Vencido' : '$days dias',
+                  label: l10n.epiDaysRemaining,
+                  value: days < 0
+                      ? l10n.epiStatusExpired
+                      : l10n.operationalAlertDays(
+                          days,
+                          formatDisplayCount(days, l10n.localeName),
+                        ),
                 ),
             ],
           ),
           if (epi.code != null || epi.validityDays != null) ...[
             const SizedBox(height: EpiSpacing.lg),
             _DetailSection(
-              title: 'Identificação',
+              title: l10n.epiIdentificationSection,
               items: [
                 if (epi.code != null)
                   _DetailRow(label: l10n.epiCodeLabel, value: epi.code!),
                 if (epi.validityDays != null)
                   _DetailRow(
                     label: l10n.epiValidityDaysLabel,
-                    value: '${epi.validityDays} dias',
+                    value: l10n.operationalAlertDays(
+                      epi.validityDays!,
+                      formatDisplayCount(epi.validityDays!, l10n.localeName),
+                    ),
                   ),
               ],
             ),
@@ -121,10 +138,9 @@ class _DetailSection extends StatelessWidget {
       children: [
         Text(
           title,
-          style: Theme.of(context)
-              .textTheme
-              .titleSmall
-              ?.copyWith(color: EpiColors.textMuted),
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(color: EpiColors.textMuted),
         ),
         const SizedBox(height: EpiSpacing.sm),
         Card(
@@ -155,10 +171,9 @@ class _DetailRow extends StatelessWidget {
             width: 130,
             child: Text(
               label,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: EpiColors.textMuted),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: EpiColors.textMuted),
             ),
           ),
           Expanded(

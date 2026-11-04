@@ -239,10 +239,10 @@ class _SupplierFormDialogState extends State<_SupplierFormDialog> {
               value: _integrationLevel,
               decoration: InputDecoration(
                   labelText: l10n.supplierIntegrationLevelLabel),
-              items: const [
-                DropdownMenuItem(value: 'email', child: Text('E-mail')),
-                DropdownMenuItem(value: 'portal', child: Text('Portal')),
-                DropdownMenuItem(value: 'api', child: Text('API')),
+              items: [
+                DropdownMenuItem(value: 'email', child: Text(AppLocalizations.of(context).employeeContactEmail)),
+                DropdownMenuItem(value: 'portal', child: Text(AppLocalizations.of(context).navPortal)),
+                const DropdownMenuItem(value: 'api', child: Text('API')),
               ],
               onChanged: (v) =>
                   setState(() => _integrationLevel = v ?? 'email'),

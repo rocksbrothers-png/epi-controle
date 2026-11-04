@@ -167,7 +167,7 @@
           ${h.actor_role ? `<small>(${esc(h.actor_role)})</small>` : ''}
           — ${esc(h.action || h.status || '')}
           ${h.previous_status ? `<em> ${esc(EPI_FEEDBACK_STATUS_LABELS[h.previous_status] || h.previous_status)} → ${esc(EPI_FEEDBACK_STATUS_LABELS[h.status] || h.status)}</em>` : ''}
-          ${h.reason ? `<small> Motivo: ${esc(h.reason)}</small>` : ''}
+          ${h.reason ? `<small> ${(globalThis.EpiI18n?.bindText?.('ui.app.motivo_p0_3cc86d',{p0:(h.reason)},'Motivo: {p0}') ?? `Motivo: ${esc(h.reason)}`)}</small>` : ''}
           ${h.notes ? `<br><span>${esc(h.notes)}</span>` : ''}
         </div>`).join('')
         : `<em>${tr('portal.noHistory', 'Sem histórico.')}</em>`;

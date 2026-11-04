@@ -22,6 +22,13 @@
   }
 
   // ── Formatação de datas (idêntico a app.js formatDate) ───────────────────
+  // I18N-FULL-V1: só a apresentação segue o idioma ativo (pt-BR sem motor ou
+  // com código inválido). O valor de origem nunca é regravado.
+  function displayLocale() {
+    const lang = globalThis.EpiI18n?.lang;
+    try { return lang && Intl.DateTimeFormat.supportedLocalesOf([lang]).length ? lang : 'pt-BR'; } catch { return 'pt-BR'; }
+  }
+
   function formatDate(value) {
     const raw = String(value || '').trim();
     if (!raw) { return '-'; }
@@ -29,13 +36,13 @@
       ? new Date(`${raw}T00:00:00`)
       : new Date(raw);
     if (Number.isNaN(parsed.getTime())) { return '-'; }
-    return new Intl.DateTimeFormat('pt-BR').format(parsed);
+    return new Intl.DateTimeFormat(displayLocale()).format(parsed);
   }
 
   function formatDateTime(value) {
     const parsed = new Date(String(value || '').trim());
     if (Number.isNaN(parsed.getTime())) { return '-'; }
-    return parsed.toLocaleString('pt-BR');
+    return parsed.toLocaleString(displayLocale());
   }
 
   // ── Filtro por empresa do usuário (idêntico a app.js) ────────────────────

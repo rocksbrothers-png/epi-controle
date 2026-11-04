@@ -135,7 +135,7 @@
     if (!state) {return;}
     const sk = getStorageKeys();
     state.requirePasswordChange = Boolean(required);
-    storageWrite(sk.changeRequired, JSON.stringify(state.requirePasswordChange));
+    storageWrite(sk.changeRequired, state.requirePasswordChange ? 'true' : 'false');
   }
 
   // Espelha app.js _clearAutoRetryCountdown: para o intervalo de contagem

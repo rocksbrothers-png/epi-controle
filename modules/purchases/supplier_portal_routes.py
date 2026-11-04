@@ -17,6 +17,7 @@ from core.repository import authorize_action
 from core.security import resolve_actor_user_id
 from epi_backend.http_utils import require_fields, send_json, structured_log
 from modules.employees.service import actor_operational_unit_id
+from modules.i18n.presentation import request_locale
 from modules.purchases.quotes_service import ensure_quote_scope, get_quote_by_id
 from modules.purchases.service import (
     ensure_purchase_order_action_scope,
@@ -68,6 +69,7 @@ def handle_post_quote_portal_link(handler, parsed, payload, match):
             connection, actor, 'quote', int(match.group(1)),
             expires_days=payload.get('expires_days'),
             base_url=str(payload.get('base_url') or '').strip(),
+            locale=request_locale(handler, parsed),
         )
         connection.commit()
         return send_json(handler, 201, {'ok': True, 'item': link})
@@ -85,6 +87,7 @@ def handle_post_po_portal_link(handler, parsed, payload, match):
             connection, actor, 'purchase_order', int(match.group(1)),
             expires_days=payload.get('expires_days'),
             base_url=str(payload.get('base_url') or '').strip(),
+            locale=request_locale(handler, parsed),
         )
         connection.commit()
         return send_json(handler, 201, {'ok': True, 'item': link})
@@ -132,7 +135,8 @@ def handle_get_supplier_portal_data(handler, parsed, payload, match):
         link = resolve_portal_token(connection, match.group(1), _client_ip(handler), _user_agent(handler))
         payload_out = get_portal_payload(connection, link)
         connection.commit()
-        return send_json(handler, 200, {'item': payload_out})
+        send_json(handler, 200, {'item': payload_out})
+        return None
 
 
 def handle_post_supplier_portal_quote(handler, parsed, payload, match):
@@ -143,7 +147,8 @@ def handle_post_supplier_portal_quote(handler, parsed, payload, match):
         link = resolve_portal_token(connection, match.group(1), _client_ip(handler), _user_agent(handler))
         quote = portal_answer_quote(connection, link, payload, _client_ip(handler), _user_agent(handler))
         connection.commit()
-        return send_json(handler, 200, {'ok': True, 'status': quote.get('status')})
+        send_json(handler, 200, {'ok': True, 'status': quote.get('status')})
+        return None
 
 
 def handle_post_supplier_portal_confirm(handler, parsed, payload, match):
@@ -154,7 +159,8 @@ def handle_post_supplier_portal_confirm(handler, parsed, payload, match):
         link = resolve_portal_token(connection, match.group(1), _client_ip(handler), _user_agent(handler))
         po = portal_confirm_po(connection, link, payload, _client_ip(handler), _user_agent(handler))
         connection.commit()
-        return send_json(handler, 200, {'ok': True, 'supplier_confirmation_status': po.get('supplier_confirmation_status')})
+        send_json(handler, 200, {'ok': True, 'supplier_confirmation_status': po.get('supplier_confirmation_status')})
+        return None
 
 
 def register_routes(router):

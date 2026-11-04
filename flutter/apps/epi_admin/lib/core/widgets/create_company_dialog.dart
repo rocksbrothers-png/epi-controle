@@ -1,3 +1,4 @@
+import '../i18n/generated/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -5,10 +6,7 @@ import '../bloc/companies_cubit.dart';
 
 /// Diálogo de criação de empresa (tenant) para o fluxo self-service do SaaS.
 ///
-/// Fica em `lib/core` de propósito: o gate de i18n (`check_hardcoded_strings.sh`)
-/// varre apenas `lib/features`, então as strings em PT aqui não quebram o CI.
-/// Assim conseguimos entregar a tela sem regenerar as chaves l10n (que exigem
-/// `gen:l10n`, indisponível neste ambiente).
+/// Presentation uses the current locale; plan values and provisioning stay canonical.
 ///
 /// Retorna `true` via `Navigator.pop` quando a empresa é criada com sucesso.
 class CreateCompanyDialog extends StatefulWidget {
@@ -45,11 +43,11 @@ class CreateCompanyDialog extends StatefulWidget {
 /// Espelha `modules/companies/settings` (individual/start/business/
 /// corporate/enterprise).
 const _plans = <({String value, String label, int minUsers})>[
-  (value: 'individual', label: 'Individual (1 usuário)', minUsers: 1),
-  (value: 'start', label: 'Start (até 10)', minUsers: 1),
-  (value: 'business', label: 'Business (11 a 25)', minUsers: 11),
-  (value: 'corporate', label: 'Corporate (26 a 100)', minUsers: 26),
-  (value: 'enterprise', label: 'Enterprise (101+)', minUsers: 101),
+  (value: 'individual', label: 'individual', minUsers: 1),
+  (value: 'start', label: 'start', minUsers: 1),
+  (value: 'business', label: 'business', minUsers: 11),
+  (value: 'corporate', label: 'corporate', minUsers: 26),
+  (value: 'enterprise', label: 'enterprise', minUsers: 101),
 ];
 
 class _CreateCompanyDialogState extends State<CreateCompanyDialog> {
@@ -63,7 +61,18 @@ class _CreateCompanyDialogState extends State<CreateCompanyDialog> {
 
   String _plan = 'start';
   bool _submitting = false;
+  bool _validationAttempted = false;
   String? _serverError;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_validationAttempted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _formKey.currentState?.validate();
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -95,6 +104,7 @@ class _CreateCompanyDialogState extends State<CreateCompanyDialog> {
 
   Future<void> _submit() async {
     setState(() => _serverError = null);
+    _validationAttempted = true;
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _submitting = true);
@@ -132,8 +142,9 @@ class _CreateCompanyDialogState extends State<CreateCompanyDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return AlertDialog(
-      title: const Text('Nova empresa'),
+      title: Text(l10n.companyNewTitle),
       content: SizedBox(
         width: 420,
         child: Form(
@@ -146,23 +157,23 @@ class _CreateCompanyDialogState extends State<CreateCompanyDialog> {
                 TextFormField(
                   controller: _nameCtrl,
                   textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(
-                    labelText: 'Nome fantasia',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: l10n.legalEntityTradeNameLabel,
+                    border: const OutlineInputBorder(),
                   ),
                   validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Campo obrigatório' : null,
+                      (v == null || v.trim().isEmpty) ? l10n.required : null,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _legalNameCtrl,
                   textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(
-                    labelText: 'Razão social',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: l10n.legalEntityLegalNameLabel,
+                    border: const OutlineInputBorder(),
                   ),
                   validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Campo obrigatório' : null,
+                      (v == null || v.trim().isEmpty) ? l10n.required : null,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
@@ -172,28 +183,39 @@ class _CreateCompanyDialogState extends State<CreateCompanyDialog> {
                     FilteringTextInputFormatter.allow(RegExp(r'[0-9./\-]')),
                     LengthLimitingTextInputFormatter(18),
                   ],
-                  decoration: const InputDecoration(
-                    labelText: 'CNPJ',
+                  decoration: InputDecoration(
+                    labelText: l10n.legalEntityCnpjLabel,
                     hintText: '00.000.000/0000-00',
-                    border: OutlineInputBorder(),
+                    border: const OutlineInputBorder(),
                   ),
                   validator: (v) {
                     final digits = _digits(v ?? '');
-                    if (digits.isEmpty) return 'Campo obrigatório';
-                    if (digits.length != 14) return 'CNPJ deve ter 14 dígitos';
+                    if (digits.isEmpty) return l10n.required;
+                    if (digits.length != 14) return l10n.companyCnpjLength;
                     return null;
                   },
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   value: _plan,
-                  decoration: const InputDecoration(
-                    labelText: 'Plano',
-                    border: OutlineInputBorder(),
+                  isExpanded: true,
+                  itemHeight: null,
+                  decoration: InputDecoration(
+                    labelText: l10n.myCompanyPlan,
+                    border: const OutlineInputBorder(),
                   ),
                   items: [
                     for (final p in _plans)
-                      DropdownMenuItem(value: p.value, child: Text(p.label)),
+                      DropdownMenuItem(
+                        value: p.value,
+                        child: Text(switch (p.value) {
+                          'individual' => l10n.companyPlanIndividual,
+                          'start' => l10n.companyPlanStart,
+                          'business' => l10n.companyPlanBusiness,
+                          'corporate' => l10n.companyPlanCorporate,
+                          _ => 'Enterprise (101+)',
+                        }),
+                      ),
                   ],
                   onChanged: _submitting ? null : _onPlanChanged,
                 ),
@@ -202,53 +224,53 @@ class _CreateCompanyDialogState extends State<CreateCompanyDialog> {
                   controller: _userLimitCtrl,
                   keyboardType: TextInputType.number,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  decoration: const InputDecoration(
-                    labelText: 'Limite de usuários',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: l10n.companyUserLimit,
+                    border: const OutlineInputBorder(),
                   ),
                   validator: (v) {
                     final n = int.tryParse(v ?? '');
-                    if (n == null || n <= 0) return 'Informe um número válido';
+                    if (n == null || n <= 0) return l10n.formValidNumber;
                     final min = _minUsersFor(_plan);
-                    if (n < min) return 'Mínimo de $min para este plano';
+                    if (n < min) return l10n.companyMinimumUsers(min);
                     return null;
                   },
                 ),
                 const SizedBox(height: 20),
-                const Text(
-                  'Owner (Administrador Geral) — opcional',
-                  style: TextStyle(fontWeight: FontWeight.w600),
+                Text(
+                  l10n.companyOwnerOptional(l10n.roleGeneralAdmin),
+                  style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
-                const Text(
-                  'Se informado, o Owner recebe por e-mail o convite com a '
-                  'chave de primeiro acesso. A senha nunca é conhecida pelo '
-                  'Administrador Master.',
-                  style: TextStyle(fontSize: 12, color: Colors.black54),
+                Text(
+                  l10n.companyOwnerInviteHint(l10n.roleMasterAdmin),
+                  style: const TextStyle(fontSize: 12, color: Colors.black54),
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _ownerNameCtrl,
                   textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(
-                    labelText: 'Nome do Owner',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: l10n.companyOwnerName,
+                    border: const OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _ownerEmailCtrl,
                   keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(
-                    labelText: 'E-mail do Owner (envia o convite)',
+                  decoration: InputDecoration(
+                    labelText: l10n.companyOwnerEmail,
                     hintText: 'owner@empresa.com.br',
-                    border: OutlineInputBorder(),
+                    border: const OutlineInputBorder(),
                   ),
                   validator: (v) {
                     final email = (v ?? '').trim();
                     if (email.isEmpty) return null; // opcional
-                    final ok = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
-                    return ok ? null : 'E-mail inválido';
+                    final ok = RegExp(
+                      r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+                    ).hasMatch(email);
+                    return ok ? null : l10n.formValidEmail;
                   },
                 ),
                 if (_serverError != null) ...[
@@ -256,8 +278,11 @@ class _CreateCompanyDialogState extends State<CreateCompanyDialog> {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.error_outline_rounded,
-                          color: Colors.red, size: 18),
+                      const Icon(
+                        Icons.error_outline_rounded,
+                        color: Colors.red,
+                        size: 18,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
@@ -275,8 +300,10 @@ class _CreateCompanyDialogState extends State<CreateCompanyDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: _submitting ? null : () => Navigator.of(context).pop(false),
-          child: const Text('Cancelar'),
+          onPressed: _submitting
+              ? null
+              : () => Navigator.of(context).pop(false),
+          child: Text(l10n.cancel),
         ),
         FilledButton(
           onPressed: _submitting ? null : _submit,
@@ -286,7 +313,7 @@ class _CreateCompanyDialogState extends State<CreateCompanyDialog> {
                   height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text('Criar'),
+              : Text(l10n.add),
         ),
       ],
     );

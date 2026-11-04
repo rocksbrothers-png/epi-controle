@@ -57,6 +57,9 @@ jobs:
               - ".github/workflows/backend-ci.yml"
             frontend:
               - "static/**"
+              - "scripts/i18n/**"
+              - "ci/requirements-i18n.txt"
+              - ".github/workflows/i18n.yml"
               - ".github/workflows/backend-ci.yml"
 
   test:
@@ -341,3 +344,9 @@ jobs:
           name: postgres-migration-log-${{ github.sha }}
           path: /tmp/mig-logs/
           retention-days: 7
+
+  i18n-runtime:
+    name: I18N runtime checkpoints
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/i18n.yml

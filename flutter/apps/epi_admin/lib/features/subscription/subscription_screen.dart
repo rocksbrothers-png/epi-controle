@@ -1,3 +1,5 @@
+import 'package:epi_admin/core/i18n/generated/app_localizations.dart';
+import '../../core/i18n/presentation_formatters.dart';
 import 'package:epi_api/epi_api.dart';
 import 'package:epi_design/epi_design.dart';
 import 'package:flutter/material.dart';
@@ -47,20 +49,20 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     }
   }
 
-  static String _statusLabel(String status) {
+  static String _statusLabel(String status, AppLocalizations l) {
     switch (status.toLowerCase()) {
       case 'active':
       case 'authorized':
-        return 'Ativa';
+        return l.billingActive;
       case 'pending':
-        return 'Pendente';
+        return l.billingPending;
       case 'paused':
-        return 'Pausada';
+        return l.billingPaused;
       case 'cancelled':
       case 'canceled':
-        return 'Cancelada';
+        return l.billingCancelled;
       case 'expired':
-        return 'Expirada';
+        return l.billingExpired;
       default:
         return status.isEmpty ? '—' : status;
     }
@@ -80,57 +82,45 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     }
   }
 
-  static String _cycleLabel(String cycle) =>
-      cycle.toLowerCase() == 'annual' ? 'Anual' : 'Mensal';
+  static String _cycleLabel(String cycle, AppLocalizations l) =>
+      cycle.toLowerCase() == 'annual' ? l.billingAnnual : l.billingMonthly;
 
-  static String _methodLabel(String method) {
+  static String _methodLabel(String method, AppLocalizations l) {
     switch (method.toLowerCase()) {
       case 'card':
-        return 'Cartão (recorrente)';
+        return l.billingRecurringCard;
       case 'pix':
         return 'PIX';
       case 'boleto':
-        return 'Boleto';
+        return l.billingBoleto;
       default:
         return method.isEmpty ? '—' : method;
     }
   }
 
-  static String _money(double value, String currency) {
-    final symbol = currency == 'BRL' ? 'R\$' : currency;
-    return '$symbol ${value.toStringAsFixed(2)}';
-  }
-
-  static String _date(String iso) {
-    if (iso.isEmpty) return '—';
-    // ISO 8601 → dd/mm/aaaa (sem dependência de intl).
-    final datePart = iso.length >= 10 ? iso.substring(0, 10) : iso;
-    final parts = datePart.split('-');
-    if (parts.length == 3) return '${parts[2]}/${parts[1]}/${parts[0]}';
-    return datePart;
-  }
-
   Future<void> _confirmCancel(Subscription sub) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Tem certeza?'),
-        content: const Text(
-          'Seu acesso continuará disponível até o final do período já pago.\n'
-          'Nenhuma nova cobrança será realizada.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Voltar'),
+      builder: (ctx) {
+        final l = AppLocalizations.of(ctx);
+        return AlertDialog(
+          title: Text(l.billingConfirmTitle),
+          content: Text(
+            l.billingConfirmBody,
           ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: TextButton.styleFrom(foregroundColor: EpiColors.danger),
-            child: const Text('Confirmar Cancelamento'),
-          ),
-        ],
-      ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(l.back),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              style: TextButton.styleFrom(foregroundColor: EpiColors.danger),
+              child: Text(l.billingConfirmCancel),
+            ),
+          ],
+        );
+      },
     );
     if (confirmed != true) return;
     setState(() => _busy = true);
@@ -138,14 +128,19 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       await ApiClient.subscriptions.cancel();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Assinatura cancelada.')),
+        SnackBar(
+            content: Builder(
+                builder: (context) =>
+                    Text(AppLocalizations.of(context).billingCancelledNotice))),
       );
       _reload();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Não foi possível cancelar: $e'),
+          content: Builder(
+              builder: (context) => Text(AppLocalizations.of(context)
+                  .billingCancelFailed(e.toString()))),
           backgroundColor: EpiColors.danger,
         ),
       );
@@ -156,9 +151,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Minha Assinatura'),
+        title: Text(l.settingsSubscriptionTileTitle),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
@@ -203,6 +199,7 @@ class _SubscriptionDetails extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return ListView(
       padding: const EdgeInsets.all(EpiSpacing.lg),
       children: [
@@ -218,23 +215,47 @@ class _SubscriptionDetails extends StatelessWidget {
           ],
         ),
         const SizedBox(height: EpiSpacing.lg),
-        _InfoRow(label: 'Valor', value: _SubscriptionScreenState._money(sub.amount, sub.currency)),
-        _InfoRow(label: 'Periodicidade', value: _SubscriptionScreenState._cycleLabel(sub.paymentCycle)),
-        _InfoRow(label: 'Forma de pagamento', value: _SubscriptionScreenState._methodLabel(sub.paymentMethod)),
-        _InfoRow(label: 'Data da contratação', value: _SubscriptionScreenState._date(sub.createdAt)),
-        _InfoRow(label: 'Próxima cobrança', value: sub.isRecurring ? _SubscriptionScreenState._date(sub.nextPaymentDate) : 'Renovação manual'),
-        _InfoRow(label: 'Última cobrança', value: _SubscriptionScreenState._date(sub.lastPaymentDate)),
+        _InfoRow(
+            label: l.billingAmount,
+            value: formatDisplayMoney(sub.amount, sub.currency, l.localeName)),
+        _InfoRow(
+            label: l.billingCycle,
+            value: _SubscriptionScreenState._cycleLabel(sub.paymentCycle, l)),
+        _InfoRow(
+            label: l.billingMethod,
+            value: _SubscriptionScreenState._methodLabel(sub.paymentMethod, l)),
+        _InfoRow(
+            label: l.billingStarted,
+            value: formatDisplayDate(sub.createdAt, l.localeName)),
+        _InfoRow(
+            label: l.billingNextPayment,
+            value: sub.isRecurring
+                ? formatDisplayDate(sub.nextPaymentDate, l.localeName)
+                : l.billingManualRenewal),
+        _InfoRow(
+            label: l.billingLastPayment,
+            value: formatDisplayDate(sub.lastPaymentDate, l.localeName)),
         if (sub.isCancelled)
-          _InfoRow(label: 'Cancelada em', value: _SubscriptionScreenState._date(sub.cancelDate)),
+          _InfoRow(
+              label: l.billingCancelDate,
+              value: formatDisplayDate(sub.cancelDate, l.localeName)),
         const Divider(height: EpiSpacing.xl2),
-        _InfoRow(label: 'ID da assinatura (MP)', value: sub.preapprovalId.isEmpty ? '—' : sub.preapprovalId),
-        _InfoRow(label: 'Status Mercado Pago', value: sub.mpStatus.isEmpty ? '—' : sub.mpStatus),
-        _InfoRow(label: 'Empresa', value: sub.companyId?.toString() ?? '—'),
-        _InfoRow(label: 'Tenant', value: sub.tenantId.isEmpty ? '—' : sub.tenantId),
+        _InfoRow(
+            label: l.billingMpSubscriptionId,
+            value: sub.preapprovalId.isEmpty ? '—' : sub.preapprovalId),
+        _InfoRow(
+            label: l.billingMpStatus,
+            value: sub.mpStatus.isEmpty ? '—' : sub.mpStatus),
+        _InfoRow(
+            label: l.settingsCompanyLabel,
+            value: sub.companyId?.toString() ?? '—'),
+        _InfoRow(
+            label: l.billingTenant,
+            value: sub.tenantId.isEmpty ? '—' : sub.tenantId),
         const SizedBox(height: EpiSpacing.xl),
         if (!sub.isCancelled)
           EpiButton(
-            label: 'Cancelar assinatura',
+            label: l.billingCancelAction,
             variant: EpiButtonVariant.danger,
             fullWidth: true,
             loading: busy,
@@ -247,9 +268,8 @@ class _SubscriptionDetails extends StatelessWidget {
               color: EpiColors.danger.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Text(
-              'Assinatura cancelada. O acesso permanece ativo até o final do '
-              'período já pago; nenhuma nova cobrança será realizada.',
+            child: Text(
+              l.billingCancelledBody,
             ),
           ),
         const SizedBox(height: EpiSpacing.xl),
@@ -302,6 +322,7 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final color = _SubscriptionScreenState._statusColor(status);
     return Container(
       padding: const EdgeInsets.symmetric(
@@ -313,7 +334,7 @@ class _StatusBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
-        _SubscriptionScreenState._statusLabel(status),
+        _SubscriptionScreenState._statusLabel(status, l),
         style: Theme.of(context)
             .textTheme
             .labelMedium
@@ -328,6 +349,7 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(EpiSpacing.xl2),
@@ -338,12 +360,12 @@ class _EmptyState extends StatelessWidget {
                 size: 56, color: Theme.of(context).hintColor),
             const SizedBox(height: EpiSpacing.lg),
             Text(
-              'Nenhuma assinatura ativa',
+              l.billingEmptyTitle,
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: EpiSpacing.sm),
             Text(
-              'Quando uma assinatura for contratada, os detalhes aparecerão aqui.',
+              l.billingEmptyBody,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: Theme.of(context).hintColor,
@@ -363,6 +385,7 @@ class _ErrorState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(EpiSpacing.xl2),
@@ -372,7 +395,7 @@ class _ErrorState extends StatelessWidget {
             const Icon(Icons.error_outline, size: 48, color: EpiColors.danger),
             const SizedBox(height: EpiSpacing.lg),
             Text(
-              'Não foi possível carregar a assinatura.',
+              l.billingLoadFailed,
               style: Theme.of(context).textTheme.titleMedium,
               textAlign: TextAlign.center,
             ),
@@ -385,7 +408,7 @@ class _ErrorState extends StatelessWidget {
                   ),
             ),
             const SizedBox(height: EpiSpacing.lg),
-            EpiButton(label: 'Tentar novamente', onPressed: onRetry),
+            EpiButton(label: l.retry, onPressed: onRetry),
           ],
         ),
       ),

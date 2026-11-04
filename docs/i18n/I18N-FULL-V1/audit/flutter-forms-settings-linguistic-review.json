@@ -1,0 +1,1413 @@
+{
+  "tsv_messages": 40,
+  "entries_reviewed": 200,
+  "checks": [
+    {
+      "locale": "pt_BR",
+      "key": "qrInstruction",
+      "current": "Aponte para um código QR ou de barras",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "en_US",
+      "key": "qrInstruction",
+      "current": "Point at a QR code or barcode",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "es_ES",
+      "key": "qrInstruction",
+      "current": "Apunte a un código QR o de barras",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "fr_FR",
+      "key": "qrInstruction",
+      "current": "Visez un code QR ou un code-barres",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "no_NO",
+      "key": "qrInstruction",
+      "current": "Rett kameraet mot en QR-kode eller strekkode",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "pt_BR",
+      "key": "qrDetected",
+      "current": "Código detectado",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "en_US",
+      "key": "qrDetected",
+      "current": "Code detected",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "es_ES",
+      "key": "qrDetected",
+      "current": "Código detectado",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "fr_FR",
+      "key": "qrDetected",
+      "current": "Code détecté",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "no_NO",
+      "key": "qrDetected",
+      "current": "Kode registrert",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "pt_BR",
+      "key": "qrScanAgain",
+      "current": "Escanear novamente",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "en_US",
+      "key": "qrScanAgain",
+      "current": "Scan again",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "es_ES",
+      "key": "qrScanAgain",
+      "current": "Escanear de nuevo",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "fr_FR",
+      "key": "qrScanAgain",
+      "current": "Scanner à nouveau",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "no_NO",
+      "key": "qrScanAgain",
+      "current": "Skann på nytt",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "pt_BR",
+      "key": "qrTorchOn",
+      "current": "Ligar lanterna",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "en_US",
+      "key": "qrTorchOn",
+      "current": "Turn flashlight on",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "es_ES",
+      "key": "qrTorchOn",
+      "current": "Encender la linterna",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "fr_FR",
+      "key": "qrTorchOn",
+      "current": "Allumer la lampe",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "no_NO",
+      "key": "qrTorchOn",
+      "current": "Slå på lommelykten",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "pt_BR",
+      "key": "qrTorchOff",
+      "current": "Desligar lanterna",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "en_US",
+      "key": "qrTorchOff",
+      "current": "Turn flashlight off",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "es_ES",
+      "key": "qrTorchOff",
+      "current": "Apagar la linterna",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "fr_FR",
+      "key": "qrTorchOff",
+      "current": "Éteindre la lampe",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "no_NO",
+      "key": "qrTorchOff",
+      "current": "Slå av lommelykten",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "pt_BR",
+      "key": "formNameLabel",
+      "current": "Nome",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "en_US",
+      "key": "formNameLabel",
+      "current": "Name",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "es_ES",
+      "key": "formNameLabel",
+      "current": "Nombre",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "fr_FR",
+      "key": "formNameLabel",
+      "current": "Nom",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "no_NO",
+      "key": "formNameLabel",
+      "current": "Navn",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "pt_BR",
+      "key": "formCityLabel",
+      "current": "Cidade",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "en_US",
+      "key": "formCityLabel",
+      "current": "City",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "es_ES",
+      "key": "formCityLabel",
+      "current": "Ciudad",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "fr_FR",
+      "key": "formCityLabel",
+      "current": "Ville",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "no_NO",
+      "key": "formCityLabel",
+      "current": "By",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "pt_BR",
+      "key": "formSaveFailed",
+      "current": "Erro ao salvar",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "en_US",
+      "key": "formSaveFailed",
+      "current": "Could not save",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "es_ES",
+      "key": "formSaveFailed",
+      "current": "No se pudo guardar",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "fr_FR",
+      "key": "formSaveFailed",
+      "current": "Impossible d’enregistrer",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "no_NO",
+      "key": "formSaveFailed",
+      "current": "Kunne ikke lagre",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "pt_BR",
+      "key": "formExample",
+      "current": "Ex: {value}",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "en_US",
+      "key": "formExample",
+      "current": "E.g. {value}",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "es_ES",
+      "key": "formExample",
+      "current": "Ej.: {value}",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "fr_FR",
+      "key": "formExample",
+      "current": "Ex. : {value}",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "no_NO",
+      "key": "formExample",
+      "current": "F.eks. {value}",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "pt_BR",
+      "key": "userNewTitle",
+      "current": "Novo usuário",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "en_US",
+      "key": "userNewTitle",
+      "current": "New user",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "es_ES",
+      "key": "userNewTitle",
+      "current": "Nuevo usuario",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "fr_FR",
+      "key": "userNewTitle",
+      "current": "Nouvel utilisateur",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "no_NO",
+      "key": "userNewTitle",
+      "current": "Ny bruker",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "pt_BR",
+      "key": "userTemporaryPassword",
+      "current": "Senha temporária",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "en_US",
+      "key": "userTemporaryPassword",
+      "current": "Temporary password",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "es_ES",
+      "key": "userTemporaryPassword",
+      "current": "Contraseña temporal",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "fr_FR",
+      "key": "userTemporaryPassword",
+      "current": "Mot de passe temporaire",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "no_NO",
+      "key": "userTemporaryPassword",
+      "current": "Midlertidig passord",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "pt_BR",
+      "key": "userPasswordHint",
+      "current": "Digite ou use o botão para gerar",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "en_US",
+      "key": "userPasswordHint",
+      "current": "Enter a password or use the button to generate one",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "es_ES",
+      "key": "userPasswordHint",
+      "current": "Escriba una contraseña o use el botón para generarla",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "fr_FR",
+      "key": "userPasswordHint",
+      "current": "Saisissez un mot de passe ou utilisez le bouton pour en générer un",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "no_NO",
+      "key": "userPasswordHint",
+      "current": "Skriv inn et passord eller bruk knappen for å generere et",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "pt_BR",
+      "key": "userCopyPassword",
+      "current": "Copiar senha",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "en_US",
+      "key": "userCopyPassword",
+      "current": "Copy password",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "es_ES",
+      "key": "userCopyPassword",
+      "current": "Copiar contraseña",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "fr_FR",
+      "key": "userCopyPassword",
+      "current": "Copier le mot de passe",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "no_NO",
+      "key": "userCopyPassword",
+      "current": "Kopier passord",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "pt_BR",
+      "key": "userGeneratePassword",
+      "current": "Gerar senha segura",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "en_US",
+      "key": "userGeneratePassword",
+      "current": "Generate a secure password",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "es_ES",
+      "key": "userGeneratePassword",
+      "current": "Generar una contraseña segura",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "fr_FR",
+      "key": "userGeneratePassword",
+      "current": "Générer un mot de passe sécurisé",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "no_NO",
+      "key": "userGeneratePassword",
+      "current": "Generer et sikkert passord",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "pt_BR",
+      "key": "userPasswordCopied",
+      "current": "Senha copiada para a área de transferência.",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "en_US",
+      "key": "userPasswordCopied",
+      "current": "Password copied to the clipboard.",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "es_ES",
+      "key": "userPasswordCopied",
+      "current": "Contraseña copiada al portapapeles.",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "fr_FR",
+      "key": "userPasswordCopied",
+      "current": "Mot de passe copié dans le presse-papiers.",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "no_NO",
+      "key": "userPasswordCopied",
+      "current": "Passordet er kopiert til utklippstavlen.",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "pt_BR",
+      "key": "userEmployeeIdRequired",
+      "current": "ID do Colaborador (obrigatório)",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "en_US",
+      "key": "userEmployeeIdRequired",
+      "current": "Employee ID (required)",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "es_ES",
+      "key": "userEmployeeIdRequired",
+      "current": "ID del empleado (obligatorio)",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "fr_FR",
+      "key": "userEmployeeIdRequired",
+      "current": "ID du salarié (obligatoire)",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "no_NO",
+      "key": "userEmployeeIdRequired",
+      "current": "Medarbeider-ID (påkrevd)",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "pt_BR",
+      "key": "userIdentityRequired",
+      "current": "Preencha usuário e nome completo",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "en_US",
+      "key": "userIdentityRequired",
+      "current": "Enter a username and full name",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "es_ES",
+      "key": "userIdentityRequired",
+      "current": "Introduzca el usuario y el nombre completo",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "fr_FR",
+      "key": "userIdentityRequired",
+      "current": "Saisissez l’identifiant et le nom complet",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "no_NO",
+      "key": "userIdentityRequired",
+      "current": "Fyll inn brukernavn og fullt navn",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "pt_BR",
+      "key": "userDeleteNamed",
+      "current": "Excluir usuário \"{name}\"?",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "en_US",
+      "key": "userDeleteNamed",
+      "current": "Delete user \"{name}\"?",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "es_ES",
+      "key": "userDeleteNamed",
+      "current": "¿Eliminar al usuario \"{name}\"?",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "fr_FR",
+      "key": "userDeleteNamed",
+      "current": "Supprimer l’utilisateur « {name} » ?",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "no_NO",
+      "key": "userDeleteNamed",
+      "current": "Slette brukeren «{name}»?",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "pt_BR",
+      "key": "unitNewTitle",
+      "current": "Nova unidade",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "en_US",
+      "key": "unitNewTitle",
+      "current": "New unit",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "es_ES",
+      "key": "unitNewTitle",
+      "current": "Nueva unidad",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "fr_FR",
+      "key": "unitNewTitle",
+      "current": "Nouvelle unité",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "no_NO",
+      "key": "unitNewTitle",
+      "current": "Ny enhet",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "pt_BR",
+      "key": "unitFieldsRequired",
+      "current": "Preencha nome, cidade e empresa",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "en_US",
+      "key": "unitFieldsRequired",
+      "current": "Enter a name, city and company",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "es_ES",
+      "key": "unitFieldsRequired",
+      "current": "Introduzca el nombre, la ciudad y la empresa",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "fr_FR",
+      "key": "unitFieldsRequired",
+      "current": "Renseignez le nom, la ville et l’entreprise",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "no_NO",
+      "key": "unitFieldsRequired",
+      "current": "Fyll inn navn, by og selskap",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "pt_BR",
+      "key": "archivalLoadFailed",
+      "current": "Não foi possível carregar a política de arquivamento.",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "en_US",
+      "key": "archivalLoadFailed",
+      "current": "Could not load the archival policy.",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "es_ES",
+      "key": "archivalLoadFailed",
+      "current": "No se pudo cargar la política de archivo.",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "fr_FR",
+      "key": "archivalLoadFailed",
+      "current": "Impossible de charger la politique d’archivage.",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "no_NO",
+      "key": "archivalLoadFailed",
+      "current": "Kunne ikke laste arkiveringsreglene.",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "pt_BR",
+      "key": "archivalInvalidPeriods",
+      "current": "Informe períodos válidos (mínimo 5 anos).",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "en_US",
+      "key": "archivalInvalidPeriods",
+      "current": "Enter valid retention periods (at least 5 years).",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "es_ES",
+      "key": "archivalInvalidPeriods",
+      "current": "Introduzca períodos válidos (mínimo 5 años).",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "fr_FR",
+      "key": "archivalInvalidPeriods",
+      "current": "Saisissez des durées valides (au moins 5 ans).",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "no_NO",
+      "key": "archivalInvalidPeriods",
+      "current": "Oppgi gyldige oppbevaringstider (minst 5 år).",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "pt_BR",
+      "key": "archivalSaved",
+      "current": "Política de arquivamento salva com sucesso.",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "en_US",
+      "key": "archivalSaved",
+      "current": "Archival policy saved successfully.",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "es_ES",
+      "key": "archivalSaved",
+      "current": "Política de archivo guardada correctamente.",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "fr_FR",
+      "key": "archivalSaved",
+      "current": "Politique d’archivage enregistrée.",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "no_NO",
+      "key": "archivalSaved",
+      "current": "Arkiveringsreglene er lagret.",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "pt_BR",
+      "key": "archivalSave",
+      "current": "Salvar política de arquivamento",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "en_US",
+      "key": "archivalSave",
+      "current": "Save archival policy",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "es_ES",
+      "key": "archivalSave",
+      "current": "Guardar política de archivo",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "fr_FR",
+      "key": "archivalSave",
+      "current": "Enregistrer la politique d’archivage",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "no_NO",
+      "key": "archivalSave",
+      "current": "Lagre arkiveringsreglene",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "pt_BR",
+      "key": "archivalYearsSuffix",
+      "current": "anos",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "en_US",
+      "key": "archivalYearsSuffix",
+      "current": "years",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "es_ES",
+      "key": "archivalYearsSuffix",
+      "current": "años",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "fr_FR",
+      "key": "archivalYearsSuffix",
+      "current": "ans",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "no_NO",
+      "key": "archivalYearsSuffix",
+      "current": "år",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "pt_BR",
+      "key": "archivalPolicyIntro",
+      "current": "Defina, conforme a política interna da empresa, por quantos anos os registros arquivados de cada item permanecem preservados antes de a exclusão definitiva ser habilitada (mínimo legal: 5 anos).",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "en_US",
+      "key": "archivalPolicyIntro",
+      "current": "Set how many years archived records are retained under the company’s internal policy before permanent deletion becomes available (Brazilian legal minimum: 5 years).",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "es_ES",
+      "key": "archivalPolicyIntro",
+      "current": "Defina durante cuántos años se conservan los registros archivados conforme a la política interna de la empresa antes de habilitar su eliminación definitiva (mínimo legal brasileño: 5 años).",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "fr_FR",
+      "key": "archivalPolicyIntro",
+      "current": "Définissez la durée de conservation des enregistrements archivés selon la politique interne de l’entreprise avant d’autoriser leur suppression définitive (minimum légal brésilien : 5 ans).",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "no_NO",
+      "key": "archivalPolicyIntro",
+      "current": "Angi hvor mange år arkiverte oppføringer beholdes etter selskapets interne regler før permanent sletting blir tilgjengelig (brasiliansk lovpålagt minimum: 5 år).",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "pt_BR",
+      "key": "archivalPpeRecordRule",
+      "current": "Ficha de EPI: retenção fixa de 5 anos (NR-6) — regra própria, não alterada por esta política.",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "en_US",
+      "key": "archivalPpeRecordRule",
+      "current": "PPE issue record: fixed 5-year retention under Brazil’s NR-6 — a separate rule unaffected by this policy.",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "es_ES",
+      "key": "archivalPpeRecordRule",
+      "current": "Ficha de entrega de EPI: conservación fija de 5 años según la NR-6 brasileña; esta regla independiente no cambia con esta política.",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "fr_FR",
+      "key": "archivalPpeRecordRule",
+      "current": "Fiche de remise des EPI : conservation fixe de 5 ans selon la NR-6 brésilienne — règle distincte, inchangée par cette politique.",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "no_NO",
+      "key": "archivalPpeRecordRule",
+      "current": "Utleveringsjournal for verneutstyr: fast oppbevaring i 5 år etter brasiliansk NR-6 – en egen regel som ikke endres av disse innstillingene.",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "pt_BR",
+      "key": "roleMasterAdmin",
+      "current": "Administrador Master",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "en_US",
+      "key": "roleMasterAdmin",
+      "current": "Master Administrator",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "es_ES",
+      "key": "roleMasterAdmin",
+      "current": "Administrador Master",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "fr_FR",
+      "key": "roleMasterAdmin",
+      "current": "Administrateur Principal",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "no_NO",
+      "key": "roleMasterAdmin",
+      "current": "Masteradministrator",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "pt_BR",
+      "key": "roleGeneralAdmin",
+      "current": "Administrador Geral",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "en_US",
+      "key": "roleGeneralAdmin",
+      "current": "General Administrator",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "es_ES",
+      "key": "roleGeneralAdmin",
+      "current": "Administrador General",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "fr_FR",
+      "key": "roleGeneralAdmin",
+      "current": "Administrateur Général",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "no_NO",
+      "key": "roleGeneralAdmin",
+      "current": "Generell administrator",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "pt_BR",
+      "key": "roleRegistryAdmin",
+      "current": "Administrador de Registro",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "en_US",
+      "key": "roleRegistryAdmin",
+      "current": "Registry Administrator",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "es_ES",
+      "key": "roleRegistryAdmin",
+      "current": "Administrador de Registro",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "fr_FR",
+      "key": "roleRegistryAdmin",
+      "current": "Administrateur de Registre",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "no_NO",
+      "key": "roleRegistryAdmin",
+      "current": "Registeradministrator",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "pt_BR",
+      "key": "roleLocalAdmin",
+      "current": "Administrador Local",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "en_US",
+      "key": "roleLocalAdmin",
+      "current": "Local Administrator",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "es_ES",
+      "key": "roleLocalAdmin",
+      "current": "Administrador Local",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "fr_FR",
+      "key": "roleLocalAdmin",
+      "current": "Administrateur Local",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "no_NO",
+      "key": "roleLocalAdmin",
+      "current": "Lokal administrator",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "pt_BR",
+      "key": "rolePpeManager",
+      "current": "Gestor de EPI",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "en_US",
+      "key": "rolePpeManager",
+      "current": "PPE Manager",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "es_ES",
+      "key": "rolePpeManager",
+      "current": "Gestor de EPP",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "fr_FR",
+      "key": "rolePpeManager",
+      "current": "Gestionnaire EPI",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "no_NO",
+      "key": "rolePpeManager",
+      "current": "PVU-ansvarlig",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "pt_BR",
+      "key": "roleEmployee",
+      "current": "Funcionário",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "en_US",
+      "key": "roleEmployee",
+      "current": "Employee",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "es_ES",
+      "key": "roleEmployee",
+      "current": "Empleado",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "fr_FR",
+      "key": "roleEmployee",
+      "current": "Employé",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "no_NO",
+      "key": "roleEmployee",
+      "current": "Ansatt",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "pt_BR",
+      "key": "roleBuyer",
+      "current": "Comprador",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "en_US",
+      "key": "roleBuyer",
+      "current": "Buyer",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "es_ES",
+      "key": "roleBuyer",
+      "current": "Comprador",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "fr_FR",
+      "key": "roleBuyer",
+      "current": "Acheteur",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "no_NO",
+      "key": "roleBuyer",
+      "current": "Innkjøper",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "pt_BR",
+      "key": "roleApprover",
+      "current": "Aprovador",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "en_US",
+      "key": "roleApprover",
+      "current": "Approver",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "es_ES",
+      "key": "roleApprover",
+      "current": "Aprobador",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "fr_FR",
+      "key": "roleApprover",
+      "current": "Approbateur",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "no_NO",
+      "key": "roleApprover",
+      "current": "Godkjenner",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "pt_BR",
+      "key": "roleCertificationReadOnly",
+      "current": "Certificação (somente leitura)",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "en_US",
+      "key": "roleCertificationReadOnly",
+      "current": "Certification (read-only)",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "es_ES",
+      "key": "roleCertificationReadOnly",
+      "current": "Certificación (solo lectura)",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "fr_FR",
+      "key": "roleCertificationReadOnly",
+      "current": "Certification (lecture seule)",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "no_NO",
+      "key": "roleCertificationReadOnly",
+      "current": "Sertifisering (skrivebeskyttet)",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "pt_BR",
+      "key": "unitNameHint",
+      "current": "Ex: Plataforma P-40",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "en_US",
+      "key": "unitNameHint",
+      "current": "E.g. Platform P-40",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "es_ES",
+      "key": "unitNameHint",
+      "current": "Ej.: Plataforma P-40",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "fr_FR",
+      "key": "unitNameHint",
+      "current": "Ex. : plateforme P-40",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "no_NO",
+      "key": "unitNameHint",
+      "current": "F.eks. plattform P-40",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "pt_BR",
+      "key": "unitTypeBase",
+      "current": "Base",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "en_US",
+      "key": "unitTypeBase",
+      "current": "Base",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "es_ES",
+      "key": "unitTypeBase",
+      "current": "Base",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "fr_FR",
+      "key": "unitTypeBase",
+      "current": "Base",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "no_NO",
+      "key": "unitTypeBase",
+      "current": "Base",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "pt_BR",
+      "key": "unitTypeVessel",
+      "current": "Embarcação",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "en_US",
+      "key": "unitTypeVessel",
+      "current": "Vessel",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "es_ES",
+      "key": "unitTypeVessel",
+      "current": "Embarcación",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "fr_FR",
+      "key": "unitTypeVessel",
+      "current": "Navire",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "no_NO",
+      "key": "unitTypeVessel",
+      "current": "Fartøy",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "pt_BR",
+      "key": "unitTypePlatform",
+      "current": "Plataforma",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "en_US",
+      "key": "unitTypePlatform",
+      "current": "Platform",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "es_ES",
+      "key": "unitTypePlatform",
+      "current": "Plataforma",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "fr_FR",
+      "key": "unitTypePlatform",
+      "current": "Plateforme",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    },
+    {
+      "locale": "no_NO",
+      "key": "unitTypePlatform",
+      "current": "Plattform",
+      "arb_matches": true,
+      "placeholder_names_match": true
+    }
+  ],
+  "material_language_blockers": [],
+  "notes": [
+    "Revisão linguística parcial: termos de empresa/unidade/perfis e ações coerentes no contexto; nenhum bloqueio material identificado.",
+    "CA/CPF/CNPJ/NR-6, valores de perfis e tipos permanecem identidade/código. Retenção de 5 anos preservada; tradução não certifica fundamento jurídico.",
+    "roleMasterAdmin/roleGeneralAdmin são distintos; FR Principal/Général e NO Masteradministrator/Generell administrator não confundem os perfis.",
+    "Autoria e precisão legal de NR-6 não reavaliadas nesta auditoria. Nenhuma prova funcional de troca de idioma decorre deste TSV."
+  ]
+}

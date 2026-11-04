@@ -81,10 +81,14 @@ class Fixture:
             return
         data = dict(items=[], ok=True, ready=True)
         if path.startswith('/api/i18n/'):
-            data = dict(translations=json.loads((ROOT / 'static/i18n' / (path.rsplit('/', 1)[1] + '.json')).read_text()))
+            locale = path.rsplit('/', 1)[1]
+            data = dict(locale=locale, translations=json.loads((ROOT / 'static/i18n' / (locale + '.json')).read_text()))
         elif path == '/api/auth/me/preferences' and request.method == 'PUT':
             self.actor['ui_preferences'].update(body)
             data = dict(ui_preferences=self.actor['ui_preferences'])
+        elif path == '/api/reports':
+            data = dict(deliveries=[], total_quantity=0, by_unit={}, by_sector={},
+                        by_tipo_vinculo={}, employee_fichas=[])
         elif path == '/api/bootstrap':
             data = dict(user=self.actor, permissions=self.permissions,
                         companies=[dict(id=901, name='Empresa QA', license_status='active', user_limit=100)],
@@ -288,6 +292,50 @@ def editor_click(f):
     assert active_view(f) == 'colaboradores-view', 'save navigated away'
 
 
+def editor_locale_switch(f):
+    # Idioma é apresentação: preserva a edição e não chama loaders/mutações.
+    f.view('colaboradores')
+    f.tab('colaboradores', 'lista')
+    f.page.locator('[data-employee-edit="31"]').first.click()
+    form = f.page.locator('#employee-form')
+    form.locator('[name="name"]').fill('Rascunho QA <original>')
+    form.locator('[name="sector"]').fill('Setor pendente QA')
+    f.page.wait_for_load_state('networkidle')
+    snapshot = form.evaluate('form=>Array.from(form.elements).filter(e=>e.name).map(e=>[e.name,e.value,e.disabled])')
+    before = len(f.calls)
+    for locale in LOCALES:
+        f.page.evaluate('(locale)=>EpiI18n.setLang(locale,{persist:false})', locale)
+        f.page.wait_for_timeout(180)
+        assert form.evaluate('form=>Array.from(form.elements).filter(e=>e.name).map(e=>[e.name,e.value,e.disabled])') == snapshot
+        expect(form).to_be_visible()
+        expect(f.page.locator('#colaboradores-view')).to_have_class(re.compile(r'\bactive\b'))
+        assert not [call for call in f.calls[before:] if not (call['method'] == 'GET' and call['path'].startswith('/api/i18n/'))], 'locale triggered a data load or write'
+        assert not f.errors, f.errors
+    f.page.evaluate('(locale)=>EpiI18n.setLang(locale,{persist:false})', f.locale)
+
+
+def user_editor_locale_switch(f):
+    f.permissions.extend(['users:view', 'users:create', 'users:update'])
+    f.page.evaluate('async()=>{await loadBootstrap({preserveView:true})}')
+    f.view('usuarios')
+    f.tab('usuarios', 'cadastro')
+    form = f.page.locator('#user-form')
+    form.locator('[name="role"]').select_option('employee')
+    form.locator('[name="linked_employee_id"]').select_option('32')
+    form.locator('[name="full_name"]').fill('Usuário em edição QA')
+    f.page.wait_for_load_state('networkidle')
+    snapshot = form.evaluate('form=>Array.from(form.elements).filter(e=>e.name).map(e=>[e.name,e.value,e.disabled])')
+    before = len(f.calls)
+    for locale in LOCALES:
+        f.page.evaluate('(locale)=>EpiI18n.setLang(locale,{persist:false})', locale)
+        f.page.wait_for_timeout(180)
+        assert form.evaluate('form=>Array.from(form.elements).filter(e=>e.name).map(e=>[e.name,e.value,e.disabled])') == snapshot, 'locale changed user role, employee link or draft fields'
+        expect(form).to_be_visible()
+        assert not [call for call in f.calls[before:] if not (call['method'] == 'GET' and call['path'].startswith('/api/i18n/'))]
+        assert not f.errors, f.errors
+    f.page.evaluate('(locale)=>EpiI18n.setLang(locale,{persist:false})', f.locale)
+
+
 def editor(f):
     # Cross-module programmatic entry exercises the F5-B reset after Edit.
     f.view('dashboard')
@@ -364,7 +412,7 @@ def main():
             options['executable_path'] = os.environ['CHROMIUM_EXECUTABLE']
         browser = playwright.chromium.launch(**options)
         for locale in args.locales:
-            for scenario in [links, company_save, company_archive, employee_archival, purge, editor, editor_click,
+            for scenario in [links, company_save, company_archive, employee_archival, purge, editor, editor_click, editor_locale_switch, user_editor_locale_switch,
                              access_and_legacy]:
                 context = browser.new_context(viewport=dict(width=1440, height=1000), service_workers='block', locale=locale)
                 page = context.new_page()

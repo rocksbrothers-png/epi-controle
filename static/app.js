@@ -10,24 +10,24 @@ var STORAGE_KEYS = globalThis.STORAGE_KEYS || Object.freeze({
 globalThis.STORAGE_KEYS = STORAGE_KEYS;
 const USER_COMPANY_REQUIRED_ROLES = Object.freeze(['general_admin', 'registry_admin', 'admin', 'user', 'buyer', 'approver', 'employee']);
 const ROLE_LABELS = {
-  master_admin: 'Administrador Master',
-  general_admin: 'Administrador Geral',
-  registry_admin: 'Administrador de Registro',
-  admin: 'Administrador Local',
-  user: 'Gestor de EPI',
-  buyer: 'Comprador',
-  approver: 'Aprovador',
-  employee: 'Funcionário'
+  get master_admin() { return (tr("role.master_admin", "Administrador Master", {})); },
+  get general_admin() { return (tr("role.general_admin", "Administrador Geral", {})); },
+  get registry_admin() { return (tr("role.registry_admin", "Administrador de Registro", {})); },
+  get admin() { return (tr("role.admin", "Administrador Local", {})); },
+  get user() { return (tr("role.user", "Gestor de EPI", {})); },
+  get buyer() { return (tr("role.buyer", "Comprador", {})); },
+  get approver() { return (tr("role.approver", "Aprovador", {})); },
+  get employee() { return (tr("role.employee", "Funcionário", {})); }
 };
 
 var tr = (globalThis.EpiI18nHelper && typeof globalThis.EpiI18nHelper.resolveLegacyTranslator === 'function')
   ? globalThis.EpiI18nHelper.resolveLegacyTranslator()
-  : ((typeof globalThis.trEpi === 'function') ? globalThis.trEpi : function tr(key, fallback) {
+  : ((typeof globalThis.trEpi === 'function') ? globalThis.trEpi : function tr(key, fallback, vars) {
     try {
-      const v = (typeof window !== 'undefined' && typeof window.t === 'function') ? window.t(key) : null;
-      return (v && v !== key) ? v : (fallback !== undefined ? fallback : key);
+      const v = (typeof window !== 'undefined' && typeof window.t === 'function') ? window.t(key, vars) : null;
+      return (v && v !== key) ? v : String(fallback !== undefined ? fallback : key).replace(/\{(\w+)\}/g, (match, name) => vars && Object.prototype.hasOwnProperty.call(vars, name) ? String(vars[name]) : match);
     } catch (_e) {
-      return fallback !== undefined ? fallback : key;
+      return String(fallback !== undefined ? fallback : key).replace(/\{(\w+)\}/g, (match, name) => vars && Object.prototype.hasOwnProperty.call(vars, name) ? String(vars[name]) : match);
     }
   });
 if (typeof globalThis.trEpi !== 'function') globalThis.trEpi = tr;
@@ -136,22 +136,22 @@ const VIEW_MODULE = {
 // Rótulos dos módulos configuráveis na aba Visualização — mesmas chaves de
 // `VIEW_MODULE` acima e de `MODULE_KEYS` em epi_backend/rule_engine.py.
 const MODULE_VISIBILITY_LABELS = {
-  dashboard: 'Dashboard',
-  compras: 'Compras',
-  estoque: 'Estoque',
-  entregas: 'Entregas',
-  solicitacoes: 'Solicitações',
+  get dashboard() { return (tr("dashboard.title", "Dashboard", {})); },
+  get compras() { return (tr("settingsTabs.purchases", "Compras", {})); },
+  get estoque() { return (tr("tabs.stock", "Estoque", {})); },
+  get entregas() { return (tr("dashboard.deliveries", "Entregas", {})); },
+  get solicitacoes() { return (tr("outsourcedCompany.requestsTab", "Solicitações", {})); },
   fichas: 'Fichas de EPI',
-  relatorios: 'Relatórios',
+  get relatorios() { return (tr("outsourcedCompany.reportsTab", "Relatórios", {})); },
   administracao: 'Administração',
-  configuracoes: 'Configurações',
-  terceirizados: 'Terceirizados e Prestadores',
-  migracao: 'Migração de Dados',
+  get configuracoes() { return (tr("settings.title", "Configurações", {})); },
+  get terceirizados() { return (tr("outsourcedCompany.pageTitle", "Terceirizados e Prestadores", {})); },
+  get migracao() { return (tr("dataMigration.pageTitle", "Migração de Dados", {})); },
   // Módulo opt-in irmão (ADR-0002 §10.3): Cadastro de Colaboradores
   // simplificado dentro da mesma tela de Terceirizados e Prestadores —
   // liga/desliga independente do módulo acima (admin/user só têm a
   // permissão técnica deste, nunca do de Empresas).
-  terceirizados_colaboradores: 'Cadastro de Colaboradores'
+  get terceirizados_colaboradores() { return (tr("outsourcedCompany.employeesTab", "Cadastro de Colaboradores", {})); }
 };
 // Espelha _UNIT_SCOPED_ROLES de epi_backend/rule_engine.py: só admin
 // (Administrador Local) e user (Gestor de EPI) têm vínculo de unidade
@@ -176,23 +176,23 @@ const VIEW_PERMISSION_ALTERNATIVES = {
   terceirizados: 'employees:create_simplified'
 };
 const VIEW_EYEBROW = {
-  dashboard: 'Visão Geral',
+  get dashboard() { return (tr("ui.topbar.visao_geral_f7e888", "Visão Geral", {})); },
   empresas: 'Administração',
   comercial: 'Administração',
   usuarios: 'Administração',
-  unidades: 'Cadastro',
-  cnpjs: 'Cadastro',
-  colaboradores: 'Cadastro',
-  terceirizados: 'Cadastro',
-  'gestao-colaborador': 'Operação',
-  epis: 'Cadastro',
-  estoque: 'Operação',
-  entregas: 'Operação',
-  fichas: 'Operação',
-  compras: 'Compras',
-  configuracao: 'Configuração',
-  relatorios: 'Relatórios',
-  avaliacoes: 'Avaliações',
+  get unidades() { return (tr("outsourcedCompany.registrationMode", "Cadastro", {})); },
+  get cnpjs() { return (tr("outsourcedCompany.registrationMode", "Cadastro", {})); },
+  get colaboradores() { return (tr("outsourcedCompany.registrationMode", "Cadastro", {})); },
+  get terceirizados() { return (tr("outsourcedCompany.registrationMode", "Cadastro", {})); },
+  get ["gestao-colaborador"]() { return (tr("nav.groupOperation", "Operação", {})); },
+  get epis() { return (tr("outsourcedCompany.registrationMode", "Cadastro", {})); },
+  get estoque() { return (tr("nav.groupOperation", "Operação", {})); },
+  get entregas() { return (tr("nav.groupOperation", "Operação", {})); },
+  get fichas() { return (tr("nav.groupOperation", "Operação", {})); },
+  get compras() { return (tr("settingsTabs.purchases", "Compras", {})); },
+  get configuracao() { return (tr("ui.topbar.configuracao_8d60e1", "Configuração", {})); },
+  get relatorios() { return (tr("outsourcedCompany.reportsTab", "Relatórios", {})); },
+  get avaliacoes() { return (tr("ppetest.evaluations", "Avaliações", {})); },
   migracao: 'Administração'
 };
 const CONFIGURATION_ADMIN_ROLES = Object.freeze(['master_admin', 'general_admin', 'registry_admin']);
@@ -1527,7 +1527,7 @@ function renderInteractiveNavTabs(activeView) {
   const labels = interactiveNavState.recentViews.slice(-5).map((viewName) => {
     const menuLabel = document.querySelector(`.menu-link[data-view="${viewName}"]`)?.textContent?.trim() || viewName;
     const activeClass = viewName === activeView ? 'is-active' : '';
-    return `<button class="interactive-nav-tab ${activeClass}" type="button" data-nav-tab-view="${viewName}">${menuLabel}</button>`;
+    return `<button class="interactive-nav-tab ${activeClass}" type="button" data-nav-tab-view="${escapeHtml(viewName)}">${escapeHtml(menuLabel)}</button>`;
   });
   refs.interactiveNavTabs.innerHTML = labels.join('');
 }
@@ -2703,14 +2703,29 @@ function consumePendingSessionMessage() {
   } catch (_e) {
     return;
   }
-  if (pendente) setLoginMessage(pendente, true);
+  if (!pendente) return;
+  // I18N-FULL-V1 (F2, só apresentação): o texto gravado por terminateSession
+  // continua sendo o canônico pt-BR. Aqui ele é apenas EXIBIDO no idioma ativo,
+  // por um mapa fechado {texto canônico → chave}. Texto fora do mapa aparece
+  // como veio. O binding retraduz quando o catálogo termina de carregar ou o
+  // idioma muda, sem tocar sessão, armazenamento ou eventos.
+  const avisosCanonicos = {
+    'Sua sessão foi encerrada. Faça login novamente para continuar.': 'login.messages.sessionEnded',
+    'Sessão expirada. Faça login novamente.': 'errors.sessionExpired',
+    'Não foi possível restaurar sua sessão automaticamente. Faça login para continuar.': 'login.messages.restoreFailed'
+  };
+  const chave = Object.prototype.hasOwnProperty.call(avisosCanonicos, pendente) ? avisosCanonicos[pendente] : '';
+  const exibido = chave && refs.loginMessage
+    ? (globalThis.EpiI18n?.textFor?.(refs.loginMessage, chave, pendente) ?? tr(chave, pendente))
+    : pendente;
+  setLoginMessage(exibido, true);
 }
 
 function setLoginPasswordVisibility(isVisible) {
   if (!refs.loginPassword || !refs.loginPasswordToggle) return;
   refs.loginPassword.type = isVisible ? 'text' : 'password';
   refs.loginPasswordToggle.setAttribute('aria-pressed', isVisible ? 'true' : 'false');
-  refs.loginPasswordToggle.setAttribute('aria-label', isVisible ? 'Ocultar senha' : 'Mostrar senha');
+  refs.loginPasswordToggle.setAttribute('aria-label', isVisible ? (globalThis.EpiI18n?.attributeFor?.(refs.loginPasswordToggle,"aria-label","login.hidePassword","Ocultar senha",{}) ?? tr("login.hidePassword", "Ocultar senha", {})) : (globalThis.EpiI18n?.attributeFor?.(refs.loginPasswordToggle,"aria-label","login.showPassword","Mostrar senha",{}) ?? tr("login.showPassword", "Mostrar senha", {})));
 }
 
 function toggleLoginPasswordVisibility() {
@@ -2775,8 +2790,12 @@ function planOptionMarkup(selectedPlan = '') {
 function planHintText(planKey, addendumEnabled = false) {
   const plan = getCommercialSettings().plans?.[planKey];
   if (!plan) return '';
-  const maxText = plan.max_users === null ? 'sem teto' : `até ${plan.max_users}`;
-  return `${plan.label}: Usuário(s), ${maxText}${addendumEnabled ? ' com aditivo contratual.' : '.'}`;
+  const maxText = plan.max_users === null
+    ? tr('commercial.panel.planUnlimited', 'sem teto')
+    : tr('commercial.panel.planUpTo', 'até {max}', { max: plan.max_users });
+  return addendumEnabled
+    ? tr('commercial.panel.planHintAddendum', '{plan}: Usuário(s), {limit} com aditivo contratual.', { plan: plan.label, limit: maxText })
+    : tr('commercial.panel.planHint', '{plan}: Usuário(s), {limit}.', { plan: plan.label, limit: maxText });
 }
 
 function formValues(form) {
@@ -2800,12 +2819,12 @@ function isMobileUserAgent() {
 
 function renderPlatformLogoPreview(logoValue) {
   if (!refs.platformLogoPreview) return;
-  refs.platformLogoPreview.innerHTML = `<div class="logo-preview-card">${companyLogoMarkup({ name: state.platformBrand?.display_name || 'Sua Empresa', logo_type: logoValue }, 'company-logo company-logo-lg')}<span>${logoValue ? 'Logotipo carregado' : 'Imagem padrão em uso'}</span></div>`;
+  refs.platformLogoPreview.innerHTML = `<div class="logo-preview-card">${companyLogoMarkup({ name: state.platformBrand?.display_name || tr('commercial.panel.defaultBrandName', 'Sua Empresa'), logo_type: logoValue }, 'company-logo company-logo-lg')}<span>${escapeHtml(logoValue ? tr('commercial.panel.logoLoaded', 'Logotipo carregado') : tr('commercial.panel.logoDefault', 'Imagem padrão em uso'))}</span></div>`;
 }
 
 function renderPlatformLoginLogoPreview(logoValue) {
   if (!refs.platformLoginLogoPreview) return;
-  refs.platformLoginLogoPreview.innerHTML = `<div class="logo-preview-card">${companyLogoMarkup({ name: 'Logo da tela de login', logo_type: logoValue }, 'company-logo company-logo-lg')}<span>${logoValue ? 'Logotipo de login carregado' : 'Sem logotipo de login (padrão)'}</span></div>`;
+  refs.platformLoginLogoPreview.innerHTML = `<div class="logo-preview-card">${companyLogoMarkup({ name: tr('commercial.panel.loginLogoName', 'Logo da tela de login'), logo_type: logoValue }, 'company-logo company-logo-lg')}<span>${escapeHtml(logoValue ? tr('commercial.panel.loginLogoLoaded', 'Logotipo de login carregado') : tr('commercial.panel.loginLogoDefault', 'Sem logotipo de login (padrão)'))}</span></div>`;
 }
 
 async function handlePlatformLogoUpload(event) {
@@ -2839,7 +2858,7 @@ async function handlePlatformLoginLogoUpload(event) {
   }
   const allowed = ['image/png', 'image/svg+xml'];
   if (!allowed.includes(file.type)) {
-    alert('A logo da tela de login aceita apenas PNG ou SVG.');
+    alert(tr('commercial.panel.loginLogoFormat', 'A logo da tela de login aceita apenas PNG ou SVG.'));
     event.target.value = '';
     return;
   }
@@ -2854,7 +2873,10 @@ async function handlePlatformLoginLogoUpload(event) {
 
 function renderPlatformBrand() {
   const brand = state.platformBrand || DEFAULT_PLATFORM_BRAND;
-  if (refs.platformBrandName) refs.platformBrandName.textContent = brand.display_name || DEFAULT_PLATFORM_BRAND.display_name;
+  if (refs.platformBrandName) {
+    globalThis.EpiI18n?.clearBinding?.(refs.platformBrandName);
+    refs.platformBrandName.textContent = brand.display_name || DEFAULT_PLATFORM_BRAND.display_name;
+  }
   if (refs.platformBrandLogo) refs.platformBrandLogo.innerHTML = companyLogoMarkup({ name: brand.display_name, logo_type: brand.logo_type }, 'company-logo company-logo-sm');
   if (refs.platformBrandForm) {
     refs.platformBrandForm.elements.display_name.value = brand.display_name || '';
@@ -4228,6 +4250,7 @@ function aposentarPreferenciasLegadas() {
 // `i18n.js`, que precisa do dono para resolver e persistir o idioma.
 globalThis.__EPI_PREFS__ = Object.freeze({
   ler: preferenciasDoPrincipal,
+  identidade: prefsPrincipalCorrente,
   definir: definirPreferencias,
   adotarDoServidor: adotarPreferenciasDoServidor,
   aposentarLegado: aposentarPreferenciasLegadas,
@@ -4368,7 +4391,7 @@ function applyRoleVisibility() {
   if (myCompanyForm) myCompanyForm.style.display = canConfigureMyCompany() ? '' : 'none';
   const platformBrandCard = refs.platformBrandForm?.closest('.user-form-card');
   if (platformBrandCard) platformBrandCard.style.display = state.user?.role === 'master_admin' ? '' : 'none';
-  refs.profileLabel.textContent = state.user ? roleLabel(state.user.role) : 'Perfil';
+  refs.profileLabel.textContent = state.user ? (globalThis.EpiI18n?.textFor?.(refs.profileLabel, 'role.' + state.user.role, roleLabel(state.user.role)) ?? roleLabel(state.user.role)) : ((globalThis.EpiI18n?.textFor?.(refs.profileLabel,"user.role","Perfil",{}) ?? tr("user.role", "Perfil", {})));
   if (refs.loggedUserIdentity) {
     const parts = splitUserName(state.user?.full_name || state.user?.username || '');
     refs.loggedUserIdentity.textContent = [parts.firstName, parts.lastName].filter(Boolean).join(' ').trim();
@@ -4392,9 +4415,7 @@ function applyThemeToggleUI() {
   const dark = document.documentElement.getAttribute('data-theme') === 'dark';
   btn.textContent = dark ? '☀️' : '🌙';
   btn.setAttribute('aria-pressed', dark ? 'true' : 'false');
-  btn.title = dark
-    ? tr('theme.toDark', 'Tema escuro ativo — clique para claro')
-    : tr('theme.toLight', 'Tema claro ativo — clique para escuro');
+  btn.title = dark ? (globalThis.EpiI18n?.attributeFor?.(btn,"title",'theme.toDark','Tema escuro ativo — clique para claro') ?? tr('theme.toDark', 'Tema escuro ativo — clique para claro')) : (globalThis.EpiI18n?.attributeFor?.(btn,"title",'theme.toLight','Tema claro ativo — clique para escuro') ?? tr('theme.toLight', 'Tema claro ativo — clique para escuro'));
 }
 function setupThemeToggle() {
   const btn = document.getElementById('theme-toggle');
@@ -4459,8 +4480,12 @@ function _applySettings({ theme, lang, density }) {
     tema: theme === 'dark' ? 'dark' : 'light',
     densidade: density === 'compact' ? 'compact' : 'normal',
   };
-  if (lang) parcial.idioma = lang;
   definirPreferencias(parcial);
+  // O motor só confirma a preferência de idioma quando o dicionário correto
+  // está disponível; tema/densidade continuam sob o mesmo dono.
+  if (lang && typeof globalThis.EpiI18n?.setLang === 'function') {
+    void globalThis.EpiI18n.setLang(lang);
+  }
 }
 
 function openSettingsDrawer() {
@@ -4508,7 +4533,7 @@ function updateTopbarCompanyBadge() {
   const unit = state.user?.unit_name || state.user?.current_unit_name;
   if (!company) {
     badge.hidden = false;
-    badge.textContent = tr('topbar.generalAccess', 'Acesso geral');
+    badge.textContent = (globalThis.EpiI18n?.textFor?.(badge,'topbar.generalAccess','Acesso geral') ?? tr('topbar.generalAccess', 'Acesso geral'));
     badge.classList.add('topbar-company-badge--general');
     return;
   }
@@ -4545,8 +4570,10 @@ function populateRoleOptions() {
     general_admin: ['registry_admin', 'admin', 'user', 'buyer', 'approver', 'employee'],
     registry_admin: ['admin', 'user', 'employee']
   };
+  const previousRole = refs.userRole.value;
   const roles = (roleKeys[state.user?.role] || []).map((k) => [k, tr('role.' + k, ROLE_LABELS[k] || k)]);
   refs.userRole.innerHTML = roles.map((item) => `<option value="${item[0]}">${item[1]}</option>`).join('');
+  if (roles.some(([value]) => value === previousRole)) refs.userRole.value = previousRole;
 }
 
 // populateUserFilters, renderUsersSummary, filteredUsers, setUserFormFeedback, syncUserFormAccess,
@@ -4609,7 +4636,7 @@ function populateScopedSearchFilters() {
   populateSearchSelect(refs.episFilterUnit, unitsForSearchByCompany(state.episFilters.company_id), (item) => item.name, state.episFilters.unit_id);
   if (refs.episFilterUnit && ['general_admin', 'registry_admin'].includes(state.user?.role)) {
     if (!Array.from(refs.episFilterUnit.options).some((option) => option.value === EPI_COMPANY_LEVEL_FILTER_VALUE)) {
-      refs.episFilterUnit.insertAdjacentHTML('beforeend', `<option value="${EPI_COMPANY_LEVEL_FILTER_VALUE}">Todas a nível de empresa</option>`);
+      refs.episFilterUnit.insertAdjacentHTML('beforeend', `<option value="${EPI_COMPANY_LEVEL_FILTER_VALUE}" data-i18n="epi.filterCompanyLevelAll">${escapeHtml(tr('epi.filterCompanyLevelAll', 'Todas a nível de empresa'))}</option>`);
     }
     if (state.episFilters.unit_id === EPI_COMPANY_LEVEL_FILTER_VALUE) refs.episFilterUnit.value = EPI_COMPANY_LEVEL_FILTER_VALUE;
   }
@@ -4651,7 +4678,7 @@ function syncEpisSearchFilters() {
   populateSearchSelect(refs.episFilterUnit, unitsForSearchByCompany(state.episFilters.company_id), (item) => item.name, state.episFilters.unit_id);
   if (refs.episFilterUnit && ['general_admin', 'registry_admin'].includes(state.user?.role)) {
     if (!Array.from(refs.episFilterUnit.options).some((option) => option.value === EPI_COMPANY_LEVEL_FILTER_VALUE)) {
-      refs.episFilterUnit.insertAdjacentHTML('beforeend', `<option value="${EPI_COMPANY_LEVEL_FILTER_VALUE}">Todas a nível de empresa</option>`);
+      refs.episFilterUnit.insertAdjacentHTML('beforeend', `<option value="${EPI_COMPANY_LEVEL_FILTER_VALUE}" data-i18n="epi.filterCompanyLevelAll">${escapeHtml(tr('epi.filterCompanyLevelAll', 'Todas a nível de empresa'))}</option>`);
     }
     if (state.episFilters.unit_id === EPI_COMPANY_LEVEL_FILTER_VALUE) refs.episFilterUnit.value = EPI_COMPANY_LEVEL_FILTER_VALUE;
   }
@@ -4769,7 +4796,7 @@ function syncFichaOptions() {
   const previousUnit = String(unitField.value || '');
   unitField.innerHTML = `${lockByOperationalProfile ? '' : `<option value="">${tr('employee.filterAllUnits', 'Todas')}</option>`}${units.map(formatUnitOption).join('')}`;
   if (!units.length) {
-    unitField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
+    unitField.innerHTML = "<option value=\"\" data-i18n=\"employee.noActiveOperationalUnit\">Sem unidade operacional ativa</option>";
     unitField.value = '';
   } else if (lockByOperationalProfile) {
     unitField.value = String(units[0].id);
@@ -4804,7 +4831,7 @@ function syncDeliveriesOptions() {
   const previousUnit = String(unitField.value || '');
   unitField.innerHTML = `${lockByOperationalProfile ? '' : `<option value="">${tr('employee.filterAllUnits', 'Todas')}</option>`}${units.map(formatUnitOption).join('')}`;
   if (!units.length) {
-    unitField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
+    unitField.innerHTML = "<option value=\"\" data-i18n=\"employee.noActiveOperationalUnit\">Sem unidade operacional ativa</option>";
     unitField.value = '';
   } else if (lockByOperationalProfile) {
     unitField.value = String(units[0].id);
@@ -4823,7 +4850,7 @@ function syncDeliveriesOptions() {
 // static/js/modules/companies/ui/ (UBX-V5, Etapa 2). formatCompanyCurrency fica aqui (I18N-FULL-V1 a altera).
 
 function formatCompanyCurrency(value) {
-  return formatCurrency(value || 0);
+  return formatCurrency(value || 0, globalThis.EpiI18n?.lang);
 }
 
 function filteredCommercialCompanies() {
@@ -4863,9 +4890,9 @@ function refreshCommercialPreview(company = null) {
   const userLimit = Number(refs.commercialForm.elements.user_limit.value || currentCompany?.user_limit || 0);
   const planName = refs.commercialForm.elements.plan_name.value || currentCompany?.plan_name || 'start';
   const addendumEnabled = refs.commercialForm.elements.addendum_enabled.checked;
-  refs.commercialForm.elements.unit_price_display.value = formatCurrency(unitPrice);
-  refs.commercialForm.elements.monthly_value.value = formatCurrency(activeUsers * unitPrice);
-  refs.commercialForm.elements.projected_monthly_value.value = formatCurrency(userLimit * unitPrice);
+  refs.commercialForm.elements.unit_price_display.value = formatCurrency(unitPrice, globalThis.EpiI18n?.lang);
+  refs.commercialForm.elements.monthly_value.value = formatCurrency(activeUsers * unitPrice, globalThis.EpiI18n?.lang);
+  refs.commercialForm.elements.projected_monthly_value.value = formatCurrency(userLimit * unitPrice, globalThis.EpiI18n?.lang);
   if (refs.commercialPlanHint) refs.commercialPlanHint.textContent = planHintText(planName, addendumEnabled);
 }
 
@@ -4903,13 +4930,20 @@ function contractStatusLabel(status) {
     closed: 'Encerrado',
     archived: 'Arquivado'
   };
-  return labels[String(status || '').toLowerCase()] || (status || 'Rascunho');
+  const code = String(status || '').toLowerCase() || 'draft';
+  // Código desconhecido continua visível como veio do backend.
+  return labels[code] ? tr(`commercial.contractStatusLabels.${code}`, labels[code]) : status;
 }
 
 function renderCommercialContractPanel() {
   const contract = state.commercialContract;
   if (!contract) return;
-  if (refs.commercialContractStatus) refs.commercialContractStatus.textContent = `Status do contrato: ${contractStatusLabel(contract.status)}`;
+  if (refs.commercialContractStatus) {
+    const code = String(contract.status || '').toLowerCase() || 'draft';
+    // Binding vivo: a troca de idioma retraduz o rótulo sem reler o contrato nem tocar no formulário.
+    refs.commercialContractStatus.textContent = globalThis.EpiI18n?.textFor?.(refs.commercialContractStatus, 'commercial.panel.contractStatus', 'Status do contrato: {status}', { status: contractStatusLabel(contract.status) }, { status: `commercial.contractStatusLabels.${code}` })
+      ?? tr('commercial.panel.contractStatus', 'Status do contrato: {status}', { status: contractStatusLabel(contract.status) });
+  }
   if (refs.commercialContractNumber) refs.commercialContractNumber.value = contract.contract_number || '';
   if (refs.commercialContractIssueDate) refs.commercialContractIssueDate.value = contract.issue_date || '';
   if (refs.commercialContractorAddress) refs.commercialContractorAddress.value = contract.contractor_address || '';
@@ -4937,13 +4971,16 @@ function renderCommercialContractPanel() {
   if (refs.commercialEmailSubject) refs.commercialEmailSubject.value = contract.last_email_subject || 'Contrato comercial EPI Controle';
   if (refs.commercialEmailBody) refs.commercialEmailBody.value = contract.last_email_body || 'Segue contrato comercial para análise e assinatura.';
   if (refs.commercialContractEvents) {
-    refs.commercialContractEvents.innerHTML = (contract.events || []).map((event) => `<div class="summary-item"><strong>${event.event_type}</strong><div>${formatDateTime(event.created_at)}</div></div>`).join('') || '<div class="summary-item">Sem histórico de contrato.</div>';
+    refs.commercialContractEvents.innerHTML = (contract.events || []).map((event) => `<div class="summary-item"><strong>${escapeHtml(event.event_type)}</strong><div>${formatDateTime(event.created_at)}</div></div>`).join('') || `<div class="summary-item">${escapeHtml(tr('commercial.panel.noContractHistory', 'Sem histórico de contrato.'))}</div>`;
   }
 }
 
 function resetCommercialContractForm({ preserveClauses = true } = {}) {
   const clauses = preserveClauses ? (refs.commercialContractClauses?.value || state.commercialClauseTemplate || '') : '';
-  if (refs.commercialContractStatus) refs.commercialContractStatus.textContent = 'Status do contrato: Rascunho';
+  if (refs.commercialContractStatus) {
+    refs.commercialContractStatus.textContent = globalThis.EpiI18n?.textFor?.(refs.commercialContractStatus, 'commercial.panel.contractStatus', 'Status do contrato: {status}', { status: contractStatusLabel('draft') }, { status: 'commercial.contractStatusLabels.draft' })
+      ?? tr('commercial.panel.contractStatus', 'Status do contrato: {status}', { status: contractStatusLabel('draft') });
+  }
   if (refs.commercialContractNumber) refs.commercialContractNumber.value = '';
   if (refs.commercialContractIssueDate) refs.commercialContractIssueDate.value = '';
   if (refs.commercialContractorAddress) refs.commercialContractorAddress.value = '';
@@ -4969,7 +5006,7 @@ function resetCommercialContractForm({ preserveClauses = true } = {}) {
   if (refs.commercialEmailSubject) refs.commercialEmailSubject.value = 'Contrato comercial EPI Controle';
   if (refs.commercialEmailBody) refs.commercialEmailBody.value = 'Segue contrato comercial para análise e assinatura.';
   if (refs.commercialSignedFile) refs.commercialSignedFile.value = '';
-  if (refs.commercialContractEvents) refs.commercialContractEvents.innerHTML = '<div class="summary-item">Sem histórico de contrato.</div>';
+  if (refs.commercialContractEvents) refs.commercialContractEvents.innerHTML = `<div class="summary-item">${escapeHtml(tr('commercial.panel.noContractHistory', 'Sem histórico de contrato.'))}</div>`;
   state.commercialContract = null;
   state.commercialClauseTemplate = clauses;
 }
@@ -5038,8 +5075,8 @@ function commercialActions(company) {
   if (!hasPermission('companies:update')) return '';
   const canReactivate = company.license_status === 'suspended' || company.license_status === 'expired' || Number(company.active) !== 1;
   const actionMode = canReactivate ? 'reactivate' : 'suspend';
-  const toggleLabel = canReactivate ? 'Reativar' : 'Suspender';
-  return `<div class="action-group commercial-actions"><button class="ghost" data-company-commercial="${company.id}">Abrir contrato</button><button class="ghost" data-commercial-toggle="${company.id}" data-commercial-mode="${actionMode}">${toggleLabel}</button></div>`;
+  const toggleLabel = canReactivate ? tr('commercial.panel.reactivate', 'Reativar') : tr('commercial.panel.suspend', 'Suspender');
+  return `<div class="action-group commercial-actions"><button class="ghost" data-company-commercial="${escapeHtml(company.id)}">${escapeHtml(tr('commercial.panel.openContract', 'Abrir contrato'))}</button><button class="ghost" data-commercial-toggle="${escapeHtml(company.id)}" data-commercial-mode="${actionMode}">${escapeHtml(toggleLabel)}</button></div>`;
 }
 
 function commercialAlertTone(item) {
@@ -5050,8 +5087,8 @@ function commercialAlertTone(item) {
 // (o nome vem do cadastro e é exibido ao Administrador Master).
 function renderCommercialSummaryCard(item) {
   const usage = `${item.user_count}/${item.user_limit}`;
-  const monthly = formatCurrency(item.monthly_value || 0);
-  const projected = formatCurrency(item.projected_monthly_value || 0);
+  const monthly = formatCurrency(item.monthly_value || 0, globalThis.EpiI18n?.lang);
+  const projected = formatCurrency(item.projected_monthly_value || 0, globalThis.EpiI18n?.lang);
   const risk = commercialRiskMeta(item);
   return `<div class="commercial-card"><div class="commercial-row">${companyLogoMarkup(item, 'company-logo company-logo-sm')}<div><strong>${escapeHtml(item.name)}</strong><span>${tr('commercial.usersCount', '{count} Usuários').replace('{count}', escapeHtml(usage))}</span><span>${monthly} ${tr('commercial.currentLabel', 'atual')} | ${projected} ${tr('commercial.projectedLabel', 'projetado')}</span><span>${escapeHtml(planLabel(item.plan_name))}</span></div><span class="badge badge-status-${risk.tone}">${risk.label}</span></div>${commercialActions(item)}</div>`;
 }
@@ -5114,23 +5151,23 @@ function renderCommercialStats() {
   const suspendedCount = companies.filter((item) => item.license_status === 'suspended').length;
   const expiredCount = companies.filter((item) => item.license_status === 'expired').length;
   refs.commercialStats.innerHTML = [
-    ['Faturamento mensal', monthlyTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })],
-    ['Empresas ativas', activeCount],
-    ['Suspensas', suspendedCount],
-    ['Expiradas', expiredCount]
-  ].map((item) => `<article class="stat-card"><div class="stat-label">${item[0]}</div><div class="stat-value">${item[1]}</div></article>`).join('');
+    [tr('commercial.panel.statMonthlyRevenue', 'Faturamento mensal'), formatCurrency(monthlyTotal, globalThis.EpiI18n?.lang)],
+    [tr('commercial.panel.statActive', 'Empresas ativas'), (globalThis.EpiI18n?.formatNumber?.(activeCount) ?? String(activeCount))],
+    [tr('commercial.panel.statSuspended', 'Suspensas'), (globalThis.EpiI18n?.formatNumber?.(suspendedCount) ?? String(suspendedCount))],
+    [tr('commercial.panel.statExpired', 'Expiradas'), (globalThis.EpiI18n?.formatNumber?.(expiredCount) ?? String(expiredCount))]
+  ].map((item) => `<article class="stat-card"><div class="stat-label">${escapeHtml(item[0])}</div><div class="stat-value">${escapeHtml(item[1])}</div></article>`).join('');
 }
 
 function renderCommercialSummary() {
   if (!refs.commercialSummary) return;
   const companies = filteredCommercialCompanies();
-  refs.commercialSummary.innerHTML = companies.map(renderCommercialSummaryCard).join('') || '<div class="summary-item">Sem empresas cadastradas.</div>';
+  refs.commercialSummary.innerHTML = companies.map(renderCommercialSummaryCard).join('') || `<div class="summary-item">${escapeHtml(tr('commercial.panel.noCompanies', 'Sem empresas cadastradas.'))}</div>`;
 }
 
 function renderCommercialAlerts() {
   if (!refs.commercialAlerts) return;
   const alerts = filteredCommercialCompanies().filter((item) => Number(item.limit_reached) === 1 || item.near_limit || ['suspended', 'expired'].includes(item.license_status) || Number(item.active) !== 1);
-  refs.commercialAlerts.innerHTML = alerts.map(renderCommercialAlertCard).join('') || '<div class="summary-item">Nenhuma empresa em alerta comercial.</div>';
+  refs.commercialAlerts.innerHTML = alerts.map(renderCommercialAlertCard).join('') || `<div class="summary-item">${escapeHtml(tr('commercial.panel.noAlerts', 'Nenhuma empresa em alerta comercial.'))}</div>`;
 }
 
 function formatCommercialAuditDetails(details) {
@@ -5139,14 +5176,14 @@ function formatCommercialAuditDetails(details) {
 }
 
 function renderCommercialHistoryItem(item) {
-  const createdAt = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at));
-  return `<div class="commercial-card"><div class="commercial-row"><div class="company-logo company-logo-sm"></div><div><strong>${escapeHtml(item.company_name)}</strong><span>${escapeHtml(item.action_label)} por ${escapeHtml(item.actor_name)}</span><span>${createdAt}</span></div><span class="badge badge-status-active">${escapeHtml(item.action_label)}</span></div><div class="summary-item">${escapeHtml(item.summary)}</div>${formatCommercialAuditDetails(item.details)}</div>`;
+  const createdAt = new Intl.DateTimeFormat(globalThis.EpiI18n?.lang || 'pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at));
+  return `<div class="commercial-card"><div class="commercial-row"><div class="company-logo company-logo-sm"></div><div><strong>${escapeHtml(item.company_name)}</strong><span>${escapeHtml(tr('commercial.panel.historyBy', '{action} por {actor}', { action: item.action_label, actor: item.actor_name }))}</span><span>${createdAt}</span></div><span class="badge badge-status-active">${escapeHtml(item.action_label)}</span></div><div class="summary-item">${escapeHtml(item.summary)}</div>${formatCommercialAuditDetails(item.details)}</div>`;
 }
 
 function renderCommercialHistory() {
   if (!refs.commercialHistory) return;
   const logs = filteredCommercialLogs();
-  refs.commercialHistory.innerHTML = logs.slice(0, 12).map(renderCommercialHistoryItem).join('') || '<div class="summary-item">Sem Histórico comercial registrado.</div>';
+  refs.commercialHistory.innerHTML = logs.slice(0, 12).map(renderCommercialHistoryItem).join('') || `<div class="summary-item">${escapeHtml(tr('commercial.panel.noHistory', 'Sem histórico comercial registrado.'))}</div>`;
 }
 
 function renderCommercialExpiring() {
@@ -5155,16 +5192,16 @@ function renderCommercialExpiring() {
     .map((item) => ({ item, days: daysUntil(item.contract_end) }))
     .filter((entry) => entry.days !== null && entry.days >= 0 && entry.days <= 30)
     .sort((a, b) => a.days - b.days);
-  refs.commercialExpiring.innerHTML = expiring.map(renderCommercialExpiringCard).join('') || '<div class="summary-item">Nenhum contrato vencendo nos próximos 30 dias.</div>';
+  refs.commercialExpiring.innerHTML = expiring.map(renderCommercialExpiringCard).join('') || `<div class="summary-item">${escapeHtml(tr('commercial.panel.noExpiring', 'Nenhum contrato vencendo nos próximos 30 dias.'))}</div>`;
 }
 
 // companyRowActions: static/js/modules/companies/ui/ (UBX-V5, Etapa 2).
 
 function populateCommercialActors() {
   if (!refs.commercialFilterActor) return;
-  const names = [...new Set(state.companyAuditLogs.map((item) => item.actor_name))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  const names = [...new Set(state.companyAuditLogs.map((item) => item.actor_name))].sort((a, b) => String(a).localeCompare(String(b), globalThis.EpiI18n?.lang || 'pt-BR'));
   const optionsHtml = names.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('');
-  refs.commercialFilterActor.innerHTML = `<option value="">Todos</option>` + optionsHtml;
+  refs.commercialFilterActor.innerHTML = `<option value="" data-i18n="user.filterAll">Todos</option>` + optionsHtml;
   refs.commercialFilterActor.value = state.commercialFilters.actor_name;
   refs.commercialFilterDateFrom.value = state.commercialFilters.date_from;
   refs.commercialFilterDateTo.value = state.commercialFilters.date_to;
@@ -5178,14 +5215,22 @@ function platformBrandDisplayName() {
 function exportCommercialExcel() {
   const rows = filteredCommercialLogs();
   const exportBrandName = platformBrandDisplayName();
-  const header = ['Marca', 'Empresa', 'ação', 'Responsável', 'Data', 'Resumo', 'Detalhes'];
+  const header = [
+    tr('commercial.brand', 'Marca'),
+    tr('commercial.panel.colCompany', 'Empresa'),
+    tr('commercial.panel.colAction', 'Ação'),
+    tr('commercial.panel.colActor', 'Responsável'),
+    tr('commercial.panel.colDate', 'Data'),
+    tr('commercial.panel.colSummary', 'Resumo'),
+    tr('commercial.panel.colDetails', 'Detalhes')
+  ];
   const body = rows.map((item) => {
     const detailsHtml = formatCommercialDetails(item.details);
-    const createdAt = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at));
+    const createdAt = new Intl.DateTimeFormat(globalThis.EpiI18n?.lang || 'pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at));
     return `<tr><td>${escapeHtml(exportBrandName)}</td><td>${escapeHtml(item.company_name)}</td><td>${escapeHtml(item.action_label)}</td><td>${escapeHtml(item.actor_name)}</td><td>${createdAt}</td><td>${escapeHtml(item.summary)}</td><td>${detailsHtml}</td></tr>`;
   }).join('');
   const tableStylesheet = 'table{border-collapse:collapse;width:100%;font-family:Segoe UI,Arial,sans-serif}th,td{border:1px solid var(--color-border);padding:8px;text-align:left;vertical-align:top}th{background:#f6d8c8}';
-  const headerCells = header.map((item) => `<th scope="col">${item}</th>`).join('');
+  const headerCells = header.map((item) => `<th scope="col">${escapeHtml(item)}</th>`).join('');
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${tableStylesheet}</style></head><body><table><thead><tr>${headerCells}</tr></thead><tbody>${body}</tbody></table></body></html>`;
   const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
   const link = document.createElement('a');
@@ -5197,10 +5242,12 @@ function exportCommercialExcel() {
 
 function formatCommercialFiltersLabel() {
   return [
-    state.commercialFilters.status ? `Status: ${state.commercialFilters.status}` : 'Status: todos',
-    state.commercialFilters.actor_name ? `Responsável: ${state.commercialFilters.actor_name}` : '',
-    state.commercialFilters.date_from ? `De: ${formatDate(state.commercialFilters.date_from)}` : '',
-    state.commercialFilters.date_to ? `até: ${formatDate(state.commercialFilters.date_to)}` : ''
+    state.commercialFilters.status
+      ? tr('commercial.panel.filterStatus', 'Status: {status}', { status: tr(`license.${state.commercialFilters.status}`, state.commercialFilters.status) })
+      : tr('commercial.panel.filterStatusAll', 'Status: todos'),
+    state.commercialFilters.actor_name ? tr('commercial.panel.filterActor', 'Responsável: {actor}', { actor: state.commercialFilters.actor_name }) : '',
+    state.commercialFilters.date_from ? tr('commercial.panel.filterFrom', 'De: {date}', { date: formatDate(state.commercialFilters.date_from) }) : '',
+    state.commercialFilters.date_to ? tr('commercial.panel.filterTo', 'até: {date}', { date: formatDate(state.commercialFilters.date_to) }) : ''
   ].filter(Boolean).join(' | ');
 }
 
@@ -5238,11 +5285,14 @@ function printCommercialHistory() {
   const filters = formatCommercialFiltersLabel();
   const rowsHtml = rows.map((item) => {
     const detailsHtml = formatCommercialDetails(item.details);
-    const createdAt = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at));
+    const createdAt = new Intl.DateTimeFormat(globalThis.EpiI18n?.lang || 'pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at));
     return `<tr><td>${escapeHtml(item.company_name)}</td><td>${escapeHtml(item.action_label)}</td><td>${escapeHtml(item.actor_name)}</td><td>${createdAt}</td><td>${escapeHtml(item.summary)}</td><td class="detail">${detailsHtml}</td></tr>`;
   }).join('');
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Histórico Comercial</title></head><body><h1>Histórico Comercial</h1><p>Filtros: ${escapeHtml(filters)}</p><table><thead><tr><th scope="col">Empresa</th><th scope="col">ação</th><th scope="col">Responsável</th><th scope="col">Data</th><th scope="col">Resumo</th><th scope="col">Detalhes</th></tr></thead><tbody>${rowsHtml}</tbody></table></body></html>`;
-  if (!openAndPrintPopup(html, 'width=1100,height=800')) return alert('Não tem acesso.');
+  const printTitle = escapeHtml(tr('commercial.panel.printTitle', 'Histórico Comercial'));
+  const printHeaders = ['colCompany', 'colAction', 'colActor', 'colDate', 'colSummary', 'colDetails']
+    .map((key, index) => `<th scope="col">${escapeHtml(tr(`commercial.panel.${key}`, ['Empresa', 'Ação', 'Responsável', 'Data', 'Resumo', 'Detalhes'][index]))}</th>`).join('');
+  const html = `<!DOCTYPE html><html lang="${escapeHtml(String(globalThis.EpiI18n?.lang || 'pt-BR').toLowerCase())}"><head><meta charset="utf-8"><title>${printTitle}</title></head><body><h1>${printTitle}</h1><p>${escapeHtml(tr('commercial.panel.filtersLabel', 'Filtros: {filters}', { filters }))}</p><table><thead><tr>${printHeaders}</tr></thead><tbody>${rowsHtml}</tbody></table></body></html>`;
+  if (!openAndPrintPopup(html, 'width=1100,height=800')) return alert(tr('commercial.panel.popupBlocked', 'Não foi possível abrir a janela de impressão. Permita pop-ups para este site.'));
 }
 
 async function savePlatformBrand(event) {
@@ -5255,7 +5305,7 @@ async function savePlatformBrand(event) {
     const payload = await api('/api/platform-brand', { method: 'POST', body: JSON.stringify(values) });
     state.platformBrand = { ...DEFAULT_PLATFORM_BRAND, ...payload.brand };
     renderPlatformBrand();
-    alert('Marca da sua empresa atualizada.');
+    alert(tr('commercial.panel.brandUpdated', 'Marca da sua empresa atualizada.'));
   } catch (error) { alert(error.message); }
 }
 
@@ -5272,7 +5322,7 @@ async function saveCommercialContractDraft(showToast = false) {
   const response = await api('/api/commercial-contract/save', { method: 'POST', body: JSON.stringify(payload) });
   state.commercialContract = response.contract || null;
   renderCommercialContractPanel();
-  if (showToast) alert('Contrato salvo em rascunho.');
+  if (showToast) alert(tr('commercial.panel.draftSaved', 'Contrato salvo em rascunho.'));
 }
 
 async function generateCommercialContract() {
@@ -5281,7 +5331,7 @@ async function generateCommercialContract() {
     const response = await api('/api/commercial-contract/generate', { method: 'POST', body: JSON.stringify(payload) });
     state.commercialContract = response.contract || null;
     renderCommercialContractPanel();
-    alert('Contrato gerado com sucesso.');
+    alert(tr('commercial.panel.generated', 'Contrato gerado com sucesso.'));
   } catch (error) { alert(error.message); }
 }
 
@@ -5310,7 +5360,7 @@ async function signCommercialContractAction() {
     });
     state.commercialContract = response.contract || null;
     renderCommercialContractPanel();
-    alert('Assinatura digital registrada.');
+    alert(tr('commercial.panel.signatureRecorded', 'Assinatura digital registrada.'));
   } catch (error) { alert(error.message); }
 }
 
@@ -5321,7 +5371,7 @@ function fileToBase64(file) {
       const full = String(reader.result || '');
       resolve(full.includes(',') ? full.split(',')[1] : full);
     };
-    reader.onerror = () => reject(new Error('Falha ao ler arquivo.'));
+    reader.onerror = () => reject(new Error(tr('commercial.panel.fileReadFailed', 'Falha ao ler arquivo.')));
     reader.readAsDataURL(file);
   });
 }
@@ -5329,7 +5379,7 @@ function fileToBase64(file) {
 async function uploadSignedCommercialContract() {
   try {
     const file = refs.commercialSignedFile?.files?.[0];
-    if (!file) return alert('Selecione um PDF assinado.');
+    if (!file) return alert(tr('commercial.panel.selectSignedPdf', 'Selecione um PDF assinado.'));
     const companyId = refs.commercialCompany?.value;
     const fileBase64 = await fileToBase64(file);
     const response = await api('/api/commercial-contract/upload-signed', {
@@ -5344,7 +5394,7 @@ async function uploadSignedCommercialContract() {
     });
     state.commercialContract = response.contract || null;
     renderCommercialContractPanel();
-    alert('Contrato assinado enviado com sucesso.');
+    alert(tr('commercial.panel.signedUploaded', 'Contrato assinado enviado com sucesso.'));
   } catch (error) { alert(error.message); }
 }
 
@@ -5363,14 +5413,22 @@ async function sendCommercialContractByEmail() {
     });
     state.commercialContract = response.contract || null;
     renderCommercialContractPanel();
-    alert('Registro de envio por e-mail atualizado.');
+    alert(tr('commercial.panel.emailLogged', 'Registro de envio por e-mail atualizado.'));
   } catch (error) { alert(error.message); }
 }
 
 function exportCommercialHistory() {
   const rows = filteredCommercialLogs();
   const exportBrandName = platformBrandDisplayName();
-  const header = ['Marca', 'Empresa', 'ação', 'Responsável', 'Data', 'Resumo', 'Detalhes'];
+  const header = [
+    tr('commercial.brand', 'Marca'),
+    tr('commercial.panel.colCompany', 'Empresa'),
+    tr('commercial.panel.colAction', 'Ação'),
+    tr('commercial.panel.colActor', 'Responsável'),
+    tr('commercial.panel.colDate', 'Data'),
+    tr('commercial.panel.colSummary', 'Resumo'),
+    tr('commercial.panel.colDetails', 'Detalhes')
+  ];
   const lines = rows.map((item) => [
     exportBrandName,
     item.company_name,
@@ -5710,9 +5768,9 @@ function bindDependentSelects() {
 // canDemote*, canToggleActive, canGenerateRecoveryToken): modules/auth/ (UBX-V4, Etapa C).
 
 function askTemporaryPassword(defaultValue = '') {
-  const password = globalThis.prompt('Defina a senha provisória:', defaultValue);
+  const password = globalThis.prompt(tr('user.messages.tempPasswordPrompt', 'Defina a senha provisória:'), defaultValue);
   if (password === null) return null;
-  if (String(password).trim().length < 8) throw new Error('A senha provisória precisa ter pelo menos 8 caracteres.');
+  if (String(password).trim().length < 8) throw new Error(tr('user.messages.tempPasswordTooShort', 'A senha provisória precisa ter pelo menos 8 caracteres.'));
   return String(password).trim();
 }
 
@@ -5755,40 +5813,43 @@ function buildUserAccessMessage(target, password, channel = 'email') {
   const brandName = brand.display_name || DEFAULT_PLATFORM_BRAND.display_name;
   const legalName = brand.legal_name || brandName;
   const brandCnpj = brand.cnpj ? `CNPJ: ${brand.cnpj}` : '';
-  const companyName = target.company_name || 'sua empresa';
+  const companyName = target.company_name || tr('user.accessMessage.defaultCompany', 'sua empresa');
   const loginUrl = globalThis.location.origin;
+  const trAccess = (key, fallback, vars) => tr(`user.accessMessage.${key}`, fallback, vars);
+  const usernameLine = trAccess('username', 'Usuário: {username}', { username: target.username });
+  const passwordLine = trAccess('password', 'Senha provisória: {password}', { password });
   if (channel === 'whatsapp') {
     const footer = brandCnpj ? `${legalName} | ${brandCnpj}` : legalName;
     return [
       `${target.full_name}.`,
       '',
-      `Seu acesso ao sistema ${brandName} foi liberado para a empresa ${companyName}.`,
-      `Usuário: ${target.username}`,
-      `Senha provisória: ${password}`,
+      trAccess('grantedWhatsapp', 'Seu acesso ao sistema {brand} foi liberado para a empresa {company}.', { brand: brandName, company: companyName }),
+      usernameLine,
+      passwordLine,
       '',
-      'No primeiro acesso, crie a sua e troque a de provisÃÂ£o.',
-      `Acesso: ${loginUrl}`,
+      trAccess('firstAccessShort', 'No primeiro acesso, crie a sua senha e substitua a provisória.'),
+      trAccess('accessShort', 'Acesso: {url}', { url: loginUrl }),
       '',
       footer
     ].join('\n');
   }
   return [
-    `Assunto: Acesso ao sistema ${brandName}`,
+    trAccess('subject', 'Assunto: Acesso ao sistema {brand}', { brand: brandName }),
     '',
     `${target.full_name},`,
     '',
-    `Seu acesso ao sistema ${brandName} foi liberado para operação na empresa ${companyName}.`,
+    trAccess('grantedEmail', 'Seu acesso ao sistema {brand} foi liberado para operação na empresa {company}.', { brand: brandName, company: companyName }),
     '',
-    'Dados de acesso inicial:',
-    `Usuário: ${target.username}`,
-    `Senha provisória: ${password}`,
-    `Link de acesso: ${loginUrl}`,
+    trAccess('initialData', 'Dados de acesso inicial:'),
+    usernameLine,
+    passwordLine,
+    trAccess('link', 'Link de acesso: {url}', { url: loginUrl }),
     '',
-    'Importante: no primeiro acesso, Você definir a sua provisória para senha final antes de entrar no painel.',
+    trAccess('firstAccess', 'Importante: no primeiro acesso, troque a senha provisória por uma senha definitiva antes de entrar no painel.'),
     '',
-    'Em caso de perda ou esquecer a senha entrar em contato com sua empresa.',
+    trAccess('lostPassword', 'Em caso de perda ou esquecimento da senha, entre em contato com sua empresa.'),
     '',
-    'Atenciosamente,',
+    trAccess('regards', 'Atenciosamente,'),
     legalName,
     brandCnpj
   ].filter(Boolean).join('\n');
@@ -5836,7 +5897,9 @@ async function generateAndCopyTemporaryPassword(userId) {
     const password = generateTemporaryPassword(12);
     await applyTemporaryPassword(userId, password, target.username, { notify: false });
     const copied = await copyTextToClipboard(password);
-    alert(copied ? `Senha provisória gerada para ${target.username}: ${password}` : 'Senha provisória gerada, mas Não foi possí­vel copiar para a Área de transferÃÂªncia.');
+    alert(copied
+      ? tr('user.messages.tempPasswordGenerated', 'Senha provisória gerada para {username}: {password}', { username: target.username, password })
+      : tr('user.messages.tempPasswordNotCopied', 'Senha provisória gerada, mas não foi possível copiá-la para a área de transferência.'));
     await loadBootstrap();
   } catch (error) { alert(error.message); }
 }
@@ -6173,7 +6236,7 @@ async function loadStockMovementsReport() {
     const res = await api(`/api/stock/movements/report?${params.toString()}`);
     renderStockMovementsReport(res.items || []);
   } catch (e) {
-    if (tbody) tbody.innerHTML = `<tr><td colspan="14" style="color:var(--color-danger);">Erro: ${escapeHtml(e.message || 'Falha ao carregar')}</td></tr>`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="14" style="color:var(--color-danger);">${(globalThis.EpiI18n?.bindText?.("ui.app.erro_p0_83a174",{p0:(e.message || 'Falha ao carregar')},"Erro: {p0}") ?? `Erro: ${escapeHtml(e.message || 'Falha ao carregar')}`)}</td></tr>`;
   }
 }
 
@@ -6218,7 +6281,7 @@ function renderStockMovementsReport(items) {
   }
   if (hint) {
     hint.style.display = items.length >= 500 ? '' : 'none';
-    hint.textContent = tr('stock.limitedResult', 'Resultado limitado a 500 registros. Use os filtros para refinar.');
+    hint.textContent = (globalThis.EpiI18n?.textFor?.(hint,'stock.limitedResult','Resultado limitado a 500 registros. Use os filtros para refinar.') ?? tr('stock.limitedResult', 'Resultado limitado a 500 registros. Use os filtros para refinar.'));
   }
   if (!items.length) {
     tbody.innerHTML = `<tr><td colspan="14" style="text-align:center;color:var(--color-text-muted);">${tr('stock.noMovements', 'Nenhuma movimentação encontrada para os filtros selecionados.')}</td></tr>`;
@@ -6901,7 +6964,7 @@ function renderJoinventureList() {
     const unit = state.units.find((item) => String(item.id) === String(entry.unit_id || ''));
     const unitLabel = unit ? unit.name : tr('unit.undefined', 'Sem unidade definida');
     const token = activeJoinventureToken(entry);
-    return `<button class="ghost" type="button" data-joinventure-remove="${escapeHtml(token)}">${escapeHtml(entry.name)} (${escapeHtml(unitLabel)}) - ${tr('delete', 'Apagar')}</button>`;
+    return `<button class="ghost" type="button" data-joinventure-remove="${escapeHtml(token)}">${escapeHtml(entry.name)} (${escapeHtml(unitLabel)}) - ${escapeHtml(tr('delete', 'Apagar'))}</button>`;
   }).join('') || `<span class="hint">${tr('epi.noJoinventure', 'Nenhuma JoinVenture cadastrada ou Unidade Única.')}</span>`;
   const previous = parseActiveJoinventureToken(activeSelect.value);
   activeSelect.innerHTML = `<option value="">${tr('epi.noActiveJoinventureOption', 'Sem Joint Venture ou Unidade Única ativa (EPI geral)')}</option>` + values.map(formatActiveJoinventureOption).join('');
@@ -7067,7 +7130,7 @@ async function loadAvailableQrsForSelectedEpi() {
   const epiId = String(document.getElementById('delivery-epi')?.value || '').trim();
   if (!companyId || !unitId || !epiId) {
     target.innerHTML = `<option value="">${tr('delivery.availableQrLoadPrompt', 'Selecione empresa/unidade/EPI para carregar os QRs')}</option>`;
-    if (hint) hint.textContent = tr('delivery.availableQrSelectHint', 'Selecione empresa, unidade e EPI para listar os QRs disponíveis.');
+    if (hint) hint.textContent = (globalThis.EpiI18n?.textFor?.(hint,'delivery.availableQrSelectHint','Selecione empresa, unidade e EPI para listar os QRs disponíveis.') ?? tr('delivery.availableQrSelectHint', 'Selecione empresa, unidade e EPI para listar os QRs disponíveis.'));
     return;
   }
   target.innerHTML = `<option value="">${tr('delivery.loadingAvailableQrs', 'Carregando QRs disponíveis...')}</option>`;
@@ -7082,7 +7145,7 @@ async function loadAvailableQrsForSelectedEpi() {
     const items = Array.isArray(payload?.items) ? payload.items : [];
     if (!items.length) {
       target.innerHTML = `<option value="">${tr('delivery.noQrAvailable', 'Nenhum QR disponível para este EPI na unidade')}</option>`;
-      if (hint) hint.textContent = tr('delivery.noQrAvailableHint', 'Nenhum QR disponível para este EPI na unidade selecionada.');
+      if (hint) hint.textContent = (globalThis.EpiI18n?.textFor?.(hint,'delivery.noQrAvailableHint','Nenhum QR disponível para este EPI na unidade selecionada.') ?? tr('delivery.noQrAvailableHint', 'Nenhum QR disponível para este EPI na unidade selecionada.'));
       return;
     }
     // FEFO: os itens já chegam ordenados por validade mais próxima. O primeiro
@@ -7094,10 +7157,10 @@ async function loadAvailableQrsForSelectedEpi() {
       const mfgLabel = mfg ? ` — ${tr('delivery.manufactureShort', 'Fab.')}: ${escapeHtml(mfg)}` : '';
       return `<option value="${item.id}" data-qr-code="${escapeHtml(String(item.qr_code_value || ''))}">${fefoTag}${escapeHtml(String(item.qr_code_value || ''))} — ${escapeHtml(String(item.epi_name || 'EPI'))} — ${tr('delivery.sizeShort', 'Tam.')}: ${escapeHtml(formatItemSizeDisplay(item))}${mfgLabel}</option>`;
     }).join('');
-    if (hint) hint.textContent = tr('delivery.qrCountAvailableFefo', '{count} QR(s) disponível(is), ordenados por validade (FEFO — o que vence primeiro no topo).').replace('{count}', String(items.length));
+    if (hint) hint.textContent = (globalThis.EpiI18n?.textFor?.(hint,'delivery.qrCountAvailableFefo','{count} QR(s) disponível(is), ordenados por validade (FEFO — o que vence primeiro no topo).') ?? tr('delivery.qrCountAvailableFefo', '{count} QR(s) disponível(is), ordenados por validade (FEFO — o que vence primeiro no topo).')).replace('{count}', String(items.length));
   } catch (error) {
     target.innerHTML = `<option value="">${tr('delivery.qrLoadFailure', 'Falha ao carregar QR disponíveis')}</option>`;
-    if (hint) hint.textContent = tr('delivery.qrLoadFailureHint', 'Falha ao carregar QRs disponíveis: {error}').replace('{error}', String(error?.message || 'erro desconhecido'));
+    if (hint) hint.textContent = (globalThis.EpiI18n?.textFor?.(hint,'delivery.qrLoadFailureHint','Falha ao carregar QRs disponíveis: {error}') ?? tr('delivery.qrLoadFailureHint', 'Falha ao carregar QRs disponíveis: {error}')).replace('{error}', String(error?.message || tr('common.unknownError', 'erro desconhecido')));
   }
 }
   
@@ -7139,7 +7202,7 @@ async function loadDeliveryUnitEpis(companyId, unitFilter) {
   if (!hasPermission('deliveries:view')) return;
   if (unitFilter === '__NO_UNIT__') {
     state.deliveryEpis = [];
-    state.deliveryEpisScopeKey = `${companyId || ''}|${unitFilter || ''}`;
+    state.deliveryEpisScopeKey = `${companyId || ''}|${unitFilter}`;
     const epiField = document.getElementById('delivery-epi');
     if (epiField) populateDeliveryEpiField(epiField, []);
     return;
@@ -7376,16 +7439,16 @@ function renderDataMigrationEntityFields() {
   if (!descriptor) { refs.migracaoEntityFields.textContent = ''; return; }
   const required = (descriptor.fields || []).filter((field) => field.required).map((field) => field.label);
   const optional = (descriptor.fields || []).filter((field) => !field.required).length;
-  refs.migracaoEntityFields.textContent = tr(
+  refs.migracaoEntityFields.textContent = (globalThis.EpiI18n?.textFor?.(refs.migracaoEntityFields,'dataMigration.entityFieldsHint','Obrigatórios: {required}. Mais {optional} campos opcionais.') ?? tr(
     'dataMigration.entityFieldsHint',
     'Obrigatórios: {required}. Mais {optional} campos opcionais.',
-  ).replace('{required}', required.join(', ') || '-').replace('{optional}', String(optional));
+  )).replace('{required}', required.join(', ') || '-').replace('{optional}', String(optional));
 }
 
 function syncDataMigrationStrategyHint() {
   if (!refs.migracaoStrategyHint || !refs.migracaoStrategy) return;
   const strategy = refs.migracaoStrategy.value || 'upsert';
-  refs.migracaoStrategyHint.textContent = tr(`dataMigration.strategyHint.${strategy}`, '');
+  refs.migracaoStrategyHint.textContent = (globalThis.EpiI18n?.textFor?.(refs.migracaoStrategyHint,`dataMigration.strategyHint.${strategy}`,'') ?? tr(`dataMigration.strategyHint.${strategy}`, ''));
 }
 
 function renderDataMigrationSteps() {
@@ -7469,7 +7532,7 @@ function renderDataMigrationMapping() {
   if (refs.migracaoMappingSummary) {
     const summary = helpers.mappingSummary ? helpers.mappingSummary(draft.details, missing) : null;
     refs.migracaoMappingSummary.textContent = summary
-      ? tr('dataMigration.mappingSummary', '{mapped} de {total} colunas reconhecidas · {review} para conferir')
+      ? (globalThis.EpiI18n?.textFor?.(refs.migracaoMappingSummary,'dataMigration.mappingSummary','{mapped} de {total} colunas reconhecidas · {review} para conferir') ?? tr('dataMigration.mappingSummary', '{mapped} de {total} colunas reconhecidas · {review} para conferir'))
         .replace('{mapped}', String(summary.mapped))
         .replace('{total}', String(summary.total))
         .replace('{review}', String(summary.review))
@@ -7512,7 +7575,7 @@ function renderDataMigrationPreview() {
   if (!preview) return;
   const actual = preview.actual_totals;
   const hint = refs.migracaoPreviewCard?.querySelector('[data-i18n="dataMigration.previewHint"]');
-  if (hint) hint.textContent = actual ? tr('dataMigration.finalHint', 'Resultado conciliado com os registros persistidos.') : tr('dataMigration.previewHint', 'Nada foi gravado ainda. Confira os números e os problemas encontrados antes de confirmar.');
+  if (hint) hint.textContent = actual ? (globalThis.EpiI18n?.textFor?.(hint,'dataMigration.finalHint','Resultado conciliado com os registros persistidos.') ?? tr('dataMigration.finalHint', 'Resultado conciliado com os registros persistidos.')) : (globalThis.EpiI18n?.textFor?.(hint,'dataMigration.previewHint','Nada foi gravado ainda. Confira os números e os problemas encontrados antes de confirmar.') ?? tr('dataMigration.previewHint', 'Nada foi gravado ainda. Confira os números e os problemas encontrados antes de confirmar.'));
   if (refs.migracaoPreviewCounters) {
     const counters = [
       ['dataMigration.pvTotal', 'Linhas lidas', preview.total_rows],
@@ -7909,7 +7972,7 @@ function syncStockOptions() {
   const previousUnit = String(unitField.value || '');
   unitField.innerHTML = units.map(formatUnitOption).join('');
   if (!units.length) {
-    unitField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
+    unitField.innerHTML = "<option value=\"\" data-i18n=\"employee.noActiveOperationalUnit\">Sem unidade operacional ativa</option>";
     unitField.value = '';
   } else if (lockUnitByProfile) {
     unitField.value = String(units[0].id);
@@ -8026,7 +8089,7 @@ function renderDeliveryQrSession() {
   if (!sessionViews.length) return;
   if (!qrScannerState.scanSession.length) {
     sessionViews.forEach(({ summary, list }) => {
-      list.innerHTML = '<li class="hint">Nenhum QR confirmado nesta sessão.</li>';
+      list.innerHTML = "<li class=\"hint\" data-i18n=\"delivery.noQrConfirmed\">Nenhum QR confirmado nesta sess\u00e3o.</li>";
       summary.style.display = 'none';
     });
     return;
@@ -8073,7 +8136,7 @@ function syncDeliveryQrSessionOwner(options = {}) {
   resetDeliveryQrSession();
   clearDeliveryStockItemSelection();
   if (shouldWarn) {
-    setDeliveryQrStatus('Colaborador alterado: sessão de leitura anterior foi encerrada para evitar mistura de entregas.', true);
+    setDeliveryQrStatus(tr('delivery.qr.ownerChanged', 'Colaborador alterado: sessão de leitura anterior foi encerrada para evitar mistura de entregas.'), true);
   }
   return true;
 }
@@ -8219,7 +8282,7 @@ async function handleDeliveryQrScan(options = {}) {
     console.warn('[qr][scan] rejeitado na validação', { raw: value, interpreted, reason: error?.message || 'erro_desconhecido' });
     const loweredMessage = String(error?.message || '').toLowerCase();
     if (loweredMessage.includes('não encontrado')) {
-      setDeliveryQrStatus('Código não encontrado no estoque.', true);
+      setDeliveryQrStatus(tr('delivery.qr.codeNotInStock', 'Código não encontrado no estoque.'), true);
     } else {
       setDeliveryQrStatus(`QR Não validado no estoque: ${error.message}`, true);
     }
@@ -8227,7 +8290,7 @@ async function handleDeliveryQrScan(options = {}) {
   }
   if (!stockItem) {
     console.warn('[qr][scan] rejeitado: não encontrado', { raw: value, interpreted });
-    setDeliveryQrStatus('Código não encontrado no estoque.', true);
+    setDeliveryQrStatus(tr('delivery.qr.codeNotInStock', 'Código não encontrado no estoque.'), true);
     return false;
   }
   const returnedCode = String(stockItem?.qr_code_value || '').trim().toLowerCase();
@@ -8241,7 +8304,7 @@ async function handleDeliveryQrScan(options = {}) {
       returned_code: returnedCode,
       returned_stock_item_id: stockItem?.id
     });
-    setDeliveryQrStatus('Código não encontrado no estoque.', true);
+    setDeliveryQrStatus(tr('delivery.qr.codeNotInStock', 'Código não encontrado no estoque.'), true);
     return false;
   }
   if (input) input.value = value;
@@ -8254,7 +8317,7 @@ async function queueDeliveryQrForCurrentSession(options = {}) {
   const input = document.getElementById('delivery-qr-scan');
   const rawInputValue = String(options.sourceValue || input?.value || '').trim();
   if (!rawInputValue) {
-    showToast('Digite ou leia um código antes de validar.', 'error');
+    showToast(tr('delivery.qr.enterCodeFirst', 'Digite ou leia um código antes de validar.'), 'error');
     return false;
   }
   const normalizedInputValue = String(rawInputValue).trim();
@@ -8278,15 +8341,15 @@ async function queueDeliveryQrForCurrentSession(options = {}) {
   const addResult = addStockQrToSession(stockItem);
   if (!addResult.added) {
     if (addResult.reason === 'missing_employee') {
-      setDeliveryQrStatus('Selecione o colaborador antes de validar o QR.', true);
+      setDeliveryQrStatus(tr('delivery.qr.selectEmployeeFirst', 'Selecione o colaborador antes de validar o QR.'), true);
       return false;
     }
     if (addResult.reason === 'employee_changed') {
-      setDeliveryQrStatus('Colaborador alterado durante a sessão. Limpe a lista e inicie nova leitura.', true);
+      setDeliveryQrStatus(tr('delivery.qr.ownerChangedDuringSession', 'Colaborador alterado durante a sessão. Limpe a lista e inicie nova leitura.'), true);
       return false;
     }
     if (addResult.reason === 'duplicate') {
-      setDeliveryQrStatus('Este código já está na lista/conferência.', true);
+      setDeliveryQrStatus(tr('delivery.qr.alreadyListed', 'Este código já está na lista/conferência.'), true);
       return false;
     }
     return false;
@@ -8309,13 +8372,13 @@ async function applySelectedAvailableDeliveryQr() {
   if (!selectField) return false;
   const selectedStockItemId = String(selectField.value || '').trim();
   if (!selectedStockItemId) {
-    setDeliveryQrStatus('Selecione um QR disponível antes de aplicar.', true);
+    setDeliveryQrStatus(tr('delivery.qr.selectAvailableFirst', 'Selecione um QR disponível antes de aplicar.'), true);
     return false;
   }
   const selectedOption = selectField.options?.[selectField.selectedIndex] || null;
   const selectedCode = String(selectedOption?.dataset?.qrCode || '').trim();
   if (!selectedCode) {
-    setDeliveryQrStatus('QR selecionado inválido. Atualize a lista e tente novamente.', true);
+    setDeliveryQrStatus(tr('delivery.qr.selectedInvalid', 'QR selecionado inválido. Atualize a lista e tente novamente.'), true);
     return false;
   }
   const stockItem = await handleDeliveryQrScan({
@@ -8324,16 +8387,16 @@ async function applySelectedAvailableDeliveryQr() {
   });
   if (!stockItem) return false;
   if (String(stockItem.id || '') !== selectedStockItemId) {
-    setDeliveryQrStatus('Divergência entre QR escolhido e item validado. Selecione novamente o código físico.', true);
+    setDeliveryQrStatus(tr('delivery.qr.mismatch', 'Divergência entre QR escolhido e item validado. Selecione novamente o código físico.'), true);
     return false;
   }
   const addResult = addStockQrToSession(stockItem);
   if (!addResult.added && addResult.reason === 'duplicate') {
-    setDeliveryQrStatus('Este QR já foi adicionado na sessão.', true);
+    setDeliveryQrStatus(tr('delivery.qr.alreadyInSession', 'Este QR já foi adicionado na sessão.'), true);
     return false;
   }
   if (!addResult.added && addResult.reason === 'missing_employee') {
-    setDeliveryQrStatus('Selecione o colaborador antes de escolher o QR.', true);
+    setDeliveryQrStatus(tr('delivery.qr.selectEmployeeBeforeChoosing', 'Selecione o colaborador antes de escolher o QR.'), true);
     return false;
   }
   applyStockItemToDeliverySelection(stockItem, { source: 'stock_selection' });
@@ -8347,7 +8410,7 @@ async function applySelectedAvailableDeliveryQr() {
 async function handleDeliveryManualValidationRequest() {
   const rawCode = String(document.getElementById('delivery-qr-scan')?.value || '').trim();
   if (isCodeAutoValidatedBySelection(rawCode)) {
-    setDeliveryQrStatus('Este código já foi validado automaticamente via seleção do sistema.');
+    setDeliveryQrStatus(tr('delivery.qr.autoValidated', 'Este código já foi validado automaticamente via seleção do sistema.'));
     return false;
   }
   return queueDeliveryQrForCurrentSession({ trigger: 'manual_button' });
@@ -8445,7 +8508,7 @@ function ensureSignatureModalDom() {
     '</div>',
     '<footer class="signature-modal__footer">',
     `<button id="signature-modal-cancel" class="ghost" type="button">${tr('cancel', 'Cancelar')}</button>`,
-    '<button id="signature-modal-confirm" class="primary" type="button">OK</button>',
+    "<button id=\"signature-modal-confirm\" class=\"primary\" type=\"button\" data-i18n=\"ui.modals.ok_565339\">OK</button>",
     '</footer>',
     '</div>'
   ].join('');
@@ -8498,7 +8561,7 @@ function setupSignatureModal() {
       const identityErr = document.getElementById('signature-modal-identity-error');
       if (identityErr) {
         identityErr.hidden = false;
-        identityErr.textContent = tr('signature.identityRequired', 'Confirme a declaração de identidade para assinar.');
+        identityErr.textContent = (globalThis.EpiI18n?.textFor?.(identityErr,'signature.identityRequired','Confirme a declaração de identidade para assinar.') ?? tr('signature.identityRequired', 'Confirme a declaração de identidade para assinar.'));
       }
       identityCheck.focus();
       return;
@@ -8520,7 +8583,7 @@ function applyDeliverySignature(payload) {
   if (refs.deliverySignatureName) refs.deliverySignatureName.value = String(payload.signature_name || tr('delivery.digitalSignature', 'Assinatura digital'));
   if (refs.deliverySignatureAt) refs.deliverySignatureAt.value = String(payload.signature_at || '');
   if (refs.deliverySignatureComment) refs.deliverySignatureComment.value = String(payload.signature_comment || '');
-  if (refs.deliverySignatureStatus) refs.deliverySignatureStatus.textContent = tr('delivery.signedByAt', 'Assinado por {name} em {date}.').replace('{name}', payload.signature_name || tr('delivery.digitalSignature', 'Assinatura digital')).replace('{date}', signatureNowLabel());
+  if (refs.deliverySignatureStatus) refs.deliverySignatureStatus.textContent = (globalThis.EpiI18n?.textFor?.(refs.deliverySignatureStatus,'delivery.signedByAt','Assinado por {name} em {date}.') ?? tr('delivery.signedByAt', 'Assinado por {name} em {date}.')).replace('{name}', payload.signature_name || (globalThis.EpiI18n?.textFor?.(refs.deliverySignatureStatus,'delivery.digitalSignature','Assinatura digital') ?? tr('delivery.digitalSignature', 'Assinatura digital'))).replace('{date}', signatureNowLabel());
   qrScannerState.scanSession = (qrScannerState.scanSession || []).map((item) => ({ ...item, signed: true }));
   renderDeliveryQrSession();
 }
@@ -8535,7 +8598,7 @@ function resetDeliverySignatureDraft() {
   if (refs.deliverySignatureName) refs.deliverySignatureName.value = '';
   if (refs.deliverySignatureAt) refs.deliverySignatureAt.value = '';
   if (refs.deliverySignatureComment) refs.deliverySignatureComment.value = '';
-  if (refs.deliverySignatureStatus) refs.deliverySignatureStatus.textContent = tr('delivery.signaturePendingFicha', 'Assinatura pendente (pode assinar agora ou depois no período da ficha).');
+  if (refs.deliverySignatureStatus) refs.deliverySignatureStatus.textContent = (globalThis.EpiI18n?.textFor?.(refs.deliverySignatureStatus,'delivery.signaturePendingFicha','Assinatura pendente (pode assinar agora ou depois no período da ficha).') ?? tr('delivery.signaturePendingFicha', 'Assinatura pendente (pode assinar agora ou depois no período da ficha).'));
 }
 
 function setupDeliverySignatureCanvas() {
@@ -8878,7 +8941,7 @@ function preencherCampoPorQr(decodedData) {
 async function onQrScanSuccess(decodedText) {
   const text = String(decodedText || '').trim();
   if (!text) {
-    setDeliveryQrStatus('Leitura vazia ignorada.', true);
+    setDeliveryQrStatus(tr('delivery.qr.emptyIgnored', 'Leitura vazia ignorada.'), true);
     return;
   }
   const now = Date.now();
@@ -8895,7 +8958,7 @@ async function onQrScanSuccess(decodedText) {
   const stockItem = await handleDeliveryQrScan({ sourceValue: text, applyToForm: false });
   if (!stockItem) {
     console.warn('[qr][scan] leitura sem confirmação', { raw: text, reason: 'stock_lookup_failed' });
-    setDeliveryQrStatus('QR lido, mas não reconhecido para preenchimento automático.', true);
+    setDeliveryQrStatus(tr('delivery.qr.notRecognized', 'QR lido, mas não reconhecido para preenchimento automático.'), true);
     return;
   }
   const addResult = addStockQrToSession(stockItem);
@@ -8905,7 +8968,7 @@ async function onQrScanSuccess(decodedText) {
       return;
     }
     if (addResult.reason === 'throttled') return;
-    setDeliveryQrStatus('QR lido, mas inválido para a sessão.', true);
+    setDeliveryQrStatus(tr('delivery.qr.invalidForSession', 'QR lido, mas inválido para a sessão.'), true);
     return;
   }
   applyQrFeedbackOnce(`estoque:${stockItem.qr_code_value}`);
@@ -9013,7 +9076,7 @@ async function stopDeliveryQrCamera(options = {}) {
       wrap.classList.remove('is-active');
       wrap.classList.remove('qr-camera-fullscreen');
     }
-    setDeliveryQrStatus('Leitura encerrada.');
+    setDeliveryQrStatus(tr('delivery.qr.stopped', 'Leitura encerrada.'));
   })()
     .finally(() => {
       qrScannerState.stopping = null;
@@ -9026,13 +9089,13 @@ async function enableDeliveryBarcodeReaderMode() {
   const input = document.getElementById('delivery-qr-scan');
   input?.focus();
   if (input) input.select?.();
-  setDeliveryQrStatus('Modo leitor USB ativo: Faça o bip no campo de código.');
+  setDeliveryQrStatus(tr('delivery.qr.usbMode', 'Modo leitor USB ativo: faça o bipe no campo de código.'));
 }
 
 function finalizeDeliveryQrSession() {
   const lastItem = qrScannerState.scanSession[qrScannerState.scanSession.length - 1] || null;
   if (!lastItem) {
-    setDeliveryQrStatus('Nenhum QR válido lido para aplicar no movimento.', true);
+    setDeliveryQrStatus(tr('delivery.qr.noneValid', 'Nenhum QR válido lido para aplicar no movimento.'), true);
     return false;
   }
   applyStockItemToDeliveryForm(lastItem);
@@ -9065,11 +9128,11 @@ async function startDeliveryQrWithBarcodeDetector(video, input) {
       }
     } catch (error) {
       console.error('QR detection error:', error);
-      setDeliveryQrStatus('Erro na leitura por câmera. Tentando novamente...', true);
+      setDeliveryQrStatus(tr('delivery.qr.cameraRetry', 'Erro na leitura por câmera. Tentando novamente...'), true);
     }
     qrScannerState.rafId = requestAnimationFrame(detectFrame);
   };
-  setDeliveryQrStatus('Câmera ativa. Aponte para QR Code ou código de barras.');
+  setDeliveryQrStatus(tr('delivery.qr.cameraActive', 'Câmera ativa. Aponte para QR Code ou código de barras.'));
   detectFrame();
 }
 
@@ -9077,14 +9140,14 @@ async function startDeliveryQrWithZxing(videoElementId, input) {
   const ZXingBrowser = await loadZxingLibrary();
   qrScannerState.mode = 'zxing';
   qrScannerState.zxingReader = new ZXingBrowser.BrowserMultiFormatReader();
-  setDeliveryQrStatus('Câmera ativa (modo compatibilidade). Aponte para QR/Barcode.');
+  setDeliveryQrStatus(tr('delivery.qr.cameraActiveCompat', 'Câmera ativa (modo compatibilidade). Aponte para QR/Barcode.'));
   qrScannerState.zxingControls = await qrScannerState.zxingReader.decodeFromVideoDevice(undefined, videoElementId, (result, error) => {
     if (result?.text) {
       input.value = String(result.text).trim();
       setDeliveryQrStatus(`Código lido: ${input.value}`);
       void onQrScanSuccess(input.value);
     } else if (error?.name && error.name !== 'NotFoundException') {
-      setDeliveryQrStatus('Aguardando leitura...', false);
+      setDeliveryQrStatus(tr('delivery.qr.waiting', 'Aguardando leitura...'), false);
     }
   });
 }
@@ -9093,7 +9156,7 @@ async function startDeliveryQrWithHtml5Qrcode(input) {
   const Html5Qrcode = await loadHtml5QrcodeLibrary();
   const readerBox = document.getElementById('delivery-qr-reader-box');
   const video = document.getElementById('delivery-qr-video');
-  if (!readerBox) throw new Error('Área de Câmera indisponível.');
+  if (!readerBox) throw new Error(tr('delivery.qr.cameraAreaUnavailable', 'Área da câmera indisponível.'));
   if (video) video.style.display = 'none';
   readerBox.style.display = 'block';
   qrScannerState.mode = 'html5-qrcode';
@@ -9106,7 +9169,7 @@ async function startDeliveryQrWithHtml5Qrcode(input) {
     if (rear?.id) cameraConfig = { deviceId: { exact: rear.id } };
     else if (cameras?.[0]?.id) cameraConfig = { deviceId: { exact: cameras[0].id } };
   }
-  setDeliveryQrStatus('Câmera ativa (QR contínuo). Alinhe o QR na área central.');
+  setDeliveryQrStatus(tr('delivery.qr.cameraContinuous', 'Câmera ativa (QR contínuo). Alinhe o QR na área central.'));
   await scanner.start(
     cameraConfig,
     {
@@ -9154,16 +9217,16 @@ async function startDeliveryQrCamera() {
 
   if (!input || !wrap) {
     console.error('[qr] INPUT/WRAP não encontrados no DOM.');
-    alert('Leitor de QR indisponível nesta tela. Recarregue a página e tente novamente.');
+    alert(tr('delivery.qr.readerUnavailable', 'Leitor de QR indisponível nesta tela. Recarregue a página e tente novamente.'));
     return;
   }
   if (!video) {
     console.error('[qr] VIDEO NÃO ENCONTRADO');
-    alert('Elemento de vídeo não encontrado. Recarregue a página e tente novamente.');
+    alert(tr('delivery.qr.videoMissing', 'Elemento de vídeo não encontrado. Recarregue a página e tente novamente.'));
     return;
   }
   if (qrScannerState.starting) {
-    setDeliveryQrStatus('Aguardando permissão da câmera. Conclua a solicitação do navegador.');
+    setDeliveryQrStatus(tr('delivery.qr.awaitingPermission', 'Aguardando permissão da câmera. Conclua a solicitação do navegador.'));
     return;
   }
   qrScannerState.starting = true;
@@ -9171,7 +9234,7 @@ async function startDeliveryQrCamera() {
     await stopDeliveryQrCamera({ preserveStarting: true });
     const startToken = qrScannerState.startToken;
     if (!qrScannerState.starting) return;
-    setDeliveryQrStatus('Iniciando câmera...');
+    setDeliveryQrStatus(tr('delivery.qr.starting', 'Iniciando câmera...'));
     wrap.hidden = false;
     wrap.classList.add('is-active');
     wrap.style.display = 'block';
@@ -9186,7 +9249,7 @@ async function startDeliveryQrCamera() {
       try {
         const cameraPermission = await navigator.permissions.query({ name: 'camera' });
         if (cameraPermission?.state === 'prompt') {
-          setDeliveryQrStatus('Permita o acesso à câmera no navegador para iniciar a leitura.');
+          setDeliveryQrStatus(tr('delivery.qr.allowToStart', 'Permita o acesso à câmera no navegador para iniciar a leitura.'));
         }
       } catch (permissionError) {
         console.warn('[qr] consulta de permissão de câmera indisponível', permissionError);
@@ -9194,13 +9257,13 @@ async function startDeliveryQrCamera() {
     }
 
     if (!('mediaDevices' in navigator) || !navigator.mediaDevices.getUserMedia) {
-      setDeliveryQrStatus('Navegador sem acesso à câmera. Use leitor USB ou digite o código.', true);
-      alert('Câmera não disponível neste navegador. Você pode digitar ou usar leitor USB.');
+      setDeliveryQrStatus(tr('delivery.qr.noCameraAccess', 'Navegador sem acesso à câmera. Use leitor USB ou digite o código.'), true);
+      alert(tr('delivery.qr.cameraNotAvailable', 'Câmera não disponível neste navegador. Você pode digitar ou usar leitor USB.'));
       return;
     }
     const isLocalhost = ['localhost', '127.0.0.1'].includes(String(location.hostname || '').toLowerCase());
     if (location.protocol !== 'https:' && !isLocalhost) {
-      setDeliveryQrStatus('Câmera exige HTTPS para funcionar neste navegador.', true);
+      setDeliveryQrStatus(tr('delivery.qr.httpsRequired', 'Câmera exige HTTPS para funcionar neste navegador.'), true);
       return;
     }
 
@@ -9219,7 +9282,7 @@ async function startDeliveryQrCamera() {
       readerBox.innerHTML = '';
     }
     qrScannerState.active = true;
-    setDeliveryQrStatus('Solicitando permissão da câmera...');
+    setDeliveryQrStatus(tr('delivery.qr.requestingPermission', 'Solicitando permissão da câmera...'));
     if (readerBox) {
       const html5Timeout = new Promise((_, reject) => {
         setTimeout(() => {
@@ -9250,7 +9313,7 @@ async function startDeliveryQrCamera() {
       let timeoutId = null;
       const timeoutPromise = new Promise((_, reject) => {
         timeoutId = setTimeout(() => {
-          const timeoutError = new Error('Permissão de câmera pendente por muito tempo.');
+          const timeoutError = new Error(tr('delivery.qr.permissionTimeout', 'Permissão de câmera pendente por muito tempo.'));
           timeoutError.name = 'PermissionPromptTimeout';
           reject(timeoutError);
         }, timeoutMs);
@@ -9308,35 +9371,35 @@ async function startDeliveryQrCamera() {
     const message = String(error?.message || '');
     const blocked = ['NotAllowedError', 'PermissionDeniedError'].includes(String(error?.name || ''));
     if (String(error?.name || '') === 'PermissionPromptTimeout') {
-      setDeliveryQrStatus('Permita o acesso à câmera no navegador e tente novamente.', true);
-      alert('Permita o acesso à câmera no navegador.');
+      setDeliveryQrStatus(tr('delivery.qr.allowAndRetry', 'Permita o acesso à câmera no navegador e tente novamente.'), true);
+      alert(tr('delivery.qr.allowAccess', 'Permita o acesso à câmera no navegador.'));
       return;
     }
     if (blocked) {
-      setDeliveryQrStatus('permissão de Câmera negada.', true);
-      alert('permissão da Câmera negada. Autorize o acesso no navegador e tente novamente.');
+      setDeliveryQrStatus(tr('delivery.qr.permissionDenied', 'Permissão da câmera negada.'), true);
+      alert(tr('delivery.qr.permissionDeniedRetry', 'Permissão da câmera negada. Autorize o acesso no navegador e tente novamente.'));
       return;
     }
     if (String(error?.name || '') === 'NotFoundError') {
-      setDeliveryQrStatus('Nenhuma câmera encontrada neste dispositivo.', true);
-      alert('Nenhuma câmera foi encontrada neste dispositivo.');
+      setDeliveryQrStatus(tr('delivery.qr.noCameraStatus', 'Nenhuma câmera encontrada neste dispositivo.'), true);
+      alert(tr('delivery.qr.noCameraAlert', 'Nenhuma câmera foi encontrada neste dispositivo.'));
       return;
     }
     if (String(error?.name || '') === 'NotReadableError') {
-      setDeliveryQrStatus('Câmera ocupada por outro aplicativo/aba.', true);
-      alert('A câmera está em uso por outro aplicativo ou aba.');
+      setDeliveryQrStatus(tr('delivery.qr.busyStatus', 'Câmera ocupada por outro aplicativo/aba.'), true);
+      alert(tr('delivery.qr.busyAlert', 'A câmera está em uso por outro aplicativo ou aba.'));
       return;
     }
     if (String(error?.name || '') === 'OverconstrainedError') {
-      setDeliveryQrStatus('Configuração de câmera não suportada; tentando modo compatível.', true);
-      alert('Configuração de câmera não suportada neste dispositivo.');
+      setDeliveryQrStatus(tr('delivery.qr.unsupportedRetry', 'Configuração de câmera não suportada; tentando modo compatível.'), true);
+      alert(tr('delivery.qr.unsupported', 'Configuração de câmera não suportada neste dispositivo.'));
       return;
     }
     if (String(error?.name || '') === 'AbortError') {
-      setDeliveryQrStatus('Inicialização da câmera foi interrompida.', true);
+      setDeliveryQrStatus(tr('delivery.qr.interrupted', 'Inicialização da câmera foi interrompida.'), true);
       return;
     }
-    setDeliveryQrStatus('Falha ao iniciar câmera neste dispositivo/navegador.', true);
+    setDeliveryQrStatus(tr('delivery.qr.startFailed', 'Falha ao iniciar câmera neste dispositivo/navegador.'), true);
     alert(`Não foi possível iniciar a câmera automaticamente. Você pode usar "Ler por imagem" ou "Usar leitor de código de barras". ${message}`.trim());
   } finally {
     qrScannerState.starting = false;
@@ -9356,14 +9419,14 @@ async function handleDeliveryQrImageUpload(event) {
     await tempImage.decode();
     const result = await imageReader.decodeFromImageElement(tempImage);
     URL.revokeObjectURL(imageUrl);
-    if (!result?.text) throw new Error('Não identificado na imagem.');
+    if (!result?.text) throw new Error(tr('delivery.qr.notInImage', 'Não identificado na imagem.'));
     inputField.value = String(result.text).trim();
     setDeliveryQrStatus(`Código lido por imagem: ${inputField.value}`);
     void onQrScanSuccess(inputField.value);
   } catch (error) {
     console.error('Image QR detection error:', error);
-    setDeliveryQrStatus('ler código da imagem.', true);
-    alert('Falha ao ler imagem. Tente outra foto com melhor iluminação e foco.');
+    setDeliveryQrStatus(tr('delivery.qr.imageReadFailedStatus', 'Não foi possível ler o código da imagem.'), true);
+    alert(tr('delivery.qr.imageReadFailed', 'Falha ao ler imagem. Tente outra foto com melhor iluminação e foco.'));
   } finally {
     if (event?.target) event.target.value = '';
   }
@@ -9401,7 +9464,7 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
   };
   const buildWhatsAppHref = ({ phone, message }) => {
     const safeMessage = String(message || '').trim();
-    if (!safeMessage) throw new Error('Mensagem do WhatsApp inválida.');
+    if (!safeMessage) throw new Error(tr('delivery.share.invalidWhatsapp', 'Mensagem do WhatsApp inválida.'));
     const normalizedPhone = String(phone || '').replace(/\D/g, '');
     const encodedMessage = encodeURIComponent(safeMessage);
     return normalizedPhone
@@ -9421,7 +9484,7 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
   let whatsappLaunchHandled = false;
   const launchWhatsAppOrFallback = (launchUrl) => {
     const safeUrl = String(launchUrl || '').trim();
-    if (!safeUrl) throw new Error('Não foi possível abrir o compartilhamento. Gere o link novamente.');
+    if (!safeUrl) throw new Error(tr('delivery.share.openFailed', 'Não foi possível abrir o compartilhamento. Gere o link novamente.'));
     if (whatsappLaunchHandled) return;
     whatsappLaunchHandled = true;
     const mobileTarget = isMobileWhatsAppTarget();
@@ -9448,7 +9511,7 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
   const normalizeWhatsappText = (value) => String(value || '').replace(/�/g, '').normalize('NFC');
   const resolveLaunchUrl = (payloadData) => {
     const accessLink = String(payloadData?.access_link || '').trim() || extractLinkFromMessage(payloadData?.message);
-    if (!/^https?:\/\//i.test(accessLink)) throw new Error('Não foi possível gerar um link válido da ficha para compartilhamento.');
+    if (!/^https?:\/\//i.test(accessLink)) throw new Error(tr('delivery.share.linkFailed', 'Não foi possível gerar um link válido da ficha para compartilhamento.'));
     if (channel === 'whatsapp') {
       const providedLaunchUrl = String(payloadData?.launch_url || '').trim();
       if (/^https:\/\/(wa\.me|api\.whatsapp\.com)\//i.test(providedLaunchUrl)) {
@@ -9461,7 +9524,7 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
 
     const phone = resolveEmployeePhone();
 	if (!phone) {
-    	throw new Error('WhatsApp do colaborador não cadastrado.');
+    	throw new Error(tr('delivery.share.noEmployeeWhatsapp', 'WhatsApp do colaborador não cadastrado.'));
     }
     const message = normalizeWhatsappText(
     	String(payloadData?.message || `Link da Ficha de EPI: ${accessLink}`).trim());
@@ -9470,7 +9533,7 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
 
     const managerEmail = String(payloadData?.manager_email || state.user?.email || '').trim().toLowerCase();
     if (!managerEmail) { 
-      throw new Error('E-mail do gestor não cadastrado.');
+      throw new Error(tr('delivery.share.noManagerEmail', 'E-mail do gestor não cadastrado.'));
     }
     const subject = encodeURIComponent(`Assinatura da Ficha de EPI - ${employee?.name || 'Colaborador'}`);
     const body = encodeURIComponent([
@@ -9485,7 +9548,7 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
     const safeUrl = String(targetUrl || '').trim();
     
     if (!safeUrl) { 
-      throw new Error('Não foi possível abrir o compartilhamento. Gere o link novamente.');
+      throw new Error(tr('delivery.share.openFailed', 'Não foi possível abrir o compartilhamento. Gere o link novamente.'));
     }
       
     const isWhatsApp = /^https:\/\/(wa\.me|api\.whatsapp\.com)\//i.test(safeUrl);
@@ -9497,7 +9560,7 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
     }
 
     if (!/^https:\/\//i.test(safeUrl)) {
-      throw new Error('URL de compartilhamento inválida.');
+      throw new Error(tr('delivery.share.invalidUrl', 'URL de compartilhamento inválida.'));
     }
     
     globalThis.open(safeUrl, '_blank', 'noopener,noreferrer');
@@ -9545,8 +9608,8 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
     if (!_raw.ok) {
       const _errCode = String(_raw.error?.code || '').toUpperCase();
       const _errMsg = (_res.status === 503 || _errCode === 'DB_BOOTSTRAP_NOT_READY')
-        ? 'O servidor ainda está inicializando. Aguarde alguns instantes e tente novamente.'
-        : (_raw.error?.message || 'Erro ao finalizar período.');
+        ? tr('delivery.period.serverStarting', 'O servidor ainda está inicializando. Aguarde alguns instantes e tente novamente.')
+        : (_raw.error?.message || tr('delivery.period.finalizeFailed', 'Erro ao finalizar período.'));
       throw new Error(_errMsg);
     }
 
@@ -9567,7 +9630,7 @@ const finalizeFichaPeriod = async (periodId, options = {}) => {
     openValidatedUrl(launchUrl);
     await loadBootstrap();
     renderFicha();
-    showToast('Link de fechamento gerado e enviado. O período permanece aberto até o colaborador concluir no portal.', 'success');
+    showToast(tr('delivery.period.linkSent', 'Link de fechamento gerado e enviado. O período permanece aberto até o colaborador concluir no portal.'), 'success');
   } catch (error) {
     alert(error.message);
   } finally {
@@ -9631,10 +9694,10 @@ function renderRetentionPolicy() {
     const timeline = Array.isArray(state.fichaRetentionPolicy?.timeline) && state.fichaRetentionPolicy.timeline.length
       ? state.fichaRetentionPolicy.timeline
       : [
-        { label: 'Fechamento: snapshot gerado' },
-        { label: 'Ano 1-2: retenção ativa' },
-        { label: 'Ano 3-4: auditoria legal' },
-        { label: '5 anos: expiração NR-6' },
+        { get label() { return (tr("ui.configuracao.fechamento_snapshot_gerado_82340d", "Fechamento: snapshot gerado", {})); } },
+        { get label() { return (tr("ui.configuracao.ano_1_2_retencao_ativa_fe0461", "Ano 1-2: retenção ativa", {})); } },
+        { get label() { return (tr("ui.configuracao.ano_3_4_auditoria_legal_bbfd64", "Ano 3-4: auditoria legal", {})); } },
+        { get label() { return (tr("ui.configuracao.5_anos_expiracao_nr_6_0a7a0f", "5 anos: expiração NR-6", {})); } },
         { label: 'Purge automático (se habilitado)' },
       ];
     refs.fichaRetentionTimeline.innerHTML = timeline.map((item) => `<li>${escapeHtml(item.label)}</li>`).join('');
@@ -9697,7 +9760,7 @@ function refreshDeliveryContext({ syncUnit = false } = {}) {
   const selectedEpiId = String(document.getElementById('delivery-epi')?.value || '').trim();
   const selectedEpi = (state.deliveryEpis || []).find((item) => String(item.id) === selectedEpiId);
   if (selectedEpi && unitStockOf(selectedEpi) <= 0) {
-    setDeliveryQrStatus('EPI selecionado sem saldo em estoque. Escolha outro item com saldo para entrega.', true);
+    setDeliveryQrStatus(tr('delivery.qr.noStock', 'EPI selecionado sem saldo em estoque. Escolha outro item com saldo para entrega.'), true);
   }
   const sizesPanel = document.getElementById('delivery-epi-sizes');
   if (sizesPanel) {
@@ -9745,15 +9808,15 @@ function renderLinkedEmployeeSearchResults() {
 function populateLinkedEmployeeOptions() {
   const field = document.getElementById('user-linked-employee');
   if (!field) return;
+  const previousEmployeeId = field.value;
   const employees = filteredLinkedEmployees();
   const canUseWithoutLink = ['master_admin', 'general_admin'].includes(state.user?.role);
   const firstOption = canUseWithoutLink ? `<option value="">${tr('user.noLink', 'Sem vínculo')}</option>` : '';
   const employeeOptions = employees.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(`${item.employee_id_code}`)} - ${escapeHtml(`${item.name}`)}</option>`).join('');
   // FIX-USERS-ACTIVE-V1: refazer as opções apagava a seleção — ao editar, o colaborador
   // vinculado sumia do formulário. Mantém o valor quando ele continua entre as opções.
-  const previousValue = field.value;
   field.innerHTML = `${firstOption}${employeeOptions}`;
-  if (previousValue && [...field.options].some((option) => option.value === previousValue)) field.value = previousValue;
+  if ((canUseWithoutLink && previousEmployeeId === '') || employees.some((item) => String(item.id) === previousEmployeeId)) field.value = previousEmployeeId;
   if (!canUseWithoutLink && !field.value && employees.length) field.value = String(employees[0].id);
   renderLinkedEmployeeSearchResults();
 }
@@ -9785,7 +9848,7 @@ function syncUserEmployeeLink() {
   if (unitField) {
     const units = filterByUserCompany(state.units).filter((item) => !companyId || String(item.company_id) === String(companyId));
     const unitOptions = units.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(`${item.name}`)} - ${unitTypeLabel(item.unit_type)}</option>`).join('');
-    unitField.innerHTML = `<option value="">Selecione</option>${unitOptions}`;
+    unitField.innerHTML = `<option value="" data-i18n="ui.aval_action_modal.selecione_987d5b">Selecione</option>${unitOptions}`;
   }
   
   const employee = state.employees.find((item) => String(item.id) === String(linkedId || ''));
@@ -9835,7 +9898,7 @@ function renderAll(options = null) {
   // Mutation refreshes keep the current module; initial/session loads retain
   // their default navigation. showView still enforces the current RBAC gates.
   const activeView = preserveView ? viewAtivaNoDom() : '';
-  refs.currentDate.textContent = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'full' }).format(new Date());
+  refs.currentDate.textContent = new Intl.DateTimeFormat(globalThis.EpiI18n?.lang || 'pt-BR', { dateStyle: 'full' }).format(new Date());
   applySpaNavigationVisibility();
   applyPhase3UiVisibility();
   applyRoleVisibility();
@@ -9931,7 +9994,7 @@ async function handleLogin(event) {
     const password = String(refs.loginPassword?.value || '');
 
     if (!username || !password.trim()) {
-      setLoginMessage('Informe Usuário e senha para entrar.', true);
+      setLoginMessage(tr('login.messages.enterCredentials', 'Informe usuário e senha para entrar.'), true);
       return;
     }
 
@@ -9948,7 +10011,7 @@ async function handleLogin(event) {
     });
 
     if (!payload?.user || !payload?.token) {
-      throw new Error('Falha ao autenticar: resposta inválida do servidor.');
+      throw new Error(tr('login.messages.invalidAuthResponse', 'Falha ao autenticar: resposta inválida do servidor.'));
     }
 
     console.info('[auth] Login concluído com sucesso', {
@@ -9977,7 +10040,7 @@ async function handleLogin(event) {
         // updateBootstrapDegradedUi() inside renderAll() will show the banner.
         try { renderAll(); } catch (_renderErr) { reportNonCriticalError('[auth] renderAll em modo degradado', _renderErr); }
       } else {
-        const wrapped = new Error(bootstrapError?.message || 'Falha ao carregar dados iniciais após autenticação.');
+        const wrapped = new Error(bootstrapError?.message || tr('login.messages.bootstrapAfterLoginFailed', 'Falha ao carregar dados iniciais após autenticação.'));
         wrapped.phase = 'post_login_bootstrap';
         wrapped.status = bootstrapError?.status;
         wrapped.code = bootstrapError?.code || '';
@@ -10053,10 +10116,10 @@ async function handleForcedPasswordChange(event) {
     const curPwd = String(document.getElementById('current-password')?.value || '').trim();
     const newPwd = String(document.getElementById('new-password')?.value || '').trim();
     const confPwd = String(document.getElementById('confirm-password')?.value || '').trim();
-    if (!curPwd) throw new Error('Informe a senha atual.');
-    if (!newPwd) throw new Error('Informe a nova senha.');
-    if (newPwd.length < 6) throw new Error('A nova senha deve ter pelo menos 6 caracteres.');
-    if (newPwd !== confPwd) throw new Error('A confirmação da nova senha nao confere.');
+    if (!curPwd) throw new Error(tr('login.passwordChange.currentRequired', 'Informe a senha atual.'));
+    if (!newPwd) throw new Error(tr('login.passwordChange.newRequired', 'Informe a nova senha.'));
+    if (newPwd.length < 6) throw new Error(tr('login.passwordChange.tooShort', 'A nova senha deve ter pelo menos 6 caracteres.'));
+    if (newPwd !== confPwd) throw new Error(tr('login.passwordChange.mismatch', 'A confirmação da nova senha não confere.'));
     await api('/api/change-password', {
       method: 'POST',
       body: JSON.stringify({ actor_user_id: state.user?.id, current_password: curPwd, new_password: newPwd })
@@ -10065,9 +10128,9 @@ async function handleForcedPasswordChange(event) {
     if (refs.passwordChangeForm) refs.passwordChangeForm.reset();
     showScreen(true);
     await loadBootstrap();
-    alert('Senha atualizada com sucesso. Bem-vindo!');
+    alert(tr('login.passwordChange.updated', 'Senha atualizada com sucesso. Bem-vindo!'));
   } catch (error) {
-    alert(error.message || 'Nao foi possivel atualizar a senha.');
+    alert(error.message || tr('login.passwordChange.updateFailed', 'Não foi possível atualizar a senha.'));
   } finally {
     if (submitButton) submitButton.disabled = false;
   }
@@ -10083,7 +10146,7 @@ async function saveUser(event) {
     globalThis.__EPI_USERS_BUSINESS__.prepareUserFormValues(values, { actor: state.user, roleLabels: ROLE_LABELS });
 
     await globalThis.__EPI_USERS_API__.saveUser(state.editingUserId, values);
-    setUserFormFeedback(state.editingUserId ? 'Usuário atualizado com sucesso.' : 'Usuário criado com sucesso.');
+    setUserFormFeedback(state.editingUserId ? tr('user.messages.updated', 'Usuário atualizado com sucesso.') : tr('user.messages.created', 'Usuário criado com sucesso.'));
     resetUserForm();
     await loadBootstrap();
   } catch (error) {
@@ -10316,7 +10379,7 @@ function handleFormReset(form) {
     if (refs.deliverySignatureName) refs.deliverySignatureName.value = '';
     if (refs.deliverySignatureAt) refs.deliverySignatureAt.value = '';
     if (refs.deliverySignatureComment) refs.deliverySignatureComment.value = '';
-    if (refs.deliverySignatureStatus) refs.deliverySignatureStatus.textContent = tr('delivery.signaturePending', 'Assinatura pendente.');
+    if (refs.deliverySignatureStatus) refs.deliverySignatureStatus.textContent = (globalThis.EpiI18n?.textFor?.(refs.deliverySignatureStatus,'delivery.signaturePending','Assinatura pendente.') ?? tr('delivery.signaturePending', 'Assinatura pendente.'));
     clearDeliveryStockItemSelection();
     resetDeliveryQrSession();
     syncDeliveryDevolutionOptions();
@@ -10380,24 +10443,24 @@ async function handleStockManufactureCameraCapture(event) {
   const dateField = document.getElementById('stock-manufacture-date');
   if (!file || !dateField) return;
   if (!String(file.type || '').startsWith('image/')) {
-    setStockManufactureStatus('Arquivo inválido. Use uma imagem para leitura da data.', 'error');
+    setStockManufactureStatus(tr('stock.ocr.invalidFile', 'Arquivo inválido. Use uma imagem para leitura da data.'), 'error');
     event.target.value = '';
     return;
   }
   if (file.size > 10 * 1024 * 1024) {
-    setStockManufactureStatus('Imagem muito grande (máximo: 10MB).', 'error');
+    setStockManufactureStatus(tr('stock.ocr.tooLarge', 'Imagem muito grande (máximo: 10MB).'), 'error');
     event.target.value = '';
     return;
   }
-  setStockManufactureStatus('Processando imagem da câmera...');
+  setStockManufactureStatus(tr('stock.ocr.processing', 'Processando imagem da câmera...'));
   try {
     const imageData = await new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(String(reader.result || ''));
-      reader.onerror = () => reject(new Error('Falha ao carregar imagem para OCR.'));
+      reader.onerror = () => reject(new Error(tr('stock.ocr.loadFailed', 'Falha ao carregar imagem para OCR.')));
       reader.readAsDataURL(file);
     });
-    if (!imageData) throw new Error('Imagem inválida para OCR.');
+    if (!imageData) throw new Error(tr('stock.ocr.invalidImage', 'Imagem inválida para OCR.'));
     const payload = await api('/api/stock/manufacture-date-ocr', {
       method: 'POST',
       body: JSON.stringify({
@@ -10408,23 +10471,23 @@ async function handleStockManufactureCameraCapture(event) {
     const selectedDate = String(payload?.manufacture_date || '').trim();
     const confidence = Number(payload?.confidence || 0);
     if (!selectedDate) {
-      setStockManufactureStatus('Não foi possível identificar a data. Revise foco/iluminação e tente novamente.', 'error');
+      setStockManufactureStatus(tr('stock.ocr.notFound', 'Não foi possível identificar a data. Revise foco/iluminação e tente novamente.'), 'error');
       return;
     }
     if (confidence > 0 && confidence < 45) {
-      setStockManufactureStatus('Data detectada com baixa confiança. Confirme manualmente antes de salvar.', 'error');
+      setStockManufactureStatus(tr('stock.ocr.lowConfidence', 'Data detectada com baixa confiança. Confirme manualmente antes de salvar.'), 'error');
     }
     setManufactureDateAutofillValue(dateField, selectedDate);
     if (dateField.value === selectedDate) {
-      setStockManufactureStatus('Data de fabricação identificada com sucesso.', 'success');
+      setStockManufactureStatus(tr('stock.ocr.success', 'Data de fabricação identificada com sucesso.'), 'success');
     } else {
-      setStockManufactureStatus('Data encontrada, mas o campo já foi ajustado manualmente.', 'error');
+      setStockManufactureStatus(tr('stock.ocr.manualKept', 'Data encontrada, mas o campo já foi ajustado manualmente.'), 'error');
     }
   } catch (error) {
     console.error('[stock-manufacture-ocr] Falha na leitura OCR:', error);
     const msg = isTemporaryBootstrapUnavailable(error)
       ? 'Sistema inicializando — aguarde alguns segundos e tente novamente.'
-      : `Falha na captura automática: ${error.message || 'erro desconhecido'}`;
+      : `Falha na captura automática: ${error.message || tr('common.unknownError', 'erro desconhecido')}`;
     setStockManufactureStatus(msg, 'error');
   } finally {
     event.target.value = '';
@@ -10462,10 +10525,10 @@ function syncManualReceiptValidityFields() {
   if (lot) lot.required = known;
   const hint = document.getElementById('stock-receipt-validity-hint');
   if (hint) hint.textContent = !canCapture
-    ? tr('stock.receiptValidity.noPermission', 'Seu perfil pode registrar a entrada sem comprovação; a validade deverá ser regularizada pelo perfil operacional autorizado.')
+    ? (globalThis.EpiI18n?.textFor?.(hint,'stock.receiptValidity.noPermission','Seu perfil pode registrar a entrada sem comprovação; a validade deverá ser regularizada pelo perfil operacional autorizado.') ?? tr('stock.receiptValidity.noPermission', 'Seu perfil pode registrar a entrada sem comprovação; a validade deverá ser regularizada pelo perfil operacional autorizado.'))
     : source.value === 'unknown'
-      ? tr('stock.receiptValidity.pending', 'As peças entrarão pendentes de regularização e indisponíveis para entrega.')
-      : tr('stock.receiptValidity.sameLot', 'A data e a evidência informadas serão registradas em todas as peças deste lote. Lotes diferentes exigem entradas separadas.');
+      ? (globalThis.EpiI18n?.textFor?.(hint,'stock.receiptValidity.pending','As peças entrarão pendentes de regularização e indisponíveis para entrega.') ?? tr('stock.receiptValidity.pending', 'As peças entrarão pendentes de regularização e indisponíveis para entrega.'))
+      : (globalThis.EpiI18n?.textFor?.(hint,'stock.receiptValidity.sameLot','A data e a evidência informadas serão registradas em todas as peças deste lote. Lotes diferentes exigem entradas separadas.') ?? tr('stock.receiptValidity.sameLot', 'A data e a evidência informadas serão registradas em todas as peças deste lote. Lotes diferentes exigem entradas separadas.'));
 }
 
 function manualReceiptValidityValues(values) {
@@ -10804,7 +10867,7 @@ function _renderValidityBreakdown(tbodyId, entries) {
     <td>${esc(e.label || '—')}</td>
     <td>${esc(String(e.count || 0))}</td>
     <td>${esc(_validityDaysLabel(e.days_remaining))}</td>
-    <td>${esc(formatCurrency(e.value || 0))}</td>
+    <td>${esc(formatCurrency(e.value || 0, globalThis.EpiI18n?.lang))}</td>
   </tr>`).join('');
 }
 
@@ -10828,8 +10891,8 @@ async function loadValidityOverview() {
     _renderValidityBreakdown('validity-by-lot', payload.by_lot);
     const valueEl = document.getElementById('validity-mgmt-value');
     if (valueEl) {
-      valueEl.textContent = tr('validity.valueSummary', 'Valor do estoque em risco de perda: {v} ({n} itens).')
-        .replace('{v}', formatCurrency(summary.value_at_risk || 0))
+      valueEl.textContent = (globalThis.EpiI18n?.textFor?.(valueEl,'validity.valueSummary','Valor do estoque em risco de perda: {v} ({n} itens).') ?? tr('validity.valueSummary', 'Valor do estoque em risco de perda: {v} ({n} itens).'))
+        .replace('{v}', formatCurrency(summary.value_at_risk || 0, globalThis.EpiI18n?.lang))
         .replace('{n}', String(summary.at_risk_total || 0));
     }
     const empty = document.getElementById('validity-mgmt-empty');
@@ -10930,7 +10993,7 @@ function updatePendingRegularizationSelection() {
     header.indeterminate = count > 0 && count < members.length;
   }
   const count = document.getElementById('pending-reg-selection-count');
-  if (count) count.textContent = tr('stock.pendingBulk.selection', '{n} peça(s) em {lots} grupo(s) selecionado(s).')
+  if (count) count.textContent = (globalThis.EpiI18n?.textFor?.(count,'stock.pendingBulk.selection','{n} peça(s) em {lots} grupo(s) selecionado(s).') ?? tr('stock.pendingBulk.selection', '{n} peça(s) em {lots} grupo(s) selecionado(s).'))
     .replace('{n}', String(selected.length)).replace('{lots}', String(new Set(selected.map((node) => node.dataset.group)).size));
   const button = document.getElementById('pending-reg-lot');
   if (button) button.disabled = selected.length === 0 || !!regularizeSelectedStockLot.busy;
@@ -10972,7 +11035,7 @@ async function loadPendingRegularization() {
     const lotButton = document.getElementById('pending-reg-lot');
     if (lotButton) lotButton.hidden = !canRegularize;
     if (countEl) {
-      countEl.textContent = tr('stock.pendingReg.count', '{n} peça(s) pendente(s)')
+      countEl.textContent = (globalThis.EpiI18n?.textFor?.(countEl,'stock.pendingReg.count','{n} peça(s) pendente(s)') ?? tr('stock.pendingReg.count', '{n} peça(s) pendente(s)'))
         .replace('{n}', String(payload.count ?? items.length));
     }
     const groups = groupPendingRegularizationItems(items);
@@ -11321,7 +11384,7 @@ async function regularizePendingPiece(piece) {
 
 async function reprintStockLabelByQr() {
   const qrCode = String(document.getElementById('stock-reprint-qr')?.value || '').trim();
-  if (!qrCode) return alert('Informe o código da etiqueta para reimpressão.');
+  if (!qrCode) return alert(tr('stock.reprint.codeRequired', 'Informe o código da etiqueta para reimpressão.'));
   const companyId = String(document.getElementById('stock-company')?.value || state.user?.company_id || '').trim();
   const unitId = String(document.getElementById('stock-unit')?.value || state.user?.operational_unit_id || '').trim();
   if (!companyId || !unitId) return alert('Selecione empresa/unidade para reimprimir.');
@@ -11334,12 +11397,12 @@ async function reprintStockLabelByQr() {
     });
     const lookup = await apiWithBootstrapRetry(`/api/stock/lookup-qr?${params.toString()}`);
     const item = lookup?.stock_item;
-    if (!item?.id) throw new Error('Etiqueta Não encontrada.');
-    const reason = prompt('Justificativa da reimpressão (Perdeu ou Rasgou):', 'Perdeu');
+    if (!item?.id) throw new Error(tr('stock.reprint.notFound', 'Etiqueta não encontrada.'));
+    const reason = prompt(tr('stock.reprint.reasonPrompt', 'Justificativa da reimpressão (Perdeu ou Rasgou):'), 'Perdeu');
     if (reason === null) return;
     const normalizedReason = String(reason || '').trim().toLowerCase();
     if (!['perdeu', 'rasgou'].includes(normalizedReason)) {
-      throw new Error('Justificativa inválida. Use "Perdeu" ou "Rasgou".');
+      throw new Error(tr('stock.reprint.reasonInvalid', 'Justificativa inválida. Use "Perdeu" ou "Rasgou".'));
     }
     const result = await apiWithBootstrapRetry('/api/stock/labels/reprint', {
       method: 'POST',
@@ -11352,7 +11415,7 @@ async function reprintStockLabelByQr() {
     });
     const label = result?.label || null;
     if (!label?.qr_code_value || !label?.stock_item_id) {
-      throw new Error('Reimpressão concluída sem dados da etiqueta. Tente novamente.');
+      throw new Error(tr('stock.reprint.noData', 'Reimpressão concluída sem dados da etiqueta. Tente novamente.'));
     }
     printStockLabels([label], 1);
     alert(`Etiqueta reimpressa. Total de Reimpressões: ${Number(label?.reprint_count || 0)}.`);
@@ -11360,10 +11423,10 @@ async function reprintStockLabelByQr() {
     const rawMessage = String(error?.message || '').trim();
     const loweredMessage = rawMessage.toLowerCase();
     if (loweredMessage.includes('503') || loweredMessage.includes('service unavailable') || loweredMessage.includes('temporariamente indisponível')) {
-      alert('Serviço de reimpressão temporariamente indisponível (503). Tente novamente em instantes.');
+      alert(tr('stock.reprint.unavailable', 'Serviço de reimpressão temporariamente indisponível (503). Tente novamente em instantes.'));
       return;
     }
-    alert(rawMessage || 'Não foi possível reimprimir a etiqueta.');
+    alert(rawMessage || tr('stock.reprint.failed', 'Não foi possível reimprimir a etiqueta.'));
   }
 }
 
@@ -11402,7 +11465,7 @@ async function saveEmployeeMovement(event) {
 // ── Assistente de implantação (primeiro acesso do Administrador Geral) ───────
 
 const ONBOARDING_STEP_LABELS = {
-  1: 'Etapa 1 de 5 — Segurança da conta',
+  get [1]() { return (tr("ui.modals.etapa_1_de_5_seguranca_da_conta_0e6737", "Etapa 1 de 5 — Segurança da conta", {})); },
   2: 'Etapa 2 de 5 — Dados da empresa',
   3: 'Etapa 3 de 5 — Identidade visual',
   4: 'Etapa 4 de 5 — Domínio',
@@ -11427,8 +11490,8 @@ function setOnboardingStep(step) {
   const nextBtn = document.getElementById('onboarding-next');
   if (nextBtn) {
     if (onboardingStep === ONBOARDING_LAST_STEP) nextBtn.textContent = 'Ir para o dashboard';
-    else if (onboardingStep === 1) nextBtn.textContent = 'Continuar';
-    else nextBtn.textContent = 'Salvar e continuar';
+    else if (onboardingStep === 1) nextBtn.textContent = ((globalThis.EpiI18n?.textFor?.(nextBtn,"continue","Continuar",{}) ?? tr("continue", "Continuar", {})));
+    else nextBtn.textContent = ((globalThis.EpiI18n?.textFor?.(nextBtn,"ui.modals.salvar_e_continuar_af2b1a","Salvar e continuar",{}) ?? tr("ui.modals.salvar_e_continuar_af2b1a", "Salvar e continuar", {})));
   }
   if (onboardingStep === 1) void refreshOnboarding2faStatus();
 }
@@ -11518,24 +11581,30 @@ function renderMyCompanyDomains(domains) {
   const instructions = document.getElementById('my-company-domain-instructions');
   if (!table) return;
   table.innerHTML = domains.map((item) => {
-    const primaryMark = Number(item.is_primary) === 1 ? ' <strong>(principal)</strong>' : '';
+    const primaryMark = Number(item.is_primary) === 1 ? ` <strong data-i18n="myCompany.domains.primary">${escapeHtml(tr('myCompany.domains.primary', '(principal)'))}</strong>` : '';
     const actions = [];
     if (item.verification_status !== 'verified') {
-      actions.push(`<button class="ghost" type="button" data-domain-verify="${item.id}">Verificar</button>`);
+      actions.push(`<button class="ghost" type="button" data-domain-verify="${escapeHtml(item.id)}" data-i18n="myCompany.domains.verify">${escapeHtml(tr('myCompany.domains.verify', 'Verificar'))}</button>`);
     } else if (Number(item.is_primary) !== 1) {
-      actions.push(`<button class="ghost" type="button" data-domain-primary="${item.id}">Tornar principal</button>`);
+      actions.push(`<button class="ghost" type="button" data-domain-primary="${escapeHtml(item.id)}" data-i18n="myCompany.domains.makePrimary">${escapeHtml(tr('myCompany.domains.makePrimary', 'Tornar principal'))}</button>`);
     }
-    actions.push(`<button class="ghost" type="button" data-domain-delete="${item.id}">Remover</button>`);
-    return `<tr><td>${item.full_host}${primaryMark}</td><td>${item.type_label}</td>` +
-      `<td>${domainStatusLabel(item.verification_status)}</td><td>${domainStatusLabel(item.ssl_status)}</td>` +
+    actions.push(`<button class="ghost" type="button" data-domain-delete="${escapeHtml(item.id)}" data-i18n="user.remove">Remover</button>`);
+    return `<tr><td>${escapeHtml(item.full_host)}${primaryMark}</td><td>${escapeHtml(item.type_label)}</td>` +
+      `<td>${escapeHtml(domainStatusLabel(item.verification_status))}</td><td>${escapeHtml(domainStatusLabel(item.ssl_status))}</td>` +
       `<td><div class="action-group">${actions.join('')}</div></td></tr>`;
-  }).join('') || '<tr><td colspan="5">Nenhum domínio registrado.</td></tr>';
+  }).join('') || `<tr><td colspan="5" data-i18n="myCompany.domains.none">${escapeHtml(tr('myCompany.domains.none', 'Nenhum domínio registrado.'))}</td></tr>`;
 
   const pending = domains.find((item) => item.verification_status !== 'verified' && item.domain_type !== 'platform_subdomain');
   if (instructions) {
+    // O texto vem do catálogo (sem marcação); só os valores DNS, escapados, recebem <strong>/<code>.
     instructions.innerHTML = pending
-      ? `Para ativar <strong>${pending.full_host}</strong>: crie um CNAME apontando para <code>${pending.cname_target}</code> ` +
-        `e um registro TXT em <code>${pending.txt_record}</code> com o valor <code>${pending.verification_token}</code>, depois clique em Verificar.`
+      ? escapeHtml(tr('myCompany.domains.instructions', 'Para ativar {host}: crie um CNAME apontando para {cname} e um registro TXT em {txt} com o valor {token}, depois clique em Verificar.', {
+        host: '\u0000host\u0000', cname: '\u0000cname\u0000', txt: '\u0000txt\u0000', token: '\u0000token\u0000'
+      }))
+        .replace('\u0000host\u0000', () => `<strong>${escapeHtml(pending.full_host)}</strong>`)
+        .replace('\u0000cname\u0000', () => `<code>${escapeHtml(pending.cname_target)}</code>`)
+        .replace('\u0000txt\u0000', () => `<code>${escapeHtml(pending.txt_record)}</code>`)
+        .replace('\u0000token\u0000', () => `<code>${escapeHtml(pending.verification_token)}</code>`)
       : '';
   }
 }
@@ -11669,7 +11738,7 @@ function renderConfigurationRules() {
         <td>${rule.can_view_unit ? '✅' : '❌'}</td>
         <td>${rule.can_view_epis ? '✅' : '❌'}</td>
         <td>${rule.can_view_employees ? '✅' : '❌'}</td>
-        <td><button class="ghost" type="button" data-remove-config-rule="${rule.id}">Remover</button></td>
+        <td><button class="ghost" type="button" data-remove-config-rule="${rule.id}" data-i18n="user.remove">Remover</button></td>
       </tr>
     `;
   }).join('') || '<tr><td colspan="7">Sem regras específicas. O sistema aplicará as regras padrão por perfil.</td></tr>';
@@ -11681,11 +11750,11 @@ function hydrateConfigurationForms() {
   const units = filterByUserCompany(state.units);
   refs.configRuleUnit.innerHTML = units.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(`${item.name}`)}</option>`).join('');
   if (refs.fichaAuditEmployee) {
-    refs.fichaAuditEmployee.innerHTML = '<option value="">Todos os colaboradores</option>' + filterByUserCompany(state.employees)
+    refs.fichaAuditEmployee.innerHTML = "<option value=\"\" data-i18n=\"portal.allEmployees\">Todos os colaboradores</option>" + filterByUserCompany(state.employees)
       .map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(`${item.employee_id_code}`)} - ${escapeHtml(`${item.name}`)}</option>`).join('');
   }
   if (refs.fichaAuditManager) {
-    refs.fichaAuditManager.innerHTML = '<option value="">Todos os gestores</option>' + filterByUserCompany(state.users)
+    refs.fichaAuditManager.innerHTML = "<option value=\"\" data-i18n=\"ui.configuracao.todos_os_gestores_b7332e\">Todos os gestores</option>" + filterByUserCompany(state.users)
       .map((item) => `<option value="${item.id}">${escapeHtml(item.full_name)}</option>`).join('');
   }
   renderConfigurationRules();
@@ -11811,10 +11880,10 @@ async function onSubmitModuleVisibility(event) {
     };
     if (refs.moduleVisibilityFeedback) {
       refs.moduleVisibilityFeedback.textContent = unitId
-        ? tr('moduleVisibility.savedForRoleUnit', 'Visibilidade de módulos salva para {role} na Unidade {unit}.')
+        ? (globalThis.EpiI18n?.textFor?.(refs.moduleVisibilityFeedback,'moduleVisibility.savedForRoleUnit','Visibilidade de módulos salva para {role} na Unidade {unit}.') ?? tr('moduleVisibility.savedForRoleUnit', 'Visibilidade de módulos salva para {role} na Unidade {unit}.'))
           .replace('{role}', roleLabel(role))
           .replace('{unit}', (state.units.find((item) => String(item.id) === unitId) || {}).name || `#${unitId}`)
-        : tr('moduleVisibility.savedForRole', 'Visibilidade de módulos salva para {role}.').replace('{role}', roleLabel(role));
+        : (globalThis.EpiI18n?.textFor?.(refs.moduleVisibilityFeedback,'moduleVisibility.savedForRole','Visibilidade de módulos salva para {role}.') ?? tr('moduleVisibility.savedForRole', 'Visibilidade de módulos salva para {role}.')).replace('{role}', roleLabel(role));
     }
   } catch (e) {
     if (refs.moduleVisibilityFeedback) refs.moduleVisibilityFeedback.textContent = '';
@@ -11949,19 +12018,19 @@ function imprimirFichaEpi(employeeId) {
 // DEVOLUÇÃO DE EPI
 // ═══════════════════════════════════════════════════════
 const DEVOLUTION_CONDITIONS = [
-  {value:'usable',label:'Reutilizável'},
-  {value:'damaged',label:'Danificado'},
-  {value:'discarded',label:'Descartado'},
-  {value:'maintenance',label:'Em manutenção'},
-  {value:'quarantine',label:'Em quarentena'},
-  {value:'hygiene',label:'Para higienização'},
+  {value:'usable',get label() { return (tr("devolution.conditionReusable", "Reutilizável", {})); }},
+  {value:'damaged',get label() { return (tr("devolution.conditionDamaged", "Danificado", {})); }},
+  {value:'discarded',get label() { return (tr("devolution.conditionDiscarded", "Descartado", {})); }},
+  {value:'maintenance',get label() { return (tr("devolution.conditionMaintenance", "Em manutenção", {})); }},
+  {value:'quarantine',get label() { return (tr("devolution.conditionQuarantine", "Em quarentena", {})); }},
+  {value:'hygiene',get label() { return (tr("devolution.conditionHygiene", "Para higienização", {})); }},
 ];
 const DEVOLUTION_DESTINATIONS = [
-  {value:'stock',label:'Retornar ao estoque'},
-  {value:'discard',label:'Descartar'},
-  {value:'maintenance',label:'Encaminhar para manutenção'},
-  {value:'hygiene',label:'Encaminhar para higienização'},
-  {value:'quarantine',label:'Colocar em quarentena'},
+  {value:'stock',get label() { return (tr("devolution.destinationStockShort", "Retornar ao estoque", {})); }},
+  {value:'discard',get label() { return (tr("devolution.destinationDiscard", "Descartar", {})); }},
+  {value:'maintenance',get label() { return (tr("devolution.destinationMaintenance", "Encaminhar para manutenção", {})); }},
+  {value:'hygiene',get label() { return (tr("devolution.destinationHygiene", "Encaminhar para higienização", {})); }},
+  {value:'quarantine',get label() { return (tr("devolution.destinationQuarantine", "Colocar em quarentena", {})); }},
 ];
 
 function bindAppListener(target, eventName, handler, options = {}) {
@@ -12067,7 +12136,7 @@ async function init() {
     const val = document.getElementById('recovery-token-value')?.textContent || '';
     navigator.clipboard?.writeText(val).catch(() => {});
     const btn = document.getElementById('recovery-token-copy');
-    if (btn) { btn.textContent = 'Copiado!'; setTimeout(() => { btn.textContent = 'Copiar'; }, 2000); }
+    if (btn) { btn.textContent = tr('common.copied', 'Copiado!'); setTimeout(() => { btn.textContent = ((globalThis.EpiI18n?.textFor?.(btn,"ui.modals.copiar_39dcf1","Copiar",{}) ?? tr("ui.modals.copiar_39dcf1", "Copiar", {}))); }, 2000); }
   });
   safeOn(document.getElementById('recovery-token-close'), 'click', () => {
     const modal = document.getElementById('recovery-token-modal');
@@ -12314,11 +12383,11 @@ async function init() {
     const enabled = Boolean(refs.deliveryIsDevolution?.checked);
     if (refs.deliveryDevolutionFields) refs.deliveryDevolutionFields.style.display = enabled ? 'grid' : 'none';
     const submitButton = document.querySelector('#delivery-form button[type="submit"]');
-    if (submitButton) submitButton.textContent = enabled ? tr('delivery.registerReturn', 'Registrar devolução') : tr('delivery.save', 'Registrar EPI');
+    if (submitButton) submitButton.textContent = enabled ? (globalThis.EpiI18n?.textFor?.(submitButton,'delivery.registerReturn','Registrar devolução') ?? tr('delivery.registerReturn', 'Registrar devolução')) : (globalThis.EpiI18n?.textFor?.(submitButton,'delivery.save','Registrar EPI') ?? tr('delivery.save', 'Registrar EPI'));
     if (refs.deliverySignatureStatus) {
       refs.deliverySignatureStatus.textContent = enabled
-        ? tr('delivery.returnSignatureOptional', 'Assinatura opcional para devolução (pode assinar agora ou no fechamento da ficha).')
-        : tr('delivery.signaturePending', 'Assinatura pendente.');
+        ? (globalThis.EpiI18n?.textFor?.(refs.deliverySignatureStatus,'delivery.returnSignatureOptional','Assinatura opcional para devolução (pode assinar agora ou no fechamento da ficha).') ?? tr('delivery.returnSignatureOptional', 'Assinatura opcional para devolução (pode assinar agora ou no fechamento da ficha).'))
+        : (globalThis.EpiI18n?.textFor?.(refs.deliverySignatureStatus,'delivery.signaturePending','Assinatura pendente.') ?? tr('delivery.signaturePending', 'Assinatura pendente.'));
     }
   });
   bindAppListener(document.getElementById('delivery-employee'), 'change', () => {
@@ -12675,7 +12744,7 @@ async function init() {
       });
       state.fichaRetentionPolicy = payload || state.fichaRetentionPolicy;
       renderRetentionPolicy();
-      alert('Política de retenção atualizada com sucesso.');
+      alert(tr('settings.retention.updated', 'Política de retenção atualizada com sucesso.'));
     } catch (error) {
       alert(error.message);
     }
@@ -12701,7 +12770,7 @@ async function init() {
       if (refs.archivalRetentionUnits) refs.archivalRetentionUnits.value = String(payload.unit_retention_years ?? refs.archivalRetentionUnits.value);
       if (refs.archivalRetentionEpis) refs.archivalRetentionEpis.value = String(payload.epi_retention_years ?? refs.archivalRetentionEpis.value);
       if (refs.archivalRetentionEmployees) refs.archivalRetentionEmployees.value = String(payload.employee_retention_years ?? refs.archivalRetentionEmployees.value);
-      if (refs.archivalPolicyFeedback) refs.archivalPolicyFeedback.textContent = tr('rules.archivalSaved', 'Política de arquivamento salva com sucesso.');
+      if (refs.archivalPolicyFeedback) refs.archivalPolicyFeedback.textContent = (globalThis.EpiI18n?.textFor?.(refs.archivalPolicyFeedback,'rules.archivalSaved','Política de arquivamento salva com sucesso.') ?? tr('rules.archivalSaved', 'Política de arquivamento salva com sucesso.'));
       alert(tr('rules.archivalSaved', 'Política de arquivamento salva com sucesso.'));
     } catch (error) {
       if (refs.archivalPolicyFeedback) refs.archivalPolicyFeedback.textContent = error.message;
@@ -12718,7 +12787,7 @@ async function init() {
         body: JSON.stringify({ actor_user_id: state.user.id })
       });
       await renderReports(collectReportFilters());
-      alert('Rotina de retenção executada com sucesso.');
+      alert(tr('settings.retention.executed', 'Rotina de retenção executada com sucesso.'));
     } catch (error) {
       alert(error.message);
     }
@@ -12746,7 +12815,7 @@ async function init() {
     if (event.target.dataset.companyToggle) toggleCompany(event.target.dataset.companyToggle, Number(event.target.dataset.companyActive));
     if (event.target.dataset.companyCommercial) {
       if (!canAccessCommercialArea()) {
-        alert('Seu perfil não pode acessar a área Comercial.');
+        alert(tr('commercial.panel.noAccess', 'Seu perfil não pode acessar a área Comercial.'));
         return;
       }
       state.selectedCompanyId = event.target.dataset.companyCommercial;
@@ -12776,10 +12845,10 @@ async function init() {
       userEdit: () => startEditUser(target.dataset.userEdit),
       userDelete: () => deleteUser(target.dataset.userDelete),
       userEmployeeQr: () => printEmployeeAccessQr(target.dataset.userEmployeeQr),
-      userPromoteAdmin: () => updateUserAccess(target.dataset.userPromoteAdmin, { role: 'admin' }, 'Perfil alterado para Administrador.'),
-      userPromoteGeneral: () => updateUserAccess(target.dataset.userPromoteGeneral, { role: 'general_admin' }, 'Perfil alterado para Administrador Geral.'),
-      userDemoteAdmin: () => updateUserAccess(target.dataset.userDemoteAdmin, { role: 'user' }, 'Administrador rebaixado para Usuário.'),
-      userDemoteGeneral: () => updateUserAccess(target.dataset.userDemoteGeneral, { role: 'admin' }, 'Administrador Geral rebaixado para Administrador.')
+      userPromoteAdmin: () => updateUserAccess(target.dataset.userPromoteAdmin, { role: 'admin' }, tr('user.messages.promotedAdmin', 'Perfil alterado para Administrador.')),
+      userPromoteGeneral: () => updateUserAccess(target.dataset.userPromoteGeneral, { role: 'general_admin' }, tr('user.messages.promotedGeneral', 'Perfil alterado para Administrador Geral.')),
+      userDemoteAdmin: () => updateUserAccess(target.dataset.userDemoteAdmin, { role: 'user' }, tr('user.messages.demotedAdmin', 'Administrador rebaixado para Usuário.')),
+      userDemoteGeneral: () => updateUserAccess(target.dataset.userDemoteGeneral, { role: 'admin' }, tr('user.messages.demotedGeneral', 'Administrador Geral rebaixado para Administrador.'))
     };
 
     for (const [key, handler] of Object.entries(handlers)) {
@@ -12791,7 +12860,7 @@ async function init() {
 
     if (target.dataset.userToggle) {
       const user = state.users.find((item) => String(item.id) === String(target.dataset.userToggle));
-      if (user) updateUserAccess(user.id, { active: Number(user.active) === 1 ? 0 : 1 }, Number(user.active) === 1 ? 'Usuário desativado.' : 'Usuário reativado.');
+      if (user) updateUserAccess(user.id, { active: Number(user.active) === 1 ? 0 : 1 }, Number(user.active) === 1 ? tr('user.messages.deactivated', 'Usuário desativado.') : tr('user.messages.reactivated', 'Usuário reativado.'));
     }
     if (target.dataset.userRecoveryToken) {
       void generateRecoveryToken(target.dataset.userRecoveryToken);
@@ -12957,7 +13026,7 @@ async function init() {
             }, delay);
           } else {
             console.warn('[auth] Backend indisponível após todas as tentativas de restauração de sessão', { attempt, error });
-            setLoginMessage('Servidor temporariamente indisponível (bootstrap em andamento). Você pode tentar login manual agora.', true);
+            setLoginMessage(tr('login.messages.serverWarmingUp', 'Servidor temporariamente indisponível (bootstrap em andamento). Você pode tentar login manual agora.'), true);
           }
           return;
         }
@@ -12980,7 +13049,7 @@ if (!globalThis.__EPI_APP_DOM_READY_BOUND__) {
   safeOn(document, 'DOMContentLoaded', () => {
     init().catch((error) => {
       console.error(error);
-      setLoginMessage('Erro ao carregar a tela de login. Recarregue a página e tente novamente.', true);
+      setLoginMessage(tr('login.messages.loginScreenFailed', 'Erro ao carregar a tela de login. Recarregue a página e tente novamente.'), true);
     });
   });
 }
@@ -13000,16 +13069,16 @@ if (!globalThis.__EPI_APP_LANGCHANGE_BOUND__) {
       try {
         if (!state || !state.user) return; // só re-renderiza quando autenticado
         const activeView = document.querySelector('.view.active')?.id?.replace(/-view$/, '');
-        if (activeView && typeof showView === 'function') {
-          showView(activeView, { partial: false });
-        }
-        // Re-executa o refresh do módulo ativo para atualizar conteúdo JS-gerado
-        // (cards de KPI, seletores de filtro, botões de ação) sem buscar novos dados.
-        if (activeView && typeof resolveInteractiveToolsModule === 'function') {
-          const mod = resolveInteractiveToolsModule(activeView);
-          if (mod && typeof mod.refresh === 'function') {
-            void Promise.resolve().then(() => mod.refresh());
+        // Idioma só redesenha apresentação: showView/refresh também carregam
+        // dados e disparam eventos de navegação, que podem apagar um rascunho.
+        if (activeView) {
+          const titleText = document.querySelector(`.menu-link[data-view="${activeView}"]`)?.textContent;
+          if (refs.viewTitle && titleText) {
+            refs.viewTitle.textContent = titleText;
+            document.title = `${titleText} · Controle de EPI`;
           }
+          if (refs.topbarEyebrow) refs.topbarEyebrow.textContent = VIEW_EYEBROW[activeView] || 'EPI Controle';
+          updateNavBackUi(activeView);
         }
         // Atualiza os filtros de usuário (seletor de perfil e status) se visível
         if (typeof populateUserFilters === 'function') {
@@ -13041,6 +13110,24 @@ if (!globalThis.__EPI_APP_LANGCHANGE_BOUND__) {
         if (typeof renderCompaniesSummary === 'function') {
           try { renderCompaniesSummary(); } catch (_e) {}
         }
+        // I18N-FULL-V1: painéis do Comercial e data do topo. Só leem o estado já
+        // carregado; formulário, contrato e filtros digitados não são recriados.
+        // Cada passo é independente: a falha de um não impede os demais.
+        [
+          () => { if (refs.currentDate) refs.currentDate.textContent = new Intl.DateTimeFormat(globalThis.EpiI18n?.lang || 'pt-BR', { dateStyle: 'full' }).format(new Date()); },
+          renderCommercialStats, renderCommercialSummary, renderCommercialAlerts, renderCommercialExpiring, renderCommercialHistory,
+          () => {
+            const elements = refs.commercialForm?.elements;
+            if (refs.commercialPlanHint && elements) {
+              refs.commercialPlanHint.textContent = planHintText(elements.plan_name?.value || 'start', Boolean(elements.addendum_enabled?.checked));
+            }
+          },
+          // Prévia a partir do valor atual do formulário: renderPlatformBrand regravaria os campos.
+          () => { if (refs.platformBrandForm) renderPlatformLogoPreview(refs.platformBrandForm.elements.logo_type?.value || ''); },
+          () => { if (refs.platformBrandForm) renderPlatformLoginLogoPreview(refs.platformBrandForm.elements.login_logo_type?.value || ''); }
+        ].forEach((step) => {
+          try { step(); } catch (error) { reportNonCriticalError('[i18n] re-render do Comercial falhou', error); }
+        });
       } catch (error) {
         reportNonCriticalError('[i18n] re-render da tela ativa falhou', error);
       }
@@ -13071,7 +13158,7 @@ function applyDeliveryReplacementSuggestion({ force = false } = {}) {
   if (replacementDays <= 0) {
     if (hint) {
       hint.style.display = 'block';
-      hint.textContent = 'Sem prazo padrão de troca para este EPI. Defina manualmente ou use os atalhos.';
+      hint.textContent = tr('delivery.replacement.noDefault', 'Sem prazo padrão de troca para este EPI. Defina manualmente ou use os atalhos.');
     }
     if (presets) presets.style.display = 'flex';
     return;
@@ -13094,30 +13181,30 @@ function applyDeliveryReplacementSuggestion({ force = false } = {}) {
 // ── Módulo de Compras (Fase 2) ───────────────────────────────────────────────
 
 const PURCHASE_STATUS_LABELS = {
-  draft: 'Rascunho', open: 'Aberta', sent_to_buyer: 'C/ Comprador', quoted: 'Cotada',
-  pending_approval: 'Cotação Enviada ao Aprovador', partially_approved: 'Aprov. Parcial',
-  waiting_buyer_correction: 'Aguardando Correção do Comprador', buyer_resubmitted: 'Reenviada pelo Comprador',
-  waiting_requester_correction: 'Aguardando Correção do Requisitante', requester_resubmitted: 'Reenviada pelo Requisitante',
-  approved: 'Aprovada', rejected: 'Reprovada', postponed: 'Prorrogada',
-  returned_to_buyer: 'Retornado ao Comprador',
-  po_generated: 'PO Gerada', received_partial: 'Recebida Parcialmente', received: 'Recebida Totalmente', not_received: 'Item Não Recebido', pending_receipt: 'Pendente de Recebimento', checked: 'Conferida',
-  closed: 'Fechada', cancelled: 'Cancelada'
+  get draft() { return (tr('purchase.poStatus.draft', 'Rascunho', {})); }, get open() { return (tr('ui.compras.aberta_262ff7', 'Aberta', {})); }, get sent_to_buyer() { return (tr('ui.app.c_comprador_f09eb8', 'C/ Comprador', {})); }, get quoted() { return (tr('ui.compras.cotada_8912bb', 'Cotada', {})); },
+  get pending_approval() { return (tr('ui.compras.cotacao_enviada_ao_aprovador_fcb0ad', 'Cotação Enviada ao Aprovador', {})); }, get partially_approved() { return (tr('ui.app.aprov_parcial_252007', 'Aprov. Parcial', {})); },
+  get waiting_buyer_correction() { return (tr('ui.compras.aguardando_correcao_do_comprador_47cb4a', 'Aguardando Correção do Comprador', {})); }, get buyer_resubmitted() { return (tr('ui.compras.reenviada_pelo_comprador_f5a7ee', 'Reenviada pelo Comprador', {})); },
+  get waiting_requester_correction() { return (tr('ui.compras.aguardando_correcao_do_requisitante_e61838', 'Aguardando Correção do Requisitante', {})); }, get requester_resubmitted() { return (tr('ui.app.reenviada_pelo_requisitante_129ae0', 'Reenviada pelo Requisitante', {})); },
+  get approved() { return (tr('purchase.poStatus.approved', 'Aprovada', {})); }, get rejected() { return (tr('purchase.poStatus.rejected', 'Reprovada', {})); }, get postponed() { return (tr('purchase.poStatus.postponed', 'Prorrogada', {})); },
+  get returned_to_buyer() { return (tr('ui.app.retornado_ao_comprador_4ae6e5', 'Retornado ao Comprador', {})); },
+  get po_generated() { return (tr('ui.compras.po_gerada_1e0e23', 'PO Gerada', {})); }, get received_partial() { return (tr('purchase.poStatus.received_partial', 'Recebida Parcialmente', {})); }, get received() { return (tr('ui.app.recebida_totalmente_b8cfb4', 'Recebida Totalmente', {})); }, get not_received() { return (tr('ui.app.item_nao_recebido_abb764', 'Item Não Recebido', {})); }, get pending_receipt() { return (tr('ui.app.pendente_de_recebimento_7e1806', 'Pendente de Recebimento', {})); }, get checked() { return (tr('purchase.poStatus.checked', 'Conferida', {})); },
+  get closed() { return (tr('purchase.poStatus.closed', 'Fechada', {})); }, get cancelled() { return (tr('ui.compras.cancelada_3d15e6', 'Cancelada', {})); }
 };
 const ITEM_STATUS_LABELS = {
-  open: 'Aberto', included_in_request: 'Em Requisição', sent_to_buyer: 'C/ Comprador',
-  quoted: 'Cotado', pending_approval: 'Aguard. Aprov.', approved: 'Aprovado',
-  partially_approved: 'Aprov. Parcial', rejected: 'Rejeitado', ordered: 'Pedido',
-  received_partial: 'Recebido Parcial', not_received: 'Não Recebido', received: 'Recebido', checked: 'Conferido', closed: 'Fechado',
-  waiting_quote: 'Aguardando Cotação', waiting_admin_review: 'Em Compra'
+  get open() { return (tr('ui.app.aberto_84276c', 'Aberto', {})); }, get included_in_request() { return (tr('portal.statusInRequest', 'Em Requisição', {})); }, get sent_to_buyer() { return (tr('ui.app.c_comprador_f09eb8', 'C/ Comprador', {})); },
+  get quoted() { return (tr('ui.app.cotado_8f67a8', 'Cotado', {})); }, get pending_approval() { return (tr('ui.app.aguard_aprov_f0259c', 'Aguard. Aprov.', {})); }, get approved() { return (tr('portal.statusApproved', 'Aprovado', {})); },
+  get partially_approved() { return (tr('ui.app.aprov_parcial_252007', 'Aprov. Parcial', {})); }, get rejected() { return (tr('purchase.status.rejected', 'Rejeitado', {})); }, get ordered() { return (tr('ui.app.pedido_9e9ea5', 'Pedido', {})); },
+  get received_partial() { return (tr('ui.app.recebido_parcial_c28671', 'Recebido Parcial', {})); }, get not_received() { return (tr('purchase.poStatus.not_received', 'Não Recebido', {})); }, get received() { return (tr('portal.statusReceived', 'Recebido', {})); }, get checked() { return (tr('ui.app.conferido_113f18', 'Conferido', {})); }, get closed() { return (tr('portal.periodClosed', 'Fechado', {})); },
+  get waiting_quote() { return (tr('ui.app.aguardando_cotacao_c58378', 'Aguardando Cotação', {})); }, get waiting_admin_review() { return (tr('purchase.poStatus.waiting_admin_review', 'Em Compra', {})); }
 };
 const PURCHASE_APPROVAL_REJECTION_REASONS = ['Item não necessário', 'Valor acima do esperado', 'Quantidade incorreta', 'Fornecedor inadequado', 'EPI incompatível', 'Fora do escopo da solicitação', 'Outro'];
 
 // P1-5 — etapas canônicas do recebimento da PO e mapeamento a partir do status.
 const PO_STEPPER_STEPS = [
-  { label: 'Pedido' },
-  { label: 'Recebido' },
-  { label: 'Conferido' },
-  { label: 'Fechado' }
+  { get label() { return (tr('purchase.poStep.ordered', 'Pedido', {})); } },
+  { get label() { return (tr('portal.statusReceived', 'Recebido', {})); } },
+  { get label() { return (tr('ui.app.conferido_113f18', 'Conferido', {})); } },
+  { get label() { return (tr('portal.periodClosed', 'Fechado', {})); } }
 ];
 const PO_STEP_INDEX = {
   open: 0, sent_to_buyer: 0, quoted: 0, waiting_quote: 0, waiting_admin_review: 0,
@@ -13162,7 +13249,7 @@ function _initDemandsCompanyFilter() {
   filter.style.display = '';
   const companies = state.companies || [];
   const current = filter.value;
-  filter.innerHTML = '<option value="">Todas as empresas</option>' +
+  filter.innerHTML = "<option value=\"\" data-i18n=\"ui.compras.todas_as_empresas_fe2a9c\">Todas as empresas</option>" +
     companies.map(c => `<option value="${escapeHtml(c.id)}"${String(c.id) === current ? ' selected' : ''}>${escapeHtml(c.name)} - ${escapeHtml(c.cnpj)}</option>`).join('');
 }
 
@@ -13190,7 +13277,7 @@ async function loadPurchaseDemands() {
     if (empty) empty.style.display = 'none';
     const showCompanyCol = state.user?.role === 'master_admin' && !document.getElementById('compras-demands-company-filter')?.value;
     tbody.innerHTML = _purchaseDemands.map((d, i) => {
-      const originLabel = d.demand_type === 'employee_request' ? '<span style="color:var(--color-primary)">Colaborador</span>' : '<span style="color:var(--color-warning)">Estoque Mínimo</span>';
+      const originLabel = d.demand_type === 'employee_request' ? "<span style=\"color:var(--color-primary)\" data-i18n=\"handover.collaborator\">Colaborador</span>" : "<span style=\"color:var(--color-warning)\" data-i18n=\"stock.minimumBalance\">Estoque M\u00ednimo</span>";
       const companyTag = showCompanyCol && d.company_name ? `<br><small style="color:var(--color-text-muted)">${escapeHtml(d.company_name)}</small>` : '';
       const who = d.demand_type === 'employee_request'
         ? `${escapeHtml(d.employee_name || '—')}${companyTag}<br><small>${escapeHtml(d.unit_name || '')}</small>`
@@ -13202,8 +13289,8 @@ async function loadPurchaseDemands() {
         // Estoque mínimo: mostra TODOS os tamanhos cadastrados com atual/mínimo/sugestão.
         if (d.demand_type === 'low_stock' && Array.isArray(d.size_demands) && d.size_demands.length) {
           const parts = d.size_demands.map(s => {
-            const sp = [s.glove_size !== 'N/A' ? `Luva:${s.glove_size}` : '', s.size !== 'N/A' ? `Tam:${s.size}` : '', s.uniform_size !== 'N/A' ? `Unif:${s.uniform_size}` : ''].filter(Boolean).join(' ') || 'Único';
-            return escapeHtml(`${sp} (atual ${s.current_stock}/mín ${s.minimum_stock} → +${s.suggested_quantity})`);
+            const sp = [s.glove_size !== 'N/A' ? `Luva:${s.glove_size}` : '', s.size !== 'N/A' ? `Tam:${s.size}` : '', s.uniform_size !== 'N/A' ? `Unif:${s.uniform_size}` : ''].filter(Boolean).join(' ') || (tr('ui.app.unico_295aff', 'Único', {}));
+            return escapeHtml(tr('ui.app.p0_atual_p1_min_p2_p3_cfd4de', '{p0} (atual {p1}/mín {p2} → +{p3})', {p0:(sp),p1:(s.current_stock),p2:(s.minimum_stock),p3:(s.suggested_quantity)}));
           }).join('<br>');
           if (parts) return parts;
         }
@@ -13215,7 +13302,7 @@ async function loadPurchaseDemands() {
           if (parts) return parts;
         }
         const flatSize = [d.glove_size && d.glove_size !== 'N/A' ? `Luva:${d.glove_size}` : '', d.size && d.size !== 'N/A' ? `Tam:${d.size}` : '', d.uniform_size && d.uniform_size !== 'N/A' ? `Unif:${d.uniform_size}` : ''].filter(Boolean).join(' ');
-        return escapeHtml(flatSize) || (d.demand_type === 'low_stock' ? 'Sem rastreio por tamanho' : '—');
+        return escapeHtml(flatSize) || (d.demand_type === 'low_stock' ? (tr('ui.app.sem_rastreio_por_tamanho_c49bfd', 'Sem rastreio por tamanho', {})) : '—');
       })();
       const qty = d.demand_type === 'employee_request'
         ? (d.quantity || 1)
@@ -13223,7 +13310,7 @@ async function loadPurchaseDemands() {
             ? d.size_demands.reduce((s, x) => s + Number(x.suggested_quantity || 0), 0) || (d.quantity_requested || 1)
             : (d.quantity_requested || 1));
       const statusBadge = d.demand_type === 'low_stock'
-        ? '<span style="color:var(--color-warning,#f59e0b);font-weight:600;font-size:11px;">Estoque Baixo</span>'
+        ? "<span style=\"color:var(--color-warning,#f59e0b);font-weight:600;font-size:11px;\" data-i18n=\"alert.lowStock\">Estoque Baixo</span>"
         : epiRequestStatusBadge(d.status || 'solicitado');
       return `<tr>
         <td><input type="checkbox" class="demand-check" data-demand-index="${i}"></td>
@@ -13244,8 +13331,8 @@ async function loadPurchaseDemands() {
     if (empty) {
       empty.style.display = '';
       empty.textContent = isTemporaryBootstrapUnavailable(e)
-        ? 'Sistema inicializando — clique em Atualizar para tentar novamente.'
-        : 'Erro ao carregar demandas.';
+        ? ((globalThis.EpiI18n?.textFor?.(empty,"ui.app.sistema_inicializando_clique_em_atualizar_para_tentar_novamente_6fa274","Sistema inicializando \u2014 clique em Atualizar para tentar novamente.",{}) ?? globalThis.trEpi?.("ui.app.sistema_inicializando_clique_em_atualizar_para_tentar_novamente_6fa274","Sistema inicializando \u2014 clique em Atualizar para tentar novamente.",{})) ?? "Sistema inicializando \u2014 clique em Atualizar para tentar novamente.")
+        : ((globalThis.EpiI18n?.textFor?.(empty,"ui.app.erro_ao_carregar_demandas_3b3de4","Erro ao carregar demandas.",{}) ?? globalThis.trEpi?.("ui.app.erro_ao_carregar_demandas_3b3de4","Erro ao carregar demandas.",{})) ?? "Erro ao carregar demandas.");
     }
   }
 }
@@ -13273,9 +13360,9 @@ async function loadPurchaseRequests() {
     if (table) table.style.display = '';
     if (empty) empty.style.display = 'none';
     tbody.innerHTML = _purchaseRequests.map(pr => {
-      const postponedExtra = pr.status === 'postponed' && pr.postponed_until ? `Até: ${pr.postponed_until}` : '';
+      const postponedExtra = pr.status === 'postponed' && pr.postponed_until ? (tr('ui.app.ate_p0_ce0eec', 'Até: {p0}', {p0:(pr.postponed_until)})) : '';
       const poInfo = pr.linked_po_number && ['approved','partially_approved','postponed'].includes(pr.status)
-        ? `<br><small style="color:var(--color-text-muted);">PO: ${escapeHtml(pr.linked_po_number)}</small>` : '';
+        ? `<br><small style="color:var(--color-text-muted);">${(globalThis.EpiI18n?.bindText?.("ui.app.po_p0_835d85",{p0:(pr.linked_po_number)},"PO: {p0}") ?? `PO: ${escapeHtml(pr.linked_po_number)}`)}</small>` : '';
       return `<tr>
         <td>${pr.id}</td>
         <td>${escapeHtml(pr.title || '—')}${poInfo}</td>
@@ -13284,11 +13371,11 @@ async function loadPurchaseRequests() {
         <td>${pr.items_count || 0}</td>
         <td style="font-size:12px;">${escapeHtml(pr.created_by_name || '—')}</td>
         <td style="font-size:12px;">${(pr.created_at || '').slice(0,10)}</td>
-        <td><button class="ghost" style="font-size:12px;padding:3px 8px;" data-pr-detail="${pr.id}">Ver</button></td>
+        <td><button class="ghost" style="font-size:12px;padding:3px 8px;" data-pr-detail="${pr.id}" data-i18n="ui.app.ver_20ab38">Ver</button></td>
       </tr>`;
     }).join('');
   } catch(e) {
-    if (empty) { empty.style.display = ''; empty.textContent = 'Erro ao carregar requisições.'; }
+    if (empty) { empty.style.display = ''; empty.textContent = ((globalThis.EpiI18n?.textFor?.(empty,"ui.procurement.erro_ao_carregar_requisicoes_ec390a","Erro ao carregar requisi\u00e7\u00f5es.",{}) ?? globalThis.trEpi?.("ui.procurement.erro_ao_carregar_requisicoes_ec390a","Erro ao carregar requisi\u00e7\u00f5es.",{})) ?? "Erro ao carregar requisi\u00e7\u00f5es."); }
   }
 }
 
@@ -13317,14 +13404,14 @@ async function loadPurchaseOrders() {
       <td>${esc(po.supplier || '—')}</td>
       <td>${esc(po.unit_name || '—')}</td>
       <td>${purchaseStatusBadge(po.status)}</td>
-      <td>${fmtBrl(po.total_value)}</td>
+      <td>${fmtBrl(po.total_value, globalThis.EpiI18n?.lang)}</td>
       <td>${po.items_count || 0}</td>
       <td style="font-size:12px;">${esc(po.created_by_name || '—')}</td>
       <td style="font-size:12px;">${(po.created_at || '').slice(0,10)}</td>
-      <td style="white-space:nowrap;"><button class="ghost" style="font-size:12px;padding:3px 8px;" data-po-detail="${po.id}">Ver</button> <button class="ghost" style="font-size:12px;padding:3px 8px;" data-po-supplier-actions="${po.id}">Fornecedor</button></td>
+      <td style="white-space:nowrap;"><button class="ghost" style="font-size:12px;padding:3px 8px;" data-po-detail="${po.id}" data-i18n="ui.app.ver_20ab38">Ver</button> <button class="ghost" style="font-size:12px;padding:3px 8px;" data-i18n="epi.supplierShort" data-po-supplier-actions="${po.id}">Fornecedor</button></td>
     </tr>`).join('');
   } catch(e) {
-    if (empty) { empty.style.display = ''; empty.textContent = 'Erro ao carregar POs.'; }
+    if (empty) { empty.style.display = ''; empty.textContent = ((globalThis.EpiI18n?.textFor?.(empty,"ui.app.erro_ao_carregar_pos_878b7a","Erro ao carregar POs.",{}) ?? globalThis.trEpi?.("ui.app.erro_ao_carregar_pos_878b7a","Erro ao carregar POs.",{})) ?? "Erro ao carregar POs."); }
   }
 }
 
@@ -13335,7 +13422,7 @@ async function openPrDetail(prId) {
     const pr = _currentPrDetail.item;
     const items = _currentPrDetail.items || [];
     const titleEl = document.getElementById('compras-req-detail-title');
-    if (titleEl) titleEl.textContent = `Requisição #${pr.id} — ${pr.title || ''}`;
+    if (titleEl) titleEl.textContent = ((globalThis.EpiI18n?.textFor?.(titleEl,"ui.app.requisicao_p0_p1_681826","Requisi\u00e7\u00e3o #{p0} \u2014 {p1}",{p0:(pr.id),p1:(pr.title || '')}) ?? globalThis.trEpi?.("ui.app.requisicao_p0_p1_681826","Requisi\u00e7\u00e3o #{p0} \u2014 {p1}",{p0:(pr.id),p1:(pr.title || '')})) ?? `Requisição #${pr.id} — ${pr.title || ''}`);
     const detailEl = document.getElementById('compras-req-detail');
     if (detailEl) detailEl.style.display = '';
     const tbody = document.getElementById('compras-req-detail-tbody');
@@ -13347,18 +13434,18 @@ async function openPrDetail(prId) {
         <td>${escapeHtml(i.manufacturer || '—')}</td>
         <td>${escapeHtml(i.supplier || '—')}</td>
         <td>${escapeHtml(i.employee_name || '—')}</td>
-        <td>${i.origin === 'employee_request' ? 'Colaborador' : 'Estoque Mín.'}</td>
+        <td>${i.origin === 'employee_request' ? (tr('handover.collaborator', 'Colaborador', {})) : (tr('ui.app.estoque_min_8776c1', 'Estoque Mín.', {}))}</td>
         <td style="font-size:12px;">${sizeInfo}</td>
         <td>${i.quantity_requested || 1}</td>
-        <td style="white-space:nowrap;">${i.unit_price ? fmtBrl(i.unit_price) : '—'}</td>
-        <td style="white-space:nowrap;font-weight:${i.total_price ? '600' : '400'};">${i.total_price ? fmtBrl(i.total_price) : '—'}</td>
+        <td style="white-space:nowrap;">${i.unit_price ? fmtBrl(i.unit_price, globalThis.EpiI18n?.lang) : '—'}</td>
+        <td style="white-space:nowrap;font-weight:${i.total_price ? '600' : '400'};">${i.total_price ? fmtBrl(i.total_price, globalThis.EpiI18n?.lang) : '—'}</td>
         <td>${ITEM_STATUS_LABELS[i.status] || i.status}</td>
       </tr>`;
     }).join('');
     const grandTotal = items.filter(i => i.status !== 'rejected').reduce((s, i) => s + Number(i.total_price || 0), 0);
     const totalEl = document.getElementById('compras-req-detail-total');
     const tfootEl = document.getElementById('compras-req-detail-tfoot');
-    if (totalEl) totalEl.textContent = grandTotal > 0 ? fmtBrl(grandTotal) : '—';
+    if (totalEl) totalEl.textContent = grandTotal > 0 ? fmtBrl(grandTotal, globalThis.EpiI18n?.lang) : '—';
     if (tfootEl) tfootEl.style.display = grandTotal > 0 ? '' : 'none';
     renderPrStatusActions(pr);
     renderPurchaseRequestEvents(_currentPrDetail.events || []);
@@ -13366,7 +13453,7 @@ async function openPrDetail(prId) {
     _setupPrDetailActions(pr, items);
     detailEl?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch(e) {
-    alert('Erro ao carregar requisição.');
+    alert((tr('ui.app.erro_ao_carregar_requisicao_b3de26', 'Erro ao carregar requisição.', {})));
   }
 }
 
@@ -13387,10 +13474,10 @@ function renderPurchaseRequestEvents(events) {
   eventsEl.innerHTML = (events || []).length ? events.map(e => {
     const fromTo = e.status_from ? ` <em>${esc(PURCHASE_STATUS_LABELS[e.status_from] || e.status_from)} → ${esc(PURCHASE_STATUS_LABELS[e.status_to] || e.status_to)}</em>` : '';
     const role = e.actor_role ? ` <small>(${esc(roleLabel(e.actor_role))})</small>` : '';
-    const destination = e.destination ? ` <small>Destino: ${esc(e.destination)}</small>` : '';
-    const reason = e.reason ? ` <small>Motivo: ${esc(e.reason)}</small>` : '';
-    return `<div style="padding:6px 0;border-bottom:1px solid var(--color-border);">[${esc((e.created_at || '').slice(0,16).replace('T',' '))}] <strong>${esc(e.actor_name || 'Sistema')}</strong>${role} — ${esc(e.action || '')}${fromTo}${destination}${reason}${e.comment ? `<br><span>${esc(e.comment)}</span>` : ''}</div>`;
-  }).join('') : '<em>Sem histórico.</em>';
+    const destination = e.destination ? ` <small>${(globalThis.EpiI18n?.bindText?.("ui.app.destino_p0_0064b0",{p0:(e.destination)},"Destino: {p0}") ?? `Destino: ${esc(e.destination)}`)}</small>` : '';
+    const reason = e.reason ? ` <small>${(globalThis.EpiI18n?.bindText?.("ui.app.motivo_p0_3cc86d",{p0:(e.reason)},"Motivo: {p0}") ?? `Motivo: ${esc(e.reason)}`)}</small>` : '';
+    return `<div style="padding:6px 0;border-bottom:1px solid var(--color-border);">[${esc((e.created_at || '').slice(0,16).replace('T',' '))}] <strong>${esc(e.actor_name || (tr('dashboard.groupSystem', 'Sistema', {})))}</strong>${role} — ${esc(e.action || '')}${fromTo}${destination}${reason}${e.comment ? `<br><span>${esc(e.comment)}</span>` : ''}</div>`;
+  }).join('') : "<em data-i18n=\"ui.app.sem_historico_1de259\">Sem hist\u00f3rico.</em>";
 }
 
 function renderPrStatusActions(pr) {
@@ -13413,56 +13500,56 @@ function renderPrStatusActions(pr) {
     actions.push(config);
   };
   if (pr.status === 'open') {
-    if (canQuote || canUpdate) addAction({ action: 'send_to_buyer', to: 'sent_to_buyer', label: 'Enviar ao Comprador', legacy: true });
+    if (canQuote || canUpdate) addAction({ action: 'send_to_buyer', to: 'sent_to_buyer', label: (tr('ui.app.enviar_ao_comprador_d997a1', 'Enviar ao Comprador', {})), legacy: true });
   } else if (pr.status === 'sent_to_buyer') {
     if (canQuote) {
-      addAction({ action: 'mark_quoted', to: 'quoted', label: 'Marcar como Cotada', legacy: true });
-      addAction({ action: 'buyer_return_to_requester', label: 'Retornar ao Requisitante', ghost: true, reasonGroup: 'requester', requiresReason: true, requiresComment: true, showRequesterChecklist: true, description: 'Solicite ajustes antes de enviar a cotação ao aprovador.' });
+      addAction({ action: 'mark_quoted', to: 'quoted', label: (tr('ui.app.marcar_como_cotada_a4faf1', 'Marcar como Cotada', {})), legacy: true });
+      addAction({ action: 'buyer_return_to_requester', label: (tr('ui.app.retornar_ao_requisitante_3ca898', 'Retornar ao Requisitante', {})), ghost: true, reasonGroup: 'requester', requiresReason: true, requiresComment: true, showRequesterChecklist: true, description: (tr('ui.app.solicite_ajustes_antes_de_enviar_a_cotacao_ao_aprovador_ebf26a', 'Solicite ajustes antes de enviar a cotação ao aprovador.', {})) });
     }
   } else if (pr.status === 'quoted' || pr.status === 'returned_to_buyer') {
     if (canQuote) {
-      addAction({ action: 'send_to_approver', to: 'pending_approval', label: 'Enviar ao Aprovador', legacy: true });
-      addAction({ action: 'buyer_return_to_requester', label: 'Retornar ao Requisitante', ghost: true, reasonGroup: 'requester', requiresReason: true, requiresComment: true, showRequesterChecklist: true, description: 'Solicite ajustes do requisitante antes de concluir a cotação.' });
+      addAction({ action: 'send_to_approver', to: 'pending_approval', label: (tr('ui.app.enviar_ao_aprovador_97a355', 'Enviar ao Aprovador', {})), legacy: true });
+      addAction({ action: 'buyer_return_to_requester', label: (tr('ui.app.retornar_ao_requisitante_3ca898', 'Retornar ao Requisitante', {})), ghost: true, reasonGroup: 'requester', requiresReason: true, requiresComment: true, showRequesterChecklist: true, description: (tr('ui.app.solicite_ajustes_do_requisitante_antes_de_concluir_a_cotacao_a2e132', 'Solicite ajustes do requisitante antes de concluir a cotação.', {})) });
     }
   } else if (pr.status === 'waiting_buyer_correction') {
     if (canQuote) {
-      addAction({ action: 'mark_quoted', to: 'quoted', label: 'Marcar como Cotada', legacy: true });
-      addAction({ action: 'buyer_resubmit', label: 'Reenviar ao Aprovador' });
-      addAction({ action: 'buyer_return_to_requester', label: 'Retornar ao Requisitante', ghost: true, reasonGroup: 'requester', requiresReason: true, requiresComment: true, showRequesterChecklist: true, description: 'Solicite ajustes do requisitante antes de reenviar a cotação.' });
+      addAction({ action: 'mark_quoted', to: 'quoted', label: (tr('ui.app.marcar_como_cotada_a4faf1', 'Marcar como Cotada', {})), legacy: true });
+      addAction({ action: 'buyer_resubmit', label: (tr('ui.app.reenviar_ao_aprovador_ce7261', 'Reenviar ao Aprovador', {})) });
+      addAction({ action: 'buyer_return_to_requester', label: (tr('ui.app.retornar_ao_requisitante_3ca898', 'Retornar ao Requisitante', {})), ghost: true, reasonGroup: 'requester', requiresReason: true, requiresComment: true, showRequesterChecklist: true, description: (tr('ui.app.solicite_ajustes_do_requisitante_antes_de_reenviar_a_cotacao_f15342', 'Solicite ajustes do requisitante antes de reenviar a cotação.', {})) });
     }
   } else if (pr.status === 'pending_approval' || pr.status === 'postponed') {
     if (canApprove) {
-      addAction({ action: 'approve', label: '✔ Aprovar' });
-      addAction({ action: 'return_to_buyer', label: 'Solicitar revisão da cotação', ghost: true, reasonGroup: 'buyer', requiresReason: true, requiresComment: true, description: 'Devolve para o comprador corrigir valores, fornecedor ou itens da cotação.' });
-      addAction({ action: 'return_to_requester', label: 'Solicitar revisão da requisição', ghost: true, reasonGroup: 'requester', requiresReason: true, requiresComment: true, showRequesterChecklist: true, description: 'Devolve para o requisitante/Administrador Local corrigir demanda, quantidade ou justificativa.' });
-      addAction({ action: 'reject', label: '✕ Reprovar', ghost: true, danger: true, reasonGroup: 'reject', requiresReason: true, requiresComment: true, description: 'Reprova a cotação/requisição e encerra o fluxo.' });
+      addAction({ action: 'approve', label: (tr('ui.app.aprovar_de153e', '✔ Aprovar', {})) });
+      addAction({ action: 'return_to_buyer', label: (tr('ui.app.solicitar_revisao_da_cotacao_ea53d1', 'Solicitar revisão da cotação', {})), ghost: true, reasonGroup: 'buyer', requiresReason: true, requiresComment: true, description: (tr('ui.app.devolve_para_o_comprador_corrigir_valores_fornecedor_ou_itens_da_cotacao_7c42b7', 'Devolve para o comprador corrigir valores, fornecedor ou itens da cotação.', {})) });
+      addAction({ action: 'return_to_requester', label: (tr('ui.app.solicitar_revisao_da_requisicao_71d031', 'Solicitar revisão da requisição', {})), ghost: true, reasonGroup: 'requester', requiresReason: true, requiresComment: true, showRequesterChecklist: true, description: (tr('ui.app.devolve_para_o_requisitante_administrador_local_corrigir_demanda_quantidade_4058b1', 'Devolve para o requisitante/Administrador Local corrigir demanda, quantidade ou justificativa.', {})) });
+      addAction({ action: 'reject', label: (tr('ui.app.reprovar_47ddb2', '✕ Reprovar', {})), ghost: true, danger: true, reasonGroup: 'reject', requiresReason: true, requiresComment: true, description: (tr('ui.app.reprova_a_cotacao_requisicao_e_encerra_o_fluxo_276ccd', 'Reprova a cotação/requisição e encerra o fluxo.', {})) });
     }
   } else if (pr.status === 'waiting_requester_correction') {
-    if (isAdmin || canUpdate) addAction({ action: 'requester_resubmit', label: 'Reenviar Requisição Corrigida', description: 'Após corrigir itens, quantidades ou justificativas, o fluxo retorna automaticamente à etapa adequada.' });
+    if (isAdmin || canUpdate) addAction({ action: 'requester_resubmit', label: (tr('ui.app.reenviar_requisicao_corrigida_89946c', 'Reenviar Requisição Corrigida', {})), description: (tr('ui.app.apos_corrigir_itens_quantidades_ou_justificativas_o_fluxo_retorna_automatic_ecc198', 'Após corrigir itens, quantidades ou justificativas, o fluxo retorna automaticamente à etapa adequada.', {})) });
     
   } else if (pr.status === 'approved') {
-    if (canQuote || isBuyer) addAction({ action: 'generate_po', label: 'Gerar PO' });
+    if (canQuote || isBuyer) addAction({ action: 'generate_po', label: (tr('ui.compras.gerar_po_dd513b', 'Gerar PO', {})) });
 
   } else if (pr.status === 'partially_approved') {
-    if (canQuote || isBuyer) addAction({ action: 'generate_po', label: 'Gerar PO (Itens Aprovados)' });
+    if (canQuote || isBuyer) addAction({ action: 'generate_po', label: (tr('ui.app.gerar_po_itens_aprovados_8e163a', 'Gerar PO (Itens Aprovados)', {})) });
 
   } else if (pr.status === 'po_generated') {
     if (isAdmin) {
-      addAction({ action: 'received', to: 'received', label: 'Marcar Recebida', legacy: true });
-      addAction({ action: 'closed', to: 'closed', label: 'Fechar', ghost: true, legacy: true });
+      addAction({ action: 'received', to: 'received', label: (tr('ui.app.marcar_recebida_994268', 'Marcar Recebida', {})), legacy: true });
+      addAction({ action: 'closed', to: 'closed', label: (tr('close', 'Fechar', {})), ghost: true, legacy: true });
     }
   } else if (pr.status === 'received' && isAdmin) {
-    addAction({ action: 'conferir_recebimento', label: 'Conferir Recebimento' });
+    addAction({ action: 'conferir_recebimento', label: (tr('ui.app.conferir_recebimento_c17f0d', 'Conferir Recebimento', {})) });
   } else if (pr.status === 'checked' && isAdmin) {
-    addAction({ action: 'closed', to: 'closed', label: 'Fechar Requisição', legacy: true });
+    addAction({ action: 'closed', to: 'closed', label: (tr('ui.app.fechar_requisicao_971ccc', 'Fechar Requisição', {})), legacy: true });
   }
   if (['checked', 'closed'].includes(pr.status) && canPrintPurchaseQrLabels()) {
-    addAction({ action: 'print_qr_labels', label: '🏷️ Imprimir QR Codes', ghost: true });
+    addAction({ action: 'print_qr_labels', label: (tr('ui.app.imprimir_qr_codes_67f136', '🏷️ Imprimir QR Codes', {})), ghost: true });
   }
   const canCancelAsRequester = canUpdate && ['open', 'waiting_requester_correction'].includes(pr.status);
   const canCancelAsBuyer = canQuote && ['open', 'sent_to_buyer', 'quoted', 'returned_to_buyer', 'waiting_buyer_correction'].includes(pr.status);
   if (canCancelAsRequester || canCancelAsBuyer) {
-    addAction({ action: 'cancel', to: 'cancelled', label: 'Cancelar', ghost: true, legacy: true });
+    addAction({ action: 'cancel', to: 'cancelled', label: (tr('stock.physical.cancel', 'Cancelar', {})), ghost: true, legacy: true });
   }
   actions.forEach(t => {
     const btn = document.createElement('button');
@@ -13490,7 +13577,7 @@ async function executePurchaseWorkflowAction(prId, actionConfig) {
         method: 'POST',
         body: JSON.stringify({ actor_user_id: state.user?.id, status: 'po_generated', comment: '' })
       });
-      showToast('Requisição enviada para geração de PO.');
+      showToast((tr('ui.app.requisicao_enviada_para_geracao_de_po_812456', 'Requisição enviada para geração de PO.', {})));
       await openPrDetail(prId);
       loadPurchaseRequests();
       const poReqId = document.getElementById('po-request-id');
@@ -13501,13 +13588,13 @@ async function executePurchaseWorkflowAction(prId, actionConfig) {
       const form = document.getElementById('compras-new-po-form');
       if (form) { form.style.display = ''; setTimeout(() => form.scrollIntoView({ behavior: 'smooth' }), 200); }
     } catch(e) {
-      showToast(e.message || 'Erro ao gerar PO.', 'error');
+      showToast(e.message || (tr('ui.app.erro_ao_gerar_po_07a453', 'Erro ao gerar PO.', {})), 'error');
     }
     return;
   }
   const modalResult = await openPurchaseWorkflowModal({
     title: actionConfig.label,
-    description: actionConfig.description || `Confirmar ação para a requisição #${prId}.`,
+    description: actionConfig.description || (tr('ui.app.confirmar_acao_para_a_requisicao_p0_12ace1', 'Confirmar ação para a requisição #{p0}.', {p0:(prId)})),
     reasonGroup: actionConfig.reasonGroup,
     requiresReason: actionConfig.requiresReason,
     requiresComment: actionConfig.requiresComment,
@@ -13526,7 +13613,7 @@ async function executePurchaseWorkflowAction(prId, actionConfig) {
     await openPrDetail(prId);
     loadPurchaseRequests();
   } catch(e) {
-    showToast(e.message || 'Erro ao executar ação da requisição.', 'error');
+    showToast(e.message || (tr('ui.app.erro_ao_executar_acao_da_requisicao_2b4aa8', 'Erro ao executar ação da requisição.', {})), 'error');
   }
 }
 
@@ -13550,7 +13637,7 @@ async function executePrConferenciaAction(prId, prItems) {
     const pendencies = Array.isArray(res.pendencies) ? res.pendencies : [];
     if (pendencies.length) {
       const totalShort = pendencies.reduce((s, p) => s + Number(p.quantity_short || 0), 0);
-      showToast(`Recebimento parcial: ${pendencies.length} pendência(s) (${totalShort} item(ns) em falta) registrada(s) e o comprador foi alertado.`, 'warning');
+      showToast((tr('ui.app.recebimento_parcial_p0_pendencia_s_p1_item_ns_em_falta_registrada_s_e_o_com_3f5c8c', 'Recebimento parcial: {p0} pendência(s) ({p1} item(ns) em falta) registrada(s) e o comprador foi alertado.', {p0:(pendencies.length),p1:(totalShort)})), 'warning');
     }
     const qrLabels = Array.isArray(res.qr_labels) ? res.qr_labels : [];
     if (qrLabels.length) {
@@ -13562,7 +13649,7 @@ async function executePrConferenciaAction(prId, prItems) {
     }
     loadPurchaseRequests();
   } catch(e) {
-    showToast(e.message || 'Erro ao registrar conferência.', 'error');
+    showToast(e.message || (tr('ui.app.erro_ao_registrar_conferencia_67cc7b', 'Erro ao registrar conferência.', {})), 'error');
   }
 }
 
@@ -13578,12 +13665,12 @@ async function openPurchaseQrPrintFromDetail(prId) {
       labels = Array.isArray(res.qr_labels) ? res.qr_labels : [];
       purchaseQrLabelsByPr[prId] = labels;
     } catch(e) {
-      showToast(e.message || 'Erro ao carregar etiquetas QR.', 'error');
+      showToast(e.message || (tr('ui.app.erro_ao_carregar_etiquetas_qr_3f6f66', 'Erro ao carregar etiquetas QR.', {})), 'error');
       return;
     }
   }
   if (!labels.length) {
-    showToast('Nenhuma etiqueta QR gerada para esta requisição.', 'error');
+    showToast((tr('ui.app.nenhuma_etiqueta_qr_gerada_para_esta_requisicao_99624b', 'Nenhuma etiqueta QR gerada para esta requisição.', {})), 'error');
     return;
   }
   openPurchaseQrPrintModal(prId, labels);
@@ -13610,26 +13697,26 @@ function openPurchaseQrPrintModal(prId, qrLabels) {
   }).join('');
   overlay.innerHTML = `
     <div class="modal" style="background:var(--color-surface,#fff);border-radius:8px;max-width:720px;width:92%;max-height:88vh;overflow:auto;padding:18px;">
-      <h3 style="margin:0 0 8px;">Imprimir QR Codes — Requisição #${esc(prId)}</h3>
-      <p style="margin:0 0 12px;color:var(--color-text-muted);font-size:13px;">Selecione as etiquetas dos EPIs recebidos para imprimir ou reimprimir.</p>
+      <h3 style="margin:0 0 8px;">${(globalThis.EpiI18n?.bindText?.("ui.app.imprimir_qr_codes_requisicao_p0_c16372",{p0:(prId)},"Imprimir QR Codes \u2014 Requisi\u00e7\u00e3o #{p0}") ?? `Imprimir QR Codes — Requisição #${esc(prId)}`)}</h3>
+      <p style="margin:0 0 12px;color:var(--color-text-muted);font-size:13px;" data-i18n="ui.app.selecione_as_etiquetas_dos_epis_recebidos_para_imprimir_ou_reimprimir_f07b74">Selecione as etiquetas dos EPIs recebidos para imprimir ou reimprimir.</p>
       <div style="display:flex;gap:8px;margin-bottom:8px;">
-        <button class="btn ghost" id="pr-qr-select-all" style="font-size:12px;">Selecionar todos</button>
-        <button class="btn ghost" id="pr-qr-select-none" style="font-size:12px;">Limpar seleção</button>
+        <button class="btn ghost" id="pr-qr-select-all" style="font-size:12px;" data-i18n="ui.compras.selecionar_todos_2a8ff8">Selecionar todos</button>
+        <button class="btn ghost" id="pr-qr-select-none" style="font-size:12px;" data-i18n="bulk.clear">Limpar seleção</button>
       </div>
       <table style="width:100%;border-collapse:collapse;font-size:13px;border:1px solid var(--color-border);">
         <thead><tr style="background:var(--color-surface-alt,#f5f5f5);">
           <th scope="col" style="padding:4px 8px;text-align:left;"></th>
-          <th scope="col" style="padding:4px 8px;text-align:left;">EPI</th>
-          <th scope="col" style="padding:4px 8px;text-align:left;">Tamanho</th>
+          <th scope="col" style="padding:4px 8px;text-align:left;" data-i18n="epi.tableName">EPI</th>
+          <th scope="col" style="padding:4px 8px;text-align:left;" data-i18n="delivery.size">Tamanho</th>
           <th scope="col" style="padding:4px 8px;text-align:left;">QR</th>
-          <th scope="col" style="padding:4px 8px;text-align:left;">Reimpr.</th>
+          <th scope="col" style="padding:4px 8px;text-align:left;" data-i18n="ui.app.reimpr_0ebb01">Reimpr.</th>
         </tr></thead>
         <tbody>${rowsHtml}</tbody>
       </table>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
-        <button class="btn ghost" id="pr-qr-cancel">Fechar</button>
-        <button class="btn ghost" id="pr-qr-print-selected">Imprimir Selecionados</button>
-        <button class="btn" id="pr-qr-print-all">Imprimir Todos</button>
+        <button class="btn ghost" id="pr-qr-cancel" data-i18n="close">Fechar</button>
+        <button class="btn ghost" id="pr-qr-print-selected" data-i18n="ui.app.imprimir_selecionados_4ddaa1">Imprimir Selecionados</button>
+        <button class="btn" id="pr-qr-print-all" data-i18n="ui.app.imprimir_todos_5edeff">Imprimir Todos</button>
       </div>
     </div>`;
   document.body.appendChild(overlay);
@@ -13643,7 +13730,7 @@ function openPurchaseQrPrintModal(prId, qrLabels) {
   bindAppListener(overlay.querySelector('#pr-qr-print-all'), 'click', () => printStockLabels(labels, 1));
   bindAppListener(overlay.querySelector('#pr-qr-print-selected'), 'click', () => {
     const sel = selectedLabels();
-    if (!sel.length) return alert('Selecione ao menos uma etiqueta para imprimir.');
+    if (!sel.length) return alert((tr('ui.app.selecione_ao_menos_uma_etiqueta_para_imprimir_d7f77e', 'Selecione ao menos uma etiqueta para imprimir.', {})));
     printStockLabels(sel, 1);
   });
 }
@@ -13695,23 +13782,23 @@ function openReceiptLotCaptureModal(initial = {}, quantity = 1, epiName = '') {
     const text = (key, fallback) => esc(tr('stock.receiptCapture.' + key, fallback));
     let attachment = initial.evidence_file || null, closed = false, fileVersion = 0, processing = false;
     overlay.innerHTML = `<div class="card" role="dialog" aria-modal="true" aria-labelledby="receipt-capture-title" style="max-width:620px;width:96vw;max-height:92vh;overflow:auto;padding:24px;">
-      <h3 id="receipt-capture-title">${text('title', 'Conferir lote, fabricação e validade')}</h3>
-      <p><strong>${esc(epiName)}</strong> · ${esc(quantity)} ${text('pieces', 'peça(s)')}</p>
-      <p class="hint">${text('hint', 'Fotografe a etiqueta ou anexe documento do fabricante deste lote. Revise fabricação e validade separadamente. A foto e as datas acompanharão as peças no estoque; uma data de fabricação não comprova validade.')}</p>
-      <label>${text('photo', 'Fotografar etiqueta (PNG ou JPEG, até 3 MiB)')}<input id="receipt-capture-file" type="file" accept="image/png,image/jpeg" capture="environment"></label>
-      <label>${text('file', 'Foto / documento do lote (PDF, PNG ou JPEG, até 3 MiB)')}<input id="receipt-capture-document" type="file" accept="application/pdf,image/png,image/jpeg"></label>
-      <img id="receipt-capture-preview" alt="${text('preview', 'Foto da comprovação deste lote')}" hidden style="max-width:100%;max-height:260px;object-fit:contain;">
+      <h3 id="receipt-capture-title">${text('title', (tr('stock.receiptCapture.title', 'Conferir lote, fabricação e validade', {})))}</h3>
+      <p><strong>${esc(epiName)}</strong> · ${esc(quantity)} ${text('pieces', (tr('stock.receipt.piece', 'peça(s)', {})))}</p>
+      <p class="hint">${text('hint', (tr('stock.receiptCapture.hint', 'Fotografe a etiqueta ou anexe documento do fabricante deste lote. Revise fabricação e validade separadamente. A foto e as datas acompanharão as peças no estoque; uma data de fabricação não comprova validade.', {})))}</p>
+      <label>${text('photo', (tr('stock.receiptCapture.photo', 'Fotografar etiqueta (PNG ou JPEG, até 3 MiB)', {})))}<input id="receipt-capture-file" type="file" accept="image/png,image/jpeg" capture="environment"></label>
+      <label>${text('file', (tr('stock.receiptCapture.file', 'Foto / documento do lote (PDF, PNG ou JPEG, até 3 MiB)', {})))}<input id="receipt-capture-document" type="file" accept="application/pdf,image/png,image/jpeg"></label>
+      <img id="receipt-capture-preview" alt="${text('preview', (tr('stock.receiptCapture.preview', 'Foto da comprovação deste lote', {})))}" hidden style="max-width:100%;max-height:260px;object-fit:contain;">
       <p id="receipt-capture-status" role="status">${esc(attachment?.filename || '')}</p>
       <div id="receipt-capture-candidates"></div>
-      <label>${text('lot', 'Lote real')}<input id="receipt-capture-lot" value="${esc(initial.lot_code || '')}"></label>
-      <label>${text('manufacture', 'Fabricação')}<input id="receipt-capture-manufacture" type="date" value="${esc(initial.manufacture_date || '')}"></label>
-      <label>${text('expiry', 'Validade física')}<input id="receipt-capture-expiry" type="date" value="${esc(initial.manufacturer_validity_date || '')}"></label>
-      <p class="hint">${text('missingExpiry', 'Se a validade não estiver comprovada, deixe-a vazia. Fabricação e foto serão preservadas, mas as peças continuarão bloqueadas por validade desconhecida.')}</p>
-      <label>${text('source', 'Origem da comprovação')}<select id="receipt-capture-source"><option value="label">${text('label', 'Embalagem / etiqueta')}</option><option value="manufacturer_document">${text('document', 'Documento do fabricante')}</option></select></label>
-      <label>${text('evidence', 'Referência verificável')}<input id="receipt-capture-evidence" value="${esc(initial.evidence || '')}"></label>
-      <label style="display:flex;gap:8px;align-items:center;"><input id="receipt-capture-physical" type="checkbox" style="width:auto;min-width:0;">${text('confirm', 'Conferi o lote e as datas na foto/documento. Confirmei que estas peças pertencem a este lote.')}</label>
+      <label>${text('lot', (tr('stock.receiptCapture.lot', 'Lote real', {})))}<input id="receipt-capture-lot" value="${esc(initial.lot_code || '')}"></label>
+      <label>${text('manufacture', (tr('stock.receiptCapture.manufacture', 'Fabricação', {})))}<input id="receipt-capture-manufacture" type="date" value="${esc(initial.manufacture_date || '')}"></label>
+      <label>${text('expiry', (tr('stock.receipt.validity', 'Validade física', {})))}<input id="receipt-capture-expiry" type="date" value="${esc(initial.manufacturer_validity_date || '')}"></label>
+      <p class="hint">${text('missingExpiry', (tr('stock.receiptCapture.missingExpiry', 'Se a validade não estiver comprovada, deixe-a vazia. Fabricação e foto serão preservadas, mas as peças continuarão bloqueadas por validade desconhecida.', {})))}</p>
+      <label>${text('source', (tr('stock.receiptCapture.source', 'Origem da comprovação', {})))}<select id="receipt-capture-source"><option value="label">${text('label', (tr('stock.receiptCapture.label', 'Embalagem / etiqueta', {})))}</option><option value="manufacturer_document">${text('document', (tr('stock.receiptCapture.document', 'Documento do fabricante', {})))}</option></select></label>
+      <label>${text('evidence', (tr('stock.receiptCapture.evidence', 'Referência verificável', {})))}<input id="receipt-capture-evidence" value="${esc(initial.evidence || '')}"></label>
+      <label style="display:flex;gap:8px;align-items:center;"><input id="receipt-capture-physical" type="checkbox" style="width:auto;min-width:0;">${text('confirm', (tr('stock.receiptCapture.confirm', 'Conferi o lote e as datas na foto/documento. Confirmei que estas peças pertencem a este lote.', {})))}</label>
       <p id="receipt-capture-error" role="alert"></p>
-      <div class="action-group"><button id="receipt-capture-cancel" type="button" class="ghost">${esc(tr('cancel', 'Cancelar'))}</button><button id="receipt-capture-save" type="button">${text('save', 'Usar dados deste lote')}</button></div>
+      <div class="action-group"><button id="receipt-capture-cancel" type="button" class="ghost">${esc(tr('cancel', 'Cancelar'))}</button><button id="receipt-capture-save" type="button">${text('save', (tr('stock.receiptCapture.save', 'Usar dados deste lote', {})))}</button></div>
     </div>`;
     document.body.appendChild(overlay);
     overlay.querySelector('#receipt-capture-source').value = initial.expiry_source || 'label';
@@ -13730,14 +13817,14 @@ function openReceiptLotCaptureModal(initial = {}, quantity = 1, epiName = '') {
       attachment = null; preview(null); processing = true; resetConfirmation();
       overlay.querySelector('#receipt-capture-save').disabled = true;
       const status = overlay.querySelector('#receipt-capture-status');
-      status.textContent = tr('stock.receiptCapture.reading', 'Lendo foto; revise as sugestões antes de confirmar…');
+      status.textContent = (globalThis.EpiI18n?.textFor?.(status,'stock.receiptCapture.reading','Lendo foto; revise as sugestões antes de confirmar…') ?? tr('stock.receiptCapture.reading', 'Lendo foto; revise as sugestões antes de confirmar…'));
       try {
         const result = await readReceiptLotPhoto({ files: [chosen] });
         if (closed || version !== fileVersion) return;
         attachment = result.file; preview(attachment);
         if (attachment.mime === 'application/pdf') overlay.querySelector('#receipt-capture-source').value = 'manufacturer_document';
         applyReceiptDateSuggestions(overlay, result.dates);
-        status.textContent = attachment.filename + ' · ' + tr('stock.receiptCapture.review', 'Revise as datas. Sem rótulos claros, escolha a data correta ou preencha manualmente.');
+        status.textContent = attachment.filename + ' · ' + (globalThis.EpiI18n?.textFor?.(status,'stock.receiptCapture.review','Revise as datas. Sem rótulos claros, escolha a data correta ou preencha manualmente.') ?? tr('stock.receiptCapture.review', 'Revise as datas. Sem rótulos claros, escolha a data correta ou preencha manualmente.'));
         if (result.error || result.dates.error) error(tr('stock.receiptCapture.manual', 'A leitura automática não concluiu. A foto foi mantida; informe e confira as datas manualmente.'));
         const evidence = overlay.querySelector('#receipt-capture-evidence');
         if (!evidence.value) evidence.value = attachment.filename;
@@ -13779,7 +13866,7 @@ function openConferenciaModal(prId, items, options = {}) {
       return (typeof v === 'number' && Number.isSafeInteger(v) && v > 0) ? v : 0;
     };
     const nameById = {};
-    eligibleItems.forEach(i => { nameById[i.id] = i.epi_name || 'Item'; });
+    eligibleItems.forEach(i => { nameById[i.id] = i.epi_name || (tr('ui.purchases.item_652bcc', 'Item', {})); });
     // EST-V3.5-R3: estado dos lotes por item. Modo "único" (padrão): uma data +
     // uma evidência valem para TODAS as N peças do item (um lote só — R3 #2).
     // Modo "lotes": separa qtd/validade/evidência/identificação por lote (R3 #4);
@@ -13794,14 +13881,14 @@ function openConferenciaModal(prId, items, options = {}) {
       const qty = effQtyOf(item);
       const sizeInfo = [item.glove_size && item.glove_size !== 'N/A' ? `L:${item.glove_size}` : null, item.size && item.size !== 'N/A' ? `T:${item.size}` : null].filter(Boolean).join(' ') || '—';
       return `<tr data-conferencia-row="${esc(item.id)}" data-eff-qty="${esc(qty)}" style="${alreadyNotReceived ? 'background:var(--color-danger-bg,#fff0f0);' : ''}">
-        <td style="padding:6px 8px;"><strong>${esc(item.epi_name || 'Item')}</strong><br><small style="color:var(--color-text-muted)">${tr('epi.caShort', 'CA')}: ${esc(item.ca || '—')} | ${esc(item.manufacturer || '—')}</small></td>
+        <td style="padding:6px 8px;"><strong>${esc(item.epi_name || (tr('ui.purchases.item_652bcc', 'Item', {})))}</strong><br><small style="color:var(--color-text-muted)">${tr('epi.caShort', 'CA')}: ${esc(item.ca || '—')} | ${esc(item.manufacturer || '—')}</small></td>
         <td style="padding:6px 8px;">${esc(item.employee_name || '—')}</td>
         <td style="padding:6px 8px;text-align:center;">${esc(qty)}</td>
         <td style="padding:6px 8px;text-align:center;font-size:12px;">${esc(sizeInfo)}</td>
         <td style="padding:6px 8px;text-align:center;">
           <label style="display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;">
             <input type="checkbox" value="${esc(item.id)}" data-conferencia-item ${alreadyNotReceived ? '' : 'checked'} ${options.po ? 'disabled' : ''}>
-            <span data-conferencia-label="${esc(item.id)}">${alreadyNotReceived ? 'Não Recebido' : 'Recebido'}</span>
+            <span data-conferencia-label="${esc(item.id)}">${alreadyNotReceived ? (tr('purchase.poStatus.not_received', 'Não Recebido', {})) : (tr('portal.statusReceived', 'Recebido', {}))}</span>
           </label>
         </td>
         <td style="padding:6px 8px;text-align:center;vertical-align:top;">
@@ -13821,31 +13908,31 @@ function openConferenciaModal(prId, items, options = {}) {
     }).join('');
     overlay.innerHTML = `
       <div class="card" style="max-width:920px;width:min(920px,96vw);margin:auto;padding:24px;max-height:92vh;overflow:auto;">
-        <h3 style="margin:0 0 4px;">${esc(options.po ? tr('stock.receiptCapture.poConference', 'Conferência de recebimento — PO') : 'Conferência de Recebimento — Requisição')} #${esc(String(prId))}</h3>
+        <h3 style="margin:0 0 4px;">${esc(options.po ? tr('stock.receiptCapture.poConference', 'Conferência de recebimento — PO') : (tr('ui.app.conferencia_de_recebimento_requisicao_b6e8d6', 'Conferência de Recebimento — Requisição', {})))} #${esc(String(prId))}</h3>
         <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 12px;">${esc(tr('stock.receipt.intro', 'Marque cada item conforme o recebimento real. Itens desmarcados são registrados como Não Recebido para cobrança ao fornecedor. Informe a validade física do fabricante (uma data para todas as peças do item) e a evidência verificável (etiqueta/embalagem/NF; use 📷 para ler por câmera). Use "Separar em lotes" quando houver validades diferentes ou exceções individuais. Peças sem validade comprovada entram BLOQUEADAS (desconhecida) e devem ser regularizadas depois em Validade e Bloqueios.'))}</p>
         <div style="margin-bottom:10px;overflow-x:auto;">
           <table style="width:100%;border-collapse:collapse;font-size:13px;">
             <thead><tr style="border-bottom:2px solid var(--color-border);">
-              <th scope="col" style="text-align:left;padding:6px 8px;">EPI</th>
-              <th scope="col" style="text-align:left;padding:6px 8px;">Colaborador</th>
-              <th scope="col" style="text-align:center;padding:6px 8px;">Qtd</th>
-              <th scope="col" style="text-align:center;padding:6px 8px;">Tamanho</th>
-              <th scope="col" style="text-align:center;padding:6px 8px;">Recebido?</th>
+              <th scope="col" style="text-align:left;padding:6px 8px;" data-i18n="epi.tableName">EPI</th>
+              <th scope="col" style="text-align:left;padding:6px 8px;" data-i18n="handover.collaborator">Colaborador</th>
+              <th scope="col" style="text-align:center;padding:6px 8px;" data-i18n="stock.receipt.qty">Qtd</th>
+              <th scope="col" style="text-align:center;padding:6px 8px;" data-i18n="delivery.size">Tamanho</th>
+              <th scope="col" style="text-align:center;padding:6px 8px;" data-i18n="ui.app.recebido_8dc1b0">Recebido?</th>
               <th scope="col" style="text-align:center;padding:6px 8px;">${esc(tr('stock.receipt.physicalValidity', 'Validade física + evidência'))}</th>
             </tr></thead>
-            <tbody>${itemsHtml || '<tr><td colspan="6" style="text-align:center;padding:12px;color:var(--color-text-muted)">Nenhum item elegível para conferência.</td></tr>'}</tbody>
+            <tbody>${itemsHtml || "<tr><td colspan=\"6\" style=\"text-align:center;padding:12px;color:var(--color-text-muted)\" data-i18n=\"ui.app.nenhum_item_elegivel_para_conferencia_d7b932\">Nenhum item eleg\u00edvel para confer\u00eancia.</td></tr>"}</tbody>
           </table>
         </div>
         <div id="conferencia-summary" style="padding:10px 12px;border-radius:6px;background:var(--color-surface,#f5f5f5);margin-bottom:8px;font-size:13px;border:1px solid var(--color-border);"></div>
         <div id="conferencia-preview" style="padding:10px 12px;border-radius:6px;background:var(--color-surface,#f5f5f5);margin-bottom:12px;font-size:13px;border:1px solid var(--color-border);"></div>
-        <label style="display:block;margin-bottom:14px;font-size:13px;">
-          Observações sobre itens não recebidos <span style="font-size:12px;color:var(--color-text-muted)">(será usada como base para reclamação ao fornecedor)</span>
-          <textarea id="conferencia-notes" rows="3" style="width:100%;margin-top:6px;" placeholder="Descreva os EPIs que não foram entregues ou com quantidade divergente. Essas informações serão registradas para contato com o fornecedor."></textarea>
+        <label style="display:block;margin-bottom:14px;font-size:13px;" data-i18n="ui.app.observacoes_sobre_itens_nao_recebidos_87fbed">
+          Observações sobre itens não recebidos <span style="font-size:12px;color:var(--color-text-muted)" data-i18n="ui.app.sera_usada_como_base_para_reclamacao_ao_fornecedor_8e4a4e">(será usada como base para reclamação ao fornecedor)</span>
+          <textarea id="conferencia-notes" rows="3" style="width:100%;margin-top:6px;" placeholder="Descreva os EPIs que não foram entregues ou com quantidade divergente. Essas informações serão registradas para contato com o fornecedor." data-i18n-placeholder="ui.app.descreva_os_epis_que_nao_foram_entregues_ou_com_quantidade_divergente_essas_af2107"></textarea>
         </label>
         <div id="conferencia-error" style="display:none;color:var(--color-danger,#c00);font-size:13px;margin-bottom:8px;"></div>
         <div style="display:flex;gap:8px;justify-content:flex-end;">
-          <button class="btn ghost" id="conferencia-cancel">Cancelar</button>
-          <button class="btn" id="conferencia-confirm">Registrar Conferência</button>
+          <button class="btn ghost" id="conferencia-cancel" data-i18n="stock.physical.cancel">Cancelar</button>
+          <button class="btn" id="conferencia-confirm" data-i18n="ui.app.registrar_conferencia_b420c7">Registrar Conferência</button>
         </div>
       </div>`;
     document.body.appendChild(overlay);
@@ -13876,14 +13963,14 @@ function openConferenciaModal(prId, items, options = {}) {
       const summaryEl = overlay.querySelector('#conferencia-summary');
       if (summaryEl) {
         if (notReceivedCount > 0) {
-          summaryEl.innerHTML = `<strong>${receivedCount}/${total}</strong> itens recebidos &nbsp;|&nbsp; <span style="color:var(--color-danger,#c00);">⚠ <strong>${notReceivedCount}</strong> item(ns) <strong>não recebido(s)</strong> — registrar para cobrança ao fornecedor</span>`;
+          summaryEl.innerHTML = `<strong>${receivedCount}/${total}</strong> itens recebidos &nbsp;|&nbsp; <span style="color:var(--color-danger,#c00);">⚠ <strong>${notReceivedCount}</strong> <span data-i18n="ui.app.item_ns_01e5c1">item(ns)</span> <strong data-i18n="ui.app.nao_recebido_s_b13a3d">não recebido(s)</strong> <span data-i18n="ui.app.registrar_para_cobranca_ao_fornecedor_091933">— registrar para cobrança ao fornecedor</span></span>`;
         } else {
-          summaryEl.innerHTML = `<span style="color:var(--color-success,green);">✓ Todos os <strong>${total}</strong> itens foram recebidos</span>`;
+          summaryEl.innerHTML = `<span style="color:var(--color-success,green);"><span data-i18n="ui.app.todos_os_d16df8">✓ Todos os</span> <strong>${total}</strong> <span data-i18n="ui.app.itens_foram_recebidos_1c35e4">itens foram recebidos</span></span>`;
         }
       }
       checkboxes.forEach(cb => {
         const labelEl = overlay.querySelector(`[data-conferencia-label="${CSS.escape(cb.value)}"]`);
-        if (labelEl) labelEl.textContent = cb.checked ? 'Recebido' : 'Não Recebido';
+        if (labelEl) labelEl.textContent = cb.checked ? ((globalThis.EpiI18n?.textFor?.(labelEl,"portal.statusReceived","Recebido",{}) ?? globalThis.trEpi?.("portal.statusReceived","Recebido",{})) ?? "Recebido") : ((globalThis.EpiI18n?.textFor?.(labelEl,"purchase.poStatus.not_received","N\u00e3o Recebido",{}) ?? globalThis.trEpi?.("purchase.poStatus.not_received","N\u00e3o Recebido",{})) ?? "N\u00e3o Recebido");
         const row = cb.closest('[data-conferencia-row]');
         if (row) row.style.background = cb.checked ? '' : 'var(--color-danger-bg,#fff0f0)';
       });
@@ -13905,7 +13992,7 @@ function openConferenciaModal(prId, items, options = {}) {
           const past = l.manufacturer_validity_date < todayStr;
           return `${q || '?'} ${tr('stock.receipt.piece', 'peça(s)')} → ${fmtDate(l.manufacturer_validity_date)}${past ? ' ⚠ ' + tr('stock.receipt.expired', 'vencida') : ''}`;
         });
-        rows.push(`<div><strong>${esc(item.epi_name || 'Item')}</strong> (${N}): ${esc(parts.join('; '))}</div>`);
+        rows.push(`<div><strong>${esc(item.epi_name || (tr('ui.purchases.item_652bcc', 'Item', {})))}</strong> (${N}): ${esc(parts.join('; '))}</div>`);
       });
       if (!rows.length) { prev.innerHTML = `<span style="color:var(--color-text-muted)">${esc(tr('stock.receipt.previewEmpty', 'Marque itens como recebidos para ver a prévia da validade física por peça.'))}</span>`; return; }
       const warn = blocked > 0 ? `<div style="color:var(--color-danger,#c00);margin-top:4px;">⚠ ${blocked} ${esc(tr('stock.receipt.blockedPieces', 'peça(s) entrarão BLOQUEADAS (validade não comprovada) — regularize depois em Validade e Bloqueios'))}</div>` : '';
@@ -14061,7 +14148,7 @@ function openConferenciaModal(prId, items, options = {}) {
       const comment = overlay.querySelector('#conferencia-notes')?.value?.trim() || '';
       const notReceived = built.filter(i => !i.received);
       if (notReceived.length > 0 && !comment) {
-        showError('Informe as observações sobre os itens não recebidos.');
+        showError((tr('ui.app.informe_as_observacoes_sobre_os_itens_nao_recebidos_e8707c', 'Informe as observações sobre os itens não recebidos.', {})));
         return;
       }
       // EST-V3.5-R3: integridade dos lotes dos itens recebidos (espelha o backend
@@ -14069,17 +14156,17 @@ function openConferenciaModal(prId, items, options = {}) {
       // bloqueada, R3 #9); evidência é obrigatória quando há validade (R3 #3).
       for (const it of built.filter(i => i.received)) {
         if (it.lots.some(l => !(Number(l.quantity) > 0))) {
-          showError(`${nameById[it.id] || 'Item'}: cada lote precisa de quantidade maior que zero.`);
+          showError(`${nameById[it.id] || (tr('ui.purchases.item_652bcc', 'Item', {}))}: cada lote precisa de quantidade maior que zero.`);
           return;
         }
         const sum = it.lots.reduce((s, l) => s + (Number(l.quantity) > 0 ? Math.floor(Number(l.quantity)) : 0), 0);
         if (sum !== it._N) {
-          showError(`${nameById[it.id] || 'Item'}: a soma das quantidades dos lotes (${sum}) não confere com a quantidade recebida (${it._N}).`);
+          showError((tr('ui.app.p0_a_soma_das_quantidades_dos_lotes_p1_nao_confere_com_a_quantidade_recebid_c4e389', '{p0}: a soma das quantidades dos lotes ({p1}) não confere com a quantidade recebida ({p2}).', {p0:(nameById[it.id] || (tr('ui.purchases.item_652bcc', 'Item', {}))),p1:(sum),p2:(it._N)})));
           return;
         }
         for (const l of it.lots) {
           if (l.manufacturer_validity_date && !l.evidence) {
-            showError(`${nameById[it.id] || 'Item'}: evidência verificável é obrigatória quando o lote informa validade física.`);
+            showError((tr('ui.app.p0_evidencia_verificavel_e_obrigatoria_quando_o_lote_informa_validade_fisic_16392d', '{p0}: evidência verificável é obrigatória quando o lote informa validade física.', {p0:(nameById[it.id] || (tr('ui.purchases.item_652bcc', 'Item', {})))})));
             return;
           }
         }
@@ -14094,7 +14181,7 @@ async function updatePrStatus(prId, status) {
   let comment = '';
   let postponedUntil = '';
   if (status === 'postponed') {
-    const modalResult = await openPurchaseWorkflowModal({ title: 'Prorrogar requisição', description: 'Informe a justificativa e use o fluxo de PO quando houver data formal de prorrogação.', requiresComment: false });
+    const modalResult = await openPurchaseWorkflowModal({ title: (tr('ui.app.prorrogar_requisicao_364045', 'Prorrogar requisição', {})), description: (tr('ui.app.informe_a_justificativa_e_use_o_fluxo_de_po_quando_houver_data_formal_de_pr_f377a5', 'Informe a justificativa e use o fluxo de PO quando houver data formal de prorrogação.', {})), requiresComment: false });
     if (modalResult === null) return;
     comment = modalResult.comment || '';
   }
@@ -14107,7 +14194,7 @@ async function updatePrStatus(prId, status) {
     await openPrDetail(prId);
     loadPurchaseRequests();
   } catch(e) {
-    showToast(e.message || 'Erro ao alterar status.', 'error');
+    showToast(e.message || (tr('ui.app.erro_ao_alterar_status_3cd50c', 'Erro ao alterar status.', {})), 'error');
   }
 }
 
@@ -14122,14 +14209,14 @@ async function openPoDetail(poId) {
     if (titleEl) titleEl.textContent = `PO #${po.id}${po.po_number ? ' — ' + po.po_number : ''}`;
     const infoEl = document.getElementById('compras-po-detail-info');
     if (infoEl) infoEl.innerHTML = `
-      <div><strong>Fornecedor</strong><br>${esc(po.supplier || '—')}</div>
-      <div><strong>Status</strong><br>${purchaseStatusBadge(po.status, po.status === 'postponed' && po.postponed_until ? `Até ${po.postponed_until}` : '')}</div>
-      <div><strong>Total</strong><br>${fmtBrl(po.total_value)}</div>
-      <div><strong>Nº PO</strong><br>${esc(po.po_number || `PO-${po.id}`)}</div>
-      <div><strong>Unidade</strong><br>${esc(po.unit_name || '—')}</div>
-      <div><strong>Previsão Entrega</strong><br>${esc(po.expected_delivery_date || '—')}</div>
-      <div><strong>Aprovação</strong><br>${po.approved_by_name ? `${esc(po.approved_by_name)} em ${esc((po.approved_at || '').slice(0,10))}` : '—'}</div>
-      ${po.approval_comment ? `<div style="grid-column:1/-1"><strong>Comentário</strong><br>${esc(po.approval_comment)}</div>` : ''}
+      <div><strong data-i18n="epi.supplierShort">Fornecedor</strong><br>${esc(po.supplier || '—')}</div>
+      <div><strong data-i18n="user.status">Status</strong><br>${purchaseStatusBadge(po.status, po.status === 'postponed' && po.postponed_until ? (tr('ui.app.ate_p0_d642b7', 'Até {p0}', {p0:(po.postponed_until)})) : '')}</div>
+      <div><strong data-i18n="evaluation.total">Total</strong><br>${fmtBrl(po.total_value, globalThis.EpiI18n?.lang)}</div>
+      <div><strong data-i18n="ui.compras.no_po_6d72da">Nº PO</strong><br>${esc(po.po_number || `PO-${po.id}`)}</div>
+      <div><strong data-i18n="moduleVisibility.unitLabel">Unidade</strong><br>${esc(po.unit_name || '—')}</div>
+      <div><strong data-i18n="ui.app.previsao_entrega_14a174">Previsão Entrega</strong><br>${esc(po.expected_delivery_date || '—')}</div>
+      <div><strong data-i18n="ui.app.aprovacao_d9eada">Aprovação</strong><br>${po.approved_by_name ? `${esc(po.approved_by_name)} em ${esc((po.approved_at || '').slice(0,10))}` : '—'}</div>
+      ${po.approval_comment ? `<div style="grid-column:1/-1"><strong data-i18n="evaluation.comment">Comentário</strong><br>${esc(po.approval_comment)}</div>` : ''}
     `;
     // P1-5 — stepper do ciclo de recebimento da PO.
     const stepperEl = document.getElementById('compras-po-stepper');
@@ -14146,7 +14233,7 @@ async function openPoDetail(poId) {
     // Show suggestions to buyer when PO was returned
     const infoEl2 = document.getElementById('compras-po-detail-info');
     if (infoEl2 && po.status === 'quoted' && po.buyer_suggestions) {
-      infoEl2.insertAdjacentHTML('beforeend', `<div style="grid-column:1/-1;padding:8px;background:var(--color-warning-light,#fff3cd);border-radius:4px;"><strong>Sugestões do Admin:</strong> ${esc(po.buyer_suggestions)}</div>`);
+      infoEl2.insertAdjacentHTML('beforeend', `<div style="grid-column:1/-1;padding:8px;background:var(--color-warning-light,#fff3cd);border-radius:4px;"><strong data-i18n="ui.app.sugestoes_do_admin_2f8128">Sugestões do Admin:</strong> ${esc(po.buyer_suggestions)}</div>`);
     }
     const tbody = document.getElementById('compras-po-detail-tbody');
     if (tbody) tbody.innerHTML = items.map(i => `<tr>
@@ -14156,9 +14243,9 @@ async function openPoDetail(poId) {
       <td>${esc(i.supplier || '—')}</td>
       <td style="font-size:12px;">${esc([i.glove_size !== 'N/A' ? `L:${i.glove_size}`:null, i.size !== 'N/A'?`T:${i.size}`:null, i.uniform_size !== 'N/A'?`U:${i.uniform_size}`:null].filter(Boolean).join(' ') || '—')}</td>
       <td>${esc(i.quantity)}</td>
-      <td>${fmtBrl(i.unit_price)}</td>
-      <td>${fmtBrl(i.total_price)}</td>
-      <td>${i.origin === 'employee_request' ? 'Colaborador' : 'Estoque Mín.'}</td>
+      <td>${fmtBrl(i.unit_price, globalThis.EpiI18n?.lang)}</td>
+      <td>${fmtBrl(i.total_price, globalThis.EpiI18n?.lang)}</td>
+      <td>${i.origin === 'employee_request' ? (tr('handover.collaborator', 'Colaborador', {})) : (tr('ui.app.estoque_min_8776c1', 'Estoque Mín.', {}))}</td>
       <td>${esc(ITEM_STATUS_LABELS[i.status] || i.status)}</td>
     </tr>`).join('');
     const eventsEl = document.getElementById('compras-po-events');
@@ -14171,12 +14258,12 @@ async function openPoDetail(poId) {
       }));
       eventsEl.innerHTML = events.length
         ? globalThis.dsTimeline(timelineItems)
-        : '<em>Sem histórico.</em>';
+        : "<em data-i18n=\"ui.app.sem_historico_1de259\">Sem hist\u00f3rico.</em>";
     }
     const detailEl = document.getElementById('compras-po-detail');
     if (detailEl) { detailEl.style.display = ''; detailEl.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
   } catch(e) {
-    alert('Erro ao carregar PO.');
+    alert((tr('ui.app.erro_ao_carregar_po_ce909e', 'Erro ao carregar PO.', {})));
   }
 }
 
@@ -14185,7 +14272,7 @@ function renderRequesterReviewTools(pr, items) {
   if (!container || pr.status !== 'waiting_requester_correction' || !hasPermission('purchase_requests:update')) return;
   const editBtn = document.createElement('button');
   editBtn.className = 'btn ghost';
-  editBtn.textContent = 'Editar Itens/Justificativa';
+  editBtn.textContent = ((globalThis.EpiI18n?.textFor?.(editBtn,"ui.app.editar_itens_justificativa_4b3110","Editar Itens/Justificativa",{}) ?? globalThis.trEpi?.("ui.app.editar_itens_justificativa_4b3110","Editar Itens/Justificativa",{})) ?? "Editar Itens/Justificativa");
   bindAppListener(editBtn, 'click', () => openRequesterReviewModal(pr, items));
   container.appendChild(editBtn);
 }
@@ -14197,10 +14284,10 @@ async function submitPoApprovalWithItems() {
     epi_display_name: i.epi_name,
     quantity_requested: i.quantity,
   }));
-  if (!poItems.length) { alert('Esta PO não possui itens para aprovação.'); return; }
+  if (!poItems.length) { alert((tr('ui.app.esta_po_nao_possui_itens_para_aprovacao_94f030', 'Esta PO não possui itens para aprovação.', {}))); return; }
   const modalResult = await openPurchaseWorkflowModal({
-    title: 'Aprovar PO — Seleção de Itens',
-    description: 'Marque os itens aprovados. Itens desmarcados requerem motivo de reprovação.',
+    title: (tr('ui.app.aprovar_po_selecao_de_itens_0ac1fb', 'Aprovar PO — Seleção de Itens', {})),
+    description: (tr('ui.app.marque_os_itens_aprovados_itens_desmarcados_requerem_motivo_de_reprovacao_a56439', 'Marque os itens aprovados. Itens desmarcados requerem motivo de reprovação.', {})),
     showApprovalItems: true,
     items: poItems,
   });
@@ -14210,7 +14297,7 @@ async function submitPoApprovalWithItems() {
   const approvedCount = decisions.filter(d => d.approved).length;
   const decision = approvedCount === decisions.length ? 'approved' : approvedCount > 0 ? 'partially_approved' : 'rejected';
   if (decision === 'rejected' && !comment) {
-    alert('Comentário obrigatório para rejeição total.');
+    alert((tr('ui.app.comentario_obrigatorio_para_rejeicao_total_ddf6e0', 'Comentário obrigatório para rejeição total.', {})));
     return;
   }
   try {
@@ -14221,7 +14308,7 @@ async function submitPoApprovalWithItems() {
     await openPoDetail(_currentPoDetail.item.id);
     loadPurchaseOrders();
   } catch(e) {
-    alert(e.message || 'Erro na aprovação.');
+    alert(e.message || (tr('ui.app.erro_na_aprovacao_b1e556', 'Erro na aprovação.', {})));
   }
 }
 
@@ -14230,11 +14317,11 @@ async function submitPoApproval(decision) {
   const comment = document.getElementById('po-approval-comment')?.value?.trim() || '';
   const postponedUntil = document.getElementById('po-postponed-until')?.value?.trim() || '';
   if (decision === 'rejected' && !comment) {
-    alert('Comentário obrigatório para rejeição.');
+    alert((tr('ui.app.comentario_obrigatorio_para_rejeicao_d76352', 'Comentário obrigatório para rejeição.', {})));
     return;
   }
   if (decision === 'postponed' && !postponedUntil) {
-    alert('Data de prorrogação obrigatória.');
+    alert((tr('ui.app.data_de_prorrogacao_obrigatoria_7a8ad7', 'Data de prorrogação obrigatória.', {})));
     return;
   }
   try {
@@ -14245,7 +14332,7 @@ async function submitPoApproval(decision) {
     await openPoDetail(_currentPoDetail.item.id);
     loadPurchaseOrders();
   } catch(e) {
-    alert(e.message || 'Erro na aprovação.');
+    alert(e.message || (tr('ui.app.erro_na_aprovacao_b1e556', 'Erro na aprovação.', {})));
   }
 }
 
@@ -14262,7 +14349,7 @@ async function submitPoReceive(action) {
       return item.quantity_received < Number(source?.quantity || 1);
     });
     const notes = document.getElementById('po-receive-notes')?.value?.trim() || '';
-    if (partial && !notes) { alert('Observação obrigatória em recebimento parcial.'); return; }
+    if (partial && !notes) { alert((tr('ui.app.observacao_obrigatoria_em_recebimento_parcial_765d0d', 'Observação obrigatória em recebimento parcial.', {}))); return; }
     payload = { ...payload, action: partial ? 'received_partial' : 'received', items, notes };
   }
   if (action === 'checked') {
@@ -14279,14 +14366,14 @@ async function submitPoReceive(action) {
     await openPoDetail(_currentPoDetail.item.id);
     loadPurchaseOrders();
   } catch(e) {
-    alert(e.message || 'Erro ao registrar recebimento.');
+    alert(e.message || (tr('ui.app.erro_ao_registrar_recebimento_e3a5a6', 'Erro ao registrar recebimento.', {})));
   }
 }
 
 function renderPoReceiveItems(items) {
   const container = document.getElementById('po-receive-items');
   if (!container) return;
-  container.innerHTML = (items || []).map((item) => `<div data-po-receive-item="${esc(item.id)}" style="display:grid;grid-template-columns:1fr 90px;gap:8px;align-items:center;margin-top:6px;"><span>${esc(item.epi_name || 'Item')} <small>pedido: ${esc(item.quantity || 1)}</small></span><input type="number" min="0" max="${esc(item.quantity || 1)}" value="${esc(item.quantity_received || item.quantity || 1)}" data-po-receive-qty></div>`).join('');
+  container.innerHTML = (items || []).map((item) => `<div data-po-receive-item="${esc(item.id)}" style="display:grid;grid-template-columns:1fr 90px;gap:8px;align-items:center;margin-top:6px;"><span>${esc(item.epi_name || (tr('ui.purchases.item_652bcc', 'Item', {})))} <small>${(globalThis.EpiI18n?.bindText?.("ui.app.pedido_p2_10392f",{p2:(item.quantity || 1)},"pedido: {p2}") ?? `pedido: ${esc(item.quantity || 1)}`)}</small></span><input type="number" min="0" max="${esc(item.quantity || 1)}" value="${esc(item.quantity_received || item.quantity || 1)}" data-po-receive-qty></div>`).join('');
 }
 
 
@@ -14294,7 +14381,7 @@ async function submitPoAdminReview(reviewDecision) {
   if (!_currentPoDetail) return;
   const comment = document.getElementById('po-review-comment')?.value?.trim() || '';
   if (reviewDecision === 'returned_with_suggestions' && !comment) {
-    alert('Informe as sugestões para devolver ao comprador.');
+    alert((tr('ui.app.informe_as_sugestoes_para_devolver_ao_comprador_67e7b6', 'Informe as sugestões para devolver ao comprador.', {})));
     return;
   }
   try {
@@ -14305,7 +14392,7 @@ async function submitPoAdminReview(reviewDecision) {
     await openPoDetail(_currentPoDetail.item.id);
     loadPurchaseOrders();
   } catch(e) {
-    alert(e.message || 'Erro na revisão.');
+    alert(e.message || (tr('ui.app.erro_na_revisao_df2edb', 'Erro na revisão.', {})));
   }
 }
 
@@ -14342,20 +14429,20 @@ async function loadAuthorizedSuppliers() {
     tbody.innerHTML = _authorizedSuppliers.length
       ? _authorizedSuppliers.map(s => {
           const statusBadge = s.active
-            ? `<span style="color:var(--color-success,green);font-weight:600;font-size:12px;">Ativo</span>`
-            : `<span style="color:var(--color-danger,#c00);font-weight:600;font-size:12px;">Suspenso</span>`;
+            ? `<span style="color:var(--color-success,green);font-weight:600;font-size:12px;" data-i18n="outsourcedCompany.linkActive">Ativo</span>`
+            : `<span style="color:var(--color-danger,#c00);font-weight:600;font-size:12px;" data-i18n="ui.comercial.suspenso_2d605a">Suspenso</span>`;
           const editBtn = canManage
-            ? `<button class="btn ghost" style="font-size:12px;padding:3px 8px;" data-supplier-action="edit" data-supplier-id="${esc(s.id)}">Editar</button>`
+            ? `<button class="btn ghost" style="font-size:12px;padding:3px 8px;" data-i18n="company.editAction" data-supplier-action="edit" data-supplier-id="${esc(s.id)}">Editar</button>`
             : '';
           const toggleBtn = canManage
-            ? `<button class="btn ghost" style="font-size:12px;padding:3px 8px;${s.active ? 'color:var(--color-danger,#c00)' : 'color:var(--color-success,green)'}" data-supplier-action="toggle" data-supplier-id="${esc(s.id)}">${s.active ? 'Suspender' : 'Reativar'}</button>`
+            ? `<button class="btn ghost" style="font-size:12px;padding:3px 8px;${s.active ? 'color:var(--color-danger,#c00)' : 'color:var(--color-success,green)'}" data-supplier-action="toggle" data-supplier-id="${esc(s.id)}" data-i18n="${s.active ? 'ui.app.suspender_72f47d' : 'ui.app.reativar_86e02d'}">${s.active ? (tr('ui.app.suspender_72f47d', 'Suspender', {})) : (tr('ui.app.reativar_86e02d', 'Reativar', {}))}</button>`
             : '';
           const posBtn = canViewPOs
-            ? `<button class="btn ghost" style="font-size:12px;padding:3px 8px;" data-supplier-action="pos" data-supplier-id="${esc(s.id)}">Ver POs</button>`
+            ? `<button class="btn ghost" style="font-size:12px;padding:3px 8px;" data-i18n="ui.app.ver_pos_e3d80b" data-supplier-action="pos" data-supplier-id="${esc(s.id)}">Ver POs</button>`
             : '';
-          const catalogBtn = `<button class="btn ghost" style="font-size:12px;padding:3px 8px;" data-supplier-action="catalog" data-supplier-id="${esc(s.id)}">Catálogo</button>`;
+          const catalogBtn = `<button class="btn ghost" style="font-size:12px;padding:3px 8px;" data-i18n="ui.app.catalogo_dc7aba" data-supplier-action="catalog" data-supplier-id="${esc(s.id)}">Catálogo</button>`;
           const integrationBtn = canManage
-            ? `<button class="btn ghost" style="font-size:12px;padding:3px 8px;" data-supplier-action="integration" data-supplier-id="${esc(s.id)}">Integração</button>`
+            ? `<button class="btn ghost" style="font-size:12px;padding:3px 8px;" data-i18n="ui.app.integracao_9143a8" data-supplier-action="integration" data-supplier-id="${esc(s.id)}">Integração</button>`
             : '';
           return `<tr style="${s.active ? '' : 'opacity:.6;'}">
             <td>${esc(s.name) || '—'}</td>
@@ -14366,9 +14453,9 @@ async function loadAuthorizedSuppliers() {
             <td style="white-space:nowrap;">${editBtn} ${toggleBtn} ${posBtn} ${catalogBtn} ${integrationBtn}</td>
           </tr>`;
         }).join('')
-      : globalThis.dsTableState({ colspan: 6, message: 'Nenhum fornecedor autorizado cadastrado.' });
+      : globalThis.dsTableState({ colspan: 6, message: (tr('ui.app.nenhum_fornecedor_autorizado_cadastrado_36290d', 'Nenhum fornecedor autorizado cadastrado.', {})) });
   } catch(e) {
-    if (tbody) tbody.innerHTML = globalThis.dsTableState({ colspan: 6, kind: 'error', message: 'Não foi possível carregar os fornecedores.' });
+    if (tbody) tbody.innerHTML = globalThis.dsTableState({ colspan: 6, kind: 'error', message: (tr('ui.app.nao_foi_possivel_carregar_os_fornecedores_fd5640', 'Não foi possível carregar os fornecedores.', {})) });
   }
 }
 
@@ -14389,7 +14476,7 @@ async function saveEditSupplier() {
   const feedback = document.getElementById('edit-supplier-feedback');
   const id = parseInt(document.getElementById('edit-supplier-id')?.value || '0', 10);
   const name = document.getElementById('edit-supplier-name')?.value?.trim();
-  if (!name) { if (feedback) feedback.textContent = 'Nome é obrigatório.'; return; }
+  if (!name) { if (feedback) feedback.textContent = ((globalThis.EpiI18n?.textFor?.(feedback,"ui.purchases.nome_e_obrigatorio_a4329a","Nome \u00e9 obrigat\u00f3rio.",{}) ?? globalThis.trEpi?.("ui.purchases.nome_e_obrigatorio_a4329a","Nome \u00e9 obrigat\u00f3rio.",{})) ?? "Nome \u00e9 obrigat\u00f3rio."); return; }
   try {
     if (feedback) feedback.textContent = '';
     await api(`/api/authorized-suppliers/${id}`, {
@@ -14406,13 +14493,13 @@ async function saveEditSupplier() {
     if (modal) modal.style.display = 'none';
     loadAuthorizedSuppliers();
   } catch(e) {
-    if (feedback) feedback.textContent = e.message || 'Erro ao salvar.';
+    if (feedback) feedback.textContent = e.message || ((globalThis.EpiI18n?.textFor?.(feedback,"ui.procurement.erro_ao_salvar_61374a","Erro ao salvar.",{}) ?? globalThis.trEpi?.("ui.procurement.erro_ao_salvar_61374a","Erro ao salvar.",{})) ?? "Erro ao salvar.");
   }
 }
 
 window.toggleSupplierActive = async function toggleSupplierActive(id, name, currentActive) {
   const action = currentActive ? 'suspender' : 'reativar';
-  if (!(await confirmDestructive({ title: 'Fornecedor', message: `Deseja ${action} o fornecedor "${name}"?`, confirmLabel: 'Confirmar', variant: 'warning' }))) return;
+  if (!(await confirmDestructive({ title: (tr('epi.supplierShort', 'Fornecedor', {})), message: `Deseja ${action} o fornecedor "${name}"?`, confirmLabel: 'Confirmar', variant: 'warning' }))) return;
   try {
     const res = await api(`/api/authorized-suppliers/${id}/toggle`, {
       method: 'POST',
@@ -14420,15 +14507,15 @@ window.toggleSupplierActive = async function toggleSupplierActive(id, name, curr
     });
     loadAuthorizedSuppliers();
   } catch(e) {
-    alert(e.message || 'Erro ao alterar status do fornecedor.');
+    alert(e.message || (tr('ui.app.erro_ao_alterar_status_do_fornecedor_f5d81f', 'Erro ao alterar status do fornecedor.', {})));
   }
 }
 
 const PO_STATUS_LABELS = {
-  draft: 'Rascunho', waiting_admin_review: 'Em Compra', approved: 'Aprovada',
-  partially_approved: 'Aprovada Parcialmente', rejected: 'Reprovada',
-  postponed: 'Prorrogada', received: 'Recebida', received_partial: 'Recebida Parcialmente',
-  checked: 'Conferida', closed: 'Fechada', not_received: 'Não Recebido',
+  get draft() { return (tr('purchase.poStatus.draft', 'Rascunho', {})); }, get waiting_admin_review() { return (tr('purchase.poStatus.waiting_admin_review', 'Em Compra', {})); }, get approved() { return (tr('purchase.poStatus.approved', 'Aprovada', {})); },
+  get partially_approved() { return (tr('purchase.poStatus.partially_approved', 'Aprovada Parcialmente', {})); }, get rejected() { return (tr('purchase.poStatus.rejected', 'Reprovada', {})); },
+  get postponed() { return (tr('purchase.poStatus.postponed', 'Prorrogada', {})); }, get received() { return (tr('purchase.poStatus.received', 'Recebida', {})); }, get received_partial() { return (tr('purchase.poStatus.received_partial', 'Recebida Parcialmente', {})); },
+  get checked() { return (tr('purchase.poStatus.checked', 'Conferida', {})); }, get closed() { return (tr('purchase.poStatus.closed', 'Fechada', {})); }, get not_received() { return (tr('purchase.poStatus.not_received', 'Não Recebido', {})); },
 };
 
 function poStatusLabel(status) {
@@ -14452,7 +14539,7 @@ window.openSupplierPOsModal = async function openSupplierPOsModal(id) {
     const items = res.items || [];
     if (title) title.textContent = `POs — ${sup.name || ''}`;
     const totalValue = items.reduce((acc, p) => acc + (p.total_value || 0), 0);
-    if (summary) summary.textContent = `${items.length} pedido(s) · Total geral: ${formatCurrency(totalValue)}`;
+    if (summary) summary.textContent = ((globalThis.EpiI18n?.textFor?.(summary,"ui.app.p0_pedido_s_total_geral_p1_da7e89","{p0} pedido(s) \u00b7 Total geral: {p1}",{p0:(items.length),p1:(formatCurrency(totalValue, globalThis.EpiI18n?.lang))}) ?? globalThis.trEpi?.("ui.app.p0_pedido_s_total_geral_p1_da7e89","{p0} pedido(s) \u00b7 Total geral: {p1}",{p0:(items.length),p1:(formatCurrency(totalValue, globalThis.EpiI18n?.lang))})) ?? `${items.length} pedido(s) · Total geral: ${formatCurrency(totalValue, globalThis.EpiI18n?.lang)}`);
     if (!items.length) {
       if (tbody) tbody.innerHTML = '';
       if (empty) empty.style.display = '';
@@ -14466,14 +14553,14 @@ window.openSupplierPOsModal = async function openSupplierPOsModal(id) {
         <td style="font-size:12px;">${esc(po.unit_name || '—')}</td>
         <td style="font-size:12px;">${statusLabel}</td>
         <td style="font-size:12px;text-align:center;">${po.items_count ?? '—'}</td>
-        <td style="font-size:12px;text-align:right;">${formatCurrency(po.total_value || 0)}</td>
+        <td style="font-size:12px;text-align:right;">${formatCurrency(po.total_value || 0, globalThis.EpiI18n?.lang)}</td>
         <td style="font-size:12px;">${esc(po.created_by_name || '—')}</td>
         <td style="font-size:12px;">${esc(po.approved_by_name || '—')}</td>
         <td style="font-size:12px;">${(po.created_at || '').slice(0,10) || '—'}</td>
       </tr>`;
     }).join('');
   } catch(e) {
-    if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="color:var(--color-danger)">Erro: ${esc(e.message)}</td></tr>`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="color:var(--color-danger)">${(globalThis.EpiI18n?.bindText?.("ui.app.erro_p0_83a174",{p0:(e.message)},"Erro: {p0}") ?? `Erro: ${esc(e.message)}`)}</td></tr>`;
   }
 }
 
@@ -14484,26 +14571,26 @@ function checkSupplierAuthorized(cnpj) {
   if (!clean) { statusEl.textContent = ''; return; }
   const found = _authorizedSuppliers.find(s => (s.cnpj || '').replace(/\D/g, '') === clean);
   if (found) {
-    statusEl.innerHTML = `<span style="color:var(--color-success,green)">✓ Fornecedor autorizado: ${escapeHtml(found.name)}</span>`;
+    statusEl.innerHTML = `<span style="color:var(--color-success,green)">${(globalThis.EpiI18n?.bindText?.("ui.app.fornecedor_autorizado_p0_2a74cd",{p0:(found.name)},"\u2713 Fornecedor autorizado: {p0}") ?? `✓ Fornecedor autorizado: ${escapeHtml(found.name)}`)}</span>`;
   } else {
     const supplierName = document.querySelector('[name="supplier"]')?.value?.trim() || '';
     const mailtoHref = buildSupplierInclusionMailto(supplierName, cnpj);
-    statusEl.innerHTML = `<span style="color:var(--color-warning,#c47a00)">⚠ Fornecedor não encontrado na lista autorizada — </span><a href="${mailtoHref}" target="_blank" style="font-size:12px;">Solicitar Inclusão</a>`;
+    statusEl.innerHTML = `<span style="color:var(--color-warning,#c47a00)" data-i18n="ui.app.fornecedor_nao_encontrado_na_lista_autorizada_049c1d">⚠ Fornecedor não encontrado na lista autorizada — </span><a href="${mailtoHref}" target="_blank" style="font-size:12px;" data-i18n="ui.app.solicitar_inclusao_34c7ba">Solicitar Inclusão</a>`;
   }
 }
 
 // ── Item 3: Mailto para solicitar inclusão de fornecedor ──────────────────
 function buildSupplierInclusionMailto(supplierName, cnpj) {
-  const subject = encodeURIComponent(`Solicitação de Inclusão de Fornecedor: ${supplierName || 'Novo Fornecedor'} — CNPJ: ${cnpj}`);
-  const requester = state.user?.full_name || 'Comprador';
+  const subject = encodeURIComponent((tr('ui.app.solicitacao_de_inclusao_de_fornecedor_p0_cnpj_p1_77eb3d', 'Solicitação de Inclusão de Fornecedor: {p0} — CNPJ: {p1}', {p0:(supplierName || (tr('ui.compras.novo_fornecedor_7b78e3', 'Novo Fornecedor', {}))),p1:(cnpj)})));
+  const requester = state.user?.full_name || (tr('role.buyer', 'Comprador', {}));
   const company = state.user?.company_name || '';
   const body = encodeURIComponent(
     `Prezado(a) time Financeiro,\n\n` +
-    `Solicito a inclusão do seguinte fornecedor na lista de fornecedores autorizados:\n\n` +
+    (tr('ui.app.solicito_a_inclusao_do_seguinte_fornecedor_na_lista_de_fornecedores_autoriz_cd0035', 'Solicito a inclusão do seguinte fornecedor na lista de fornecedores autorizados:\n\n', {})) +
     `Nome: ${supplierName || '(preencher)'}\n` +
     `CNPJ: ${cnpj}\n\n` +
     `Solicitante: ${requester}${company ? ` — ${company}` : ''}\n\n` +
-    `Por favor, confirme a autorização para que possamos prosseguir com a cotação.\n\n` +
+    (tr('ui.app.por_favor_confirme_a_autorizacao_para_que_possamos_prosseguir_com_a_cotacao_d31377', 'Por favor, confirme a autorização para que possamos prosseguir com a cotação.\n\n', {})) +
     `Atenciosamente,\n${requester}`
   );
   return `mailto:?subject=${subject}&body=${body}`;
@@ -14515,7 +14602,7 @@ async function _loadSheetJS() {
     const s = document.createElement('script');
     s.src = 'https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js';
     s.onload = () => resolve(window.XLSX);
-    s.onerror = () => reject(new Error('Não foi possível carregar suporte a XLS. Verifique sua conexão.'));
+    s.onerror = () => reject(new Error((tr('ui.app.nao_foi_possivel_carregar_suporte_a_xls_verifique_sua_conexao_a34fe1', 'Não foi possível carregar suporte a XLS. Verifique sua conexão.', {}))));
     document.head.appendChild(s);
   });
 }
@@ -14524,7 +14611,7 @@ function _parseSuppliersRows(rawRows) {
   return rawRows
     .map(r => {
       const k = (key) => String(r[key] || r[key?.toLowerCase?.()] || r[key?.toUpperCase?.()] || '').trim();
-      const name = k('nome') || k('name') || k('Name') || k('Nome') || '';
+      const name = k('nome') || k('name') || k('Name') || k((tr('signature.name', 'Nome', {}))) || '';
       if (!name) return null;
       return {
         name,
@@ -14538,13 +14625,13 @@ function _parseSuppliersRows(rawRows) {
 async function importSuppliersCSV() {
   const fileInput = document.getElementById('compras-suppliers-csv');
   const feedback = document.getElementById('compras-suppliers-csv-feedback');
-  if (!fileInput?.files?.length) { if (feedback) feedback.textContent = 'Selecione um arquivo.'; return; }
+  if (!fileInput?.files?.length) { if (feedback) feedback.textContent = ((globalThis.EpiI18n?.textFor?.(feedback,"ui.app.selecione_um_arquivo_7c988d","Selecione um arquivo.",{}) ?? globalThis.trEpi?.("ui.app.selecione_um_arquivo_7c988d","Selecione um arquivo.",{})) ?? "Selecione um arquivo."); return; }
   const file = fileInput.files[0];
   const ext = file.name.split('.').pop().toLowerCase();
   let rows = [];
   try {
     if (ext === 'xls' || ext === 'xlsx') {
-      if (feedback) feedback.textContent = 'Carregando suporte XLS…';
+      if (feedback) feedback.textContent = ((globalThis.EpiI18n?.textFor?.(feedback,"ui.app.carregando_suporte_xls_2db8a5","Carregando suporte XLS\u2026",{}) ?? globalThis.trEpi?.("ui.app.carregando_suporte_xls_2db8a5","Carregando suporte XLS\u2026",{})) ?? "Carregando suporte XLS\u2026");
       const XLSX = await _loadSheetJS();
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf, { type: 'array' });
@@ -14555,7 +14642,7 @@ async function importSuppliersCSV() {
       const raw = await file.text();
       const text = raw.replace(/^﻿/, '');
       const lines = text.split(/\r?\n/).filter(l => l.trim());
-      if (lines.length < 2) { if (feedback) feedback.textContent = 'Arquivo vazio ou sem dados.'; return; }
+      if (lines.length < 2) { if (feedback) feedback.textContent = ((globalThis.EpiI18n?.textFor?.(feedback,"ui.app.arquivo_vazio_ou_sem_dados_31036a","Arquivo vazio ou sem dados.",{}) ?? globalThis.trEpi?.("ui.app.arquivo_vazio_ou_sem_dados_31036a","Arquivo vazio ou sem dados.",{})) ?? "Arquivo vazio ou sem dados."); return; }
       const sep = lines[0].includes(';') ? ';' : ',';
       const headers = lines[0].split(sep).map(h => h.trim().toLowerCase().replace(/['"]/g, ''));
       const objRows = lines.slice(1).map(line => {
@@ -14567,17 +14654,17 @@ async function importSuppliersCSV() {
       rows = _parseSuppliersRows(objRows);
     }
   } catch(e) {
-    if (feedback) feedback.textContent = e.message || 'Erro ao ler o arquivo.';
+    if (feedback) feedback.textContent = e.message || ((globalThis.EpiI18n?.textFor?.(feedback,"ui.app.erro_ao_ler_o_arquivo_e02d01","Erro ao ler o arquivo.",{}) ?? globalThis.trEpi?.("ui.app.erro_ao_ler_o_arquivo_e02d01","Erro ao ler o arquivo.",{})) ?? "Erro ao ler o arquivo.");
     return;
   }
-  if (!rows.length) { if (feedback) feedback.textContent = 'Nenhuma linha válida encontrada. Verifique se o arquivo tem coluna "nome".'; return; }
+  if (!rows.length) { if (feedback) feedback.textContent = ((globalThis.EpiI18n?.textFor?.(feedback,"ui.app.nenhuma_linha_valida_encontrada_verifique_se_o_arquivo_tem_coluna_nome_c9801b","Nenhuma linha v\u00e1lida encontrada. Verifique se o arquivo tem coluna \"nome\".",{}) ?? globalThis.trEpi?.("ui.app.nenhuma_linha_valida_encontrada_verifique_se_o_arquivo_tem_coluna_nome_c9801b","Nenhuma linha v\u00e1lida encontrada. Verifique se o arquivo tem coluna \"nome\".",{})) ?? "Nenhuma linha v\u00e1lida encontrada. Verifique se o arquivo tem coluna \"nome\"."); return; }
   try {
     const res = await api('/api/authorized-suppliers/upload', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user?.id, rows }) });
     const d = res || {};
     if (feedback) feedback.textContent = `Importado: ${d.inserted || 0} novos, ${d.updated || 0} atualizados.`;
     loadAuthorizedSuppliers();
   } catch(e) {
-    if (feedback) feedback.textContent = e.message || 'Erro na importação.';
+    if (feedback) feedback.textContent = e.message || ((globalThis.EpiI18n?.textFor?.(feedback,"ui.app.erro_na_importacao_0220a1","Erro na importa\u00e7\u00e3o.",{}) ?? globalThis.trEpi?.("ui.app.erro_na_importacao_0220a1","Erro na importa\u00e7\u00e3o.",{})) ?? "Erro na importa\u00e7\u00e3o.");
   }
 }
 
@@ -14593,7 +14680,7 @@ async function submitPoResubmit() {
     await openPoDetail(_currentPoDetail.item.id);
     loadPurchaseOrders();
   } catch(e) {
-    alert(e.message || 'Erro ao reenviar PO.');
+    alert(e.message || (tr('ui.app.erro_ao_reenviar_po_a99c44', 'Erro ao reenviar PO.', {})));
   }
 }
 
@@ -14643,9 +14730,9 @@ function renderPurchaseFunctionControls() {
       searchHint.hidden = !query || !allEligible.length;
       const resultKey = selectedOutsideFilter ? 'purchase.functionsSearchResultSelected' : 'purchase.functionsSearchResult';
       const resultFallback = selectedOutsideFilter
-        ? `${filteredEligible.length} de ${allEligible.length} usuário(s) encontrado(s); seleção atual mantida fora do filtro`
-        : `${filteredEligible.length} de ${allEligible.length} usuário(s) encontrado(s)`;
-      searchHint.textContent = tr(resultKey, resultFallback).replace('{filtered}', filteredEligible.length).replace('{total}', allEligible.length) + '.';
+        ? (tr('ui.app.p0_de_p1_usuario_s_encontrado_s_selecao_atual_mantida_fora_do_filtro_eaf16c', '{p0} de {p1} usuário(s) encontrado(s); seleção atual mantida fora do filtro', {p0:(filteredEligible.length),p1:(allEligible.length)}))
+        : (tr('ui.app.p0_de_p1_usuario_s_encontrado_s_1c30c2', '{p0} de {p1} usuário(s) encontrado(s)', {p0:(filteredEligible.length),p1:(allEligible.length)}));
+      searchHint.textContent = (globalThis.EpiI18n?.textFor?.(searchHint,resultKey,resultFallback) ?? tr(resultKey, resultFallback)).replace('{filtered}', filteredEligible.length).replace('{total}', allEligible.length) + '.';
     }
     employeeSel.innerHTML = allEligible.length
       ? `<option value="">${tr('purchase.functionsSelectPlaceholder', 'Selecione...')}</option>` + visibleOptions.map(e => {
@@ -14680,7 +14767,7 @@ function _syncPurchaseFunctionTypeToEmployee() {
     typeSel.value = userEntry.role;
     typeSel.disabled = true;
     if (hintEl) {
-      hintEl.textContent = tr('purchase.functionsUserRoleHint', `Perfil de acesso do usuário: ${roleLabel(userEntry.role)}. O tipo é fixo conforme o perfil cadastrado.`).replace('{role}', roleLabel(userEntry.role));
+      hintEl.textContent = (globalThis.EpiI18n?.textFor?.(hintEl,'purchase.functionsUserRoleHint',`Perfil de acesso do usuário: ${roleLabel(userEntry.role)}. O tipo é fixo conforme o perfil cadastrado.`) ?? tr('purchase.functionsUserRoleHint', `Perfil de acesso do usuário: ${roleLabel(userEntry.role)}. O tipo é fixo conforme o perfil cadastrado.`)).replace('{role}', roleLabel(userEntry.role));
       hintEl.hidden = false;
     }
   } else {
@@ -14746,7 +14833,7 @@ function renderPurchaseFunctionUnitChecks() {
   renderPurchaseFunctionSelectedUnits(allUnits);
   wrap.innerHTML = units.map((unit) => {
     const checked = _purchaseFunctionSelectedUnitIds.has(String(unit.id)) ? 'checked' : '';
-    return `<label class="unit-link-option"><input type="checkbox" data-purchase-function-unit="${esc(unit.id)}" ${checked}><span>${esc(unit.name || '')}<small>${esc([unitTypeLabel(unit.unit_type), unit.city].filter(Boolean).join(' • ') || 'Unidade')}</small></span></label>`;
+    return `<label class="unit-link-option"><input type="checkbox" data-purchase-function-unit="${esc(unit.id)}" ${checked}><span>${esc(unit.name || '')}<small>${esc([unitTypeLabel(unit.unit_type), unit.city].filter(Boolean).join(' • ') || (tr('moduleVisibility.unitLabel', 'Unidade', {})))}</small></span></label>`;
   }).join('') || `<em style="color:var(--color-muted)">${tr('purchase.functionsNoUnitFound', 'Nenhuma unidade encontrada para a busca.')}</em>`;
 }
 
@@ -14779,7 +14866,7 @@ function renderPurchaseFunctionsList() {
       <span style="font-size:11px;color:var(--color-muted)">(${esc(group.role_label || '')})</span>
       ${userBadge}
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">
-        ${group.links.map(link => `<span style="background:var(--color-primary-light,#e8f0fe);padding:2px 8px;border-radius:12px;font-size:12px;">${esc(link.unit_name || '—')} <button class="ghost" style="border:none;cursor:pointer;font-size:11px;color:var(--color-danger);" data-remove-purchase-function="${link.id}" aria-label="Remover vínculo">✕</button></span>`).join('')}
+        ${group.links.map(link => `<span style="background:var(--color-primary-light,#e8f0fe);padding:2px 8px;border-radius:12px;font-size:12px;">${esc(link.unit_name || '—')} <button class="ghost" style="border:none;cursor:pointer;font-size:11px;color:var(--color-danger);" data-remove-purchase-function="${link.id}" aria-label="Remover vínculo" data-i18n-aria-label="ui.app.remover_vinculo_8ef426">✕</button></span>`).join('')}
       </div>
     </div>
   `}).join('');
@@ -14796,7 +14883,7 @@ async function loadPurchaseFunctions() {
     renderPurchaseFunctionControls();
   } catch (error) {
     const list = document.getElementById('purchase-functions-list');
-    if (list) list.innerHTML = '<em>Erro ao carregar funções de compras.</em>';
+    if (list) list.innerHTML = "<em data-i18n=\"ui.app.erro_ao_carregar_funcoes_de_compras_29d110\">Erro ao carregar fun\u00e7\u00f5es de compras.</em>";
   }
 }
 
@@ -14807,26 +14894,26 @@ async function savePurchaseFunctionLinks() {
   const currentLinks = _purchaseFunctionsCache.filter((item) => String(item.employee_id) === String(employeeId || '') && String(item.role_type) === String(roleType));
   const selectedUnitSet = new Set(unitIds.map((id) => String(id)));
   const linksToRemove = currentLinks.filter((link) => !selectedUnitSet.has(String(link.unit_id)));
-  if (!employeeId) { alert('Selecione o colaborador.'); return; }
-  if (!unitIds.length && !currentLinks.length) { alert('Selecione ao menos uma unidade.'); return; }
-  if (!unitIds.length && linksToRemove.length && !(await confirmDestructive({ title: 'Desvincular unidades', message: 'Desvincular este usuário de todas as unidades selecionadas anteriormente?', confirmLabel: 'Desvincular', variant: 'warning' }))) return;
+  if (!employeeId) { alert((tr('ui.app.selecione_o_colaborador_cf9a47', 'Selecione o colaborador.', {}))); return; }
+  if (!unitIds.length && !currentLinks.length) { alert((tr('ui.app.selecione_ao_menos_uma_unidade_208cc5', 'Selecione ao menos uma unidade.', {}))); return; }
+  if (!unitIds.length && linksToRemove.length && !(await confirmDestructive({ title: (tr('ui.app.desvincular_unidades_3390a6', 'Desvincular unidades', {})), message: (tr('ui.app.desvincular_este_usuario_de_todas_as_unidades_selecionadas_anteriormente_353955', 'Desvincular este usuário de todas as unidades selecionadas anteriormente?', {})), confirmLabel: 'Desvincular', variant: 'warning' }))) return;
   try {
     await api('/api/purchase-functions', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user?.id, employee_id: parseInt(employeeId, 10), role_type: roleType, unit_ids: unitIds }) });
     await Promise.all(linksToRemove.map((link) => api(`/api/purchase-functions/${link.id}?${actorQuery()}`, { method: 'DELETE' })));
     await loadPurchaseFunctions();
-    showToast('Vínculos de unidade atualizados com sucesso.');
+    showToast((tr('ui.app.vinculos_de_unidade_atualizados_com_sucesso_9b4b5f', 'Vínculos de unidade atualizados com sucesso.', {})));
   } catch (error) {
-    alert(error.message || 'Erro ao salvar vínculos de unidade.');
+    alert(error.message || (tr('ui.app.erro_ao_salvar_vinculos_de_unidade_a6bc1b', 'Erro ao salvar vínculos de unidade.', {})));
   }
 }
 
 async function removePurchaseFunctionLink(linkId) {
-  if (!(await confirmDestructive({ title: 'Remover vínculo', message: 'Remover este vínculo de compras?', confirmLabel: 'Remover', variant: 'danger' }))) return;
+  if (!(await confirmDestructive({ title: (tr('ui.app.remover_vinculo_8ef426', 'Remover vínculo', {})), message: (tr('ui.app.remover_este_vinculo_de_compras_130d86', 'Remover este vínculo de compras?', {})), confirmLabel: 'Remover', variant: 'danger' }))) return;
   try {
     await api(`/api/purchase-functions/${linkId}?${actorQuery()}`, { method: 'DELETE' });
     await loadPurchaseFunctions();
   } catch (error) {
-    alert(error.message || 'Erro ao remover vínculo de compras.');
+    alert(error.message || (tr('ui.app.erro_ao_remover_vinculo_de_compras_712a19', 'Erro ao remover vínculo de compras.', {})));
   }
 }
 
@@ -14836,7 +14923,7 @@ let _unitLinksCache = [];
 function _renderPurchaseFunctionLinksReadOnly(items, container) {
   if (!container) return;
   if (!items.length) {
-    container.innerHTML = '<em style="color:var(--color-muted)">Nenhum comprador ou aprovador vinculado a unidades.</em>';
+    container.innerHTML = "<em style=\"color:var(--color-muted)\" data-i18n=\"ui.app.nenhum_comprador_ou_aprovador_vinculado_a_unidades_3be471\">Nenhum comprador ou aprovador vinculado a unidades.</em>";
     return;
   }
   const byUser = {};
@@ -14859,7 +14946,7 @@ function _renderPurchaseFunctionLinksReadOnly(items, container) {
 async function loadFornecedoresPurchaseFunctions() {
   const listEl = document.getElementById('compras-links-list');
   if (!listEl) return;
-  listEl.innerHTML = '<em style="color:var(--color-muted)">Carregando...</em>';
+  listEl.innerHTML = "<em style=\"color:var(--color-muted)\" data-i18n=\"stock.loading\">Carregando...</em>";
   try {
     const res = await api(`/api/purchase-functions?${actorQuery()}`);
     const allLinks = res.items || [];
@@ -14870,7 +14957,7 @@ async function loadFornecedoresPurchaseFunctions() {
     }
     _renderPurchaseFunctionLinksReadOnly(allLinks, listEl);
   } catch(e) {
-    listEl.innerHTML = '<em style="color:var(--color-danger)">Erro ao carregar vínculos.</em>';
+    listEl.innerHTML = "<em style=\"color:var(--color-danger)\" data-i18n=\"ui.app.erro_ao_carregar_vinculos_434303\">Erro ao carregar v\u00ednculos.</em>";
   }
 }
 
@@ -14897,9 +14984,9 @@ async function loadComprasPurchaseConfig() {
     if (saveBtn) saveBtn.onclick = async () => {
       try {
         await api('/api/company-purchase-config', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user?.id, company_id: companyId, require_admin_review: checkbox?.checked || false }) });
-        if (feedback) { feedback.style.color = 'var(--color-success)'; feedback.textContent = 'Configuração salva!'; setTimeout(() => { if (feedback) feedback.textContent = ''; }, 3000); }
+        if (feedback) { feedback.style.color = 'var(--color-success)'; feedback.textContent = ((globalThis.EpiI18n?.textFor?.(feedback,"ui.app.configuracao_salva_6b3eef","Configura\u00e7\u00e3o salva!",{}) ?? globalThis.trEpi?.("ui.app.configuracao_salva_6b3eef","Configura\u00e7\u00e3o salva!",{})) ?? "Configura\u00e7\u00e3o salva!"); setTimeout(() => { if (feedback) feedback.textContent = ''; }, 3000); }
       } catch(e) {
-        if (feedback) { feedback.style.color = 'var(--color-danger)'; feedback.textContent = e.message || 'Erro ao salvar.'; }
+        if (feedback) { feedback.style.color = 'var(--color-danger)'; feedback.textContent = e.message || ((globalThis.EpiI18n?.textFor?.(feedback,"ui.procurement.erro_ao_salvar_61374a","Erro ao salvar.",{}) ?? globalThis.trEpi?.("ui.procurement.erro_ao_salvar_61374a","Erro ao salvar.",{})) ?? "Erro ao salvar."); }
       }
     };
   } catch(e) {
@@ -14930,11 +15017,11 @@ function _getPoUnitEpis(unitId) {
 function buildPoItemRow(index, epi) {
   const unitId = document.getElementById('po-unit')?.value || '';
   const epis = _getPoUnitEpis(unitId);
-  const epiOpts = '<option value="">Selecione o EPI...</option>' +
+  const epiOpts = "<option value=\"\" data-i18n=\"ui.compras.selecione_o_epi_adde09\">Selecione o EPI...</option>" +
     epis.map(e => `<option value="${esc(e.id)}" data-mfr="${esc(e.manufacturer||'')}"${String(e.id)===String(epi?.epi_id)?' selected':''}>${esc(e.name)}${e.ca ? ` — ${tr('epi.caShort', 'CA')} ${esc(e.ca)}` : ''}</option>`).join('');
   return `<div class="po-item-row" data-po-item="${index}" style="display:grid;grid-template-columns:2.5fr 0.6fr 1fr 0.9fr 0.9fr 1fr 1.1fr 32px;gap:5px;margin-bottom:8px;align-items:end;">
     <div style="display:flex;flex-direction:column;gap:2px;">
-      <span style="font-size:11px;color:var(--color-text-muted);">EPI</span>
+      <span style="font-size:11px;color:var(--color-text-muted);" data-i18n="epi.tableName">EPI</span>
       <select data-poi-epi="${index}">
         ${epiOpts}
       </select>
@@ -14942,30 +15029,30 @@ function buildPoItemRow(index, epi) {
       <input type="hidden" value="${esc(epi?.epi_name||'')}" data-poi-name="${index}">
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
-      <span style="font-size:11px;color:var(--color-text-muted);">Qtd</span>
+      <span style="font-size:11px;color:var(--color-text-muted);" data-i18n="stock.receipt.qty">Qtd</span>
       <input type="number" min="1" value="${epi?.quantity||1}" data-poi-qty="${index}" style="width:56px;">
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
-      <span style="font-size:11px;color:var(--color-text-muted);">Vlr Unit (R$)</span>
+      <span style="font-size:11px;color:var(--color-text-muted);" data-i18n="ui.app.vlr_unit_r_b7d702">Vlr Unit (R$)</span>
       <input type="number" step="0.01" min="0" value="${epi?.unit_price||''}" data-poi-price="${index}" placeholder="0,00">
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
-      <span style="font-size:11px;color:var(--color-text-muted);">Luva</span>
+      <span style="font-size:11px;color:var(--color-text-muted);" data-i18n="stock.gloveShort">Luva</span>
       <select data-poi-glove="${index}">${_sizeGloveOpts(epi?.glove_size||'N/A')}</select>
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
-      <span style="font-size:11px;color:var(--color-text-muted);">Calçado</span>
+      <span style="font-size:11px;color:var(--color-text-muted);" data-i18n="ui.app.calcado_3382fc">Calçado</span>
       <select data-poi-size="${index}">${_sizeOpts(epi?.size||'N/A')}</select>
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
-      <span style="font-size:11px;color:var(--color-text-muted);">Uniforme</span>
+      <span style="font-size:11px;color:var(--color-text-muted);" data-i18n="ui.app.uniforme_0d70ef">Uniforme</span>
       <select data-poi-uniform="${index}">${_sizeUniformOpts(epi?.uniform_size||'N/A')}</select>
     </div>
     <div style="display:flex;flex-direction:column;gap:2px;">
-      <span style="font-size:11px;color:var(--color-text-muted);">Fabricante</span>
-      <input type="text" value="${esc(epi?.manufacturer||'')}" data-poi-mfr="${index}" readonly style="background:var(--color-bg-alt);color:var(--color-text-muted);font-size:12px;" placeholder="Auto">
+      <span style="font-size:11px;color:var(--color-text-muted);" data-i18n="epi.manufacturer">Fabricante</span>
+      <input type="text" value="${esc(epi?.manufacturer||'')}" data-poi-mfr="${index}" readonly style="background:var(--color-bg-alt);color:var(--color-text-muted);font-size:12px;" placeholder="Auto" data-i18n-placeholder="ui.app.auto_028624">
     </div>
-    <button type="button" class="ghost" style="padding:4px;font-size:16px;line-height:1;align-self:flex-end;" data-po-remove-item="${index}" aria-label="Remover item">✕</button>
+    <button type="button" class="ghost" style="padding:4px;font-size:16px;line-height:1;align-self:flex-end;" data-po-remove-item="${index}" aria-label="Remover item" data-i18n-aria-label="ui.app.remover_item_57474c">✕</button>
   </div>`;
 }
 
@@ -14986,7 +15073,7 @@ function refreshPoItemEpiSelects() {
   const hint = document.getElementById('po-items-unit-hint');
   if (hint) hint.style.display = unitId ? 'none' : '';
   const epis = _getPoUnitEpis(unitId);
-  const epiOpts = '<option value="">Selecione o EPI...</option>' +
+  const epiOpts = "<option value=\"\" data-i18n=\"ui.compras.selecione_o_epi_adde09\">Selecione o EPI...</option>" +
     epis.map(e => `<option value="${esc(e.id)}" data-mfr="${esc(e.manufacturer||'')}">${esc(e.name)}${e.ca ? ` — ${tr('epi.caShort', 'CA')} ${esc(e.ca)}` : ''}</option>`).join('');
   document.querySelectorAll('[data-poi-epi]').forEach(sel => {
     const idx = sel.dataset.poiEpi;
@@ -15000,7 +15087,7 @@ function populatePoSupplierSelect() {
   const sel = document.getElementById('po-supplier-select');
   if (!sel) return;
   const active = (_authorizedSuppliers || []).filter(s => s.active);
-  sel.innerHTML = '<option value="">Selecione o fornecedor...</option>' +
+  sel.innerHTML = "<option value=\"\" data-i18n=\"ui.compras.selecione_o_fornecedor_6bdd9d\">Selecione o fornecedor...</option>" +
     active.map(s => `<option value="${esc(s.name)}" data-cnpj="${s.cnpj||''}">${esc(s.name)}${s.cnpj ? ` — ${formatCNPJ(s.cnpj)}` : ''}</option>`).join('');
   const currentVal = sel.value;
   if (currentVal) sel.value = currentVal;
@@ -15028,7 +15115,7 @@ function updatePoTotal() {
   const items = collectPoItems();
   const total = items.reduce((s, i) => s + (i.unit_price * i.quantity), 0);
   const el = document.getElementById('po-total-display');
-  if (el) el.textContent = items.length ? `Total: ${fmtBrl(total)}` : '';
+  if (el) el.textContent = items.length ? ((globalThis.EpiI18n?.textFor?.(el,"ui.app.total_p0_31f5e8","Total: {p0}",{p0:(fmtBrl(total, globalThis.EpiI18n?.lang))}) ?? globalThis.trEpi?.("ui.app.total_p0_31f5e8","Total: {p0}",{p0:(fmtBrl(total, globalThis.EpiI18n?.lang))})) ?? `Total: ${fmtBrl(total, globalThis.EpiI18n?.lang)}`) : '';
 }
 
 function populatePurchaseUnitSelects() {
@@ -15047,7 +15134,7 @@ function populatePurchaseUnitSelects() {
     const sel = document.getElementById(id);
     if (!sel) return;
     const prev = sel.value;
-    sel.innerHTML = '<option value="">Selecione...</option>' + filtered.map(u => `<option value="${escapeHtml(u.id)}">${escapeHtml(u.name)}</option>`).join('');
+    sel.innerHTML = "<option value=\"\" data-i18n=\"purchase.functionsSelectPlaceholder\">Selecione...</option>" + filtered.map(u => `<option value="${escapeHtml(u.id)}">${escapeHtml(u.name)}</option>`).join('');
     if (['admin', 'user'].includes(state.user?.role) && operationalUnitId) {
       sel.value = operationalUnitId;
     } else if (filtered.length === 1) {
@@ -15073,9 +15160,9 @@ async function _populatePurchaseRequestEpiSelect() {
   // pelo endpoint /api/stock/epis — o mesmo usado na Entrega de EPI. Antes este
   // select mostrava todos os EPIs da empresa, ignorando o escopo da unidade.
   const unitId = String(document.getElementById('purchase-request-unit')?.value || '').trim();
-  const placeholder = '<option value="">Selecione o EPI...</option>';
+  const placeholder = "<option value=\"\" data-i18n=\"ui.compras.selecione_o_epi_adde09\">Selecione o EPI...</option>";
   if (!unitId) {
-    sel.innerHTML = '<option value="">Selecione a unidade primeiro...</option>';
+    sel.innerHTML = "<option value=\"\" data-i18n=\"ui.app.selecione_a_unidade_primeiro_df34ab\">Selecione a unidade primeiro...</option>";
     return;
   }
   const prev = sel.value;
@@ -15097,21 +15184,21 @@ function _renderManualRequestItems() {
   const preview = document.getElementById('purchase-request-items-preview');
   if (!preview) return;
   if (!_manualRequestItems.length) {
-    preview.innerHTML = '<p style="color:var(--color-text-muted);margin:4px 0;">Nenhum item adicionado.</p>';
+    preview.innerHTML = "<p style=\"color:var(--color-text-muted);margin:4px 0;\" data-i18n=\"ui.app.nenhum_item_adicionado_d3a7d6\">Nenhum item adicionado.</p>";
     return;
   }
   const rows = _manualRequestItems.map((item, i) => {
     const epi = (state.epis || []).find(e => String(e.id) === String(item.epi_id));
     const name = epi ? `${esc(epi.name)}${epi.ca ? ` — ${tr('epi.caShort', 'CA')} ${esc(epi.ca)}` : ''}` : `EPI #${item.epi_id}`;
-    const origin = item.origin === 'employee_request' ? 'Solicitação' : item.origin === 'stock_minimum' ? 'Estoque mínimo' : 'Manual';
+    const origin = item.origin === 'employee_request' ? (tr('handover.request', 'Solicitação', {})) : item.origin === 'stock_minimum' ? (tr('ui.app.estoque_minimo_422370', 'Estoque mínimo', {})) : (tr('dataMigration.mapStrategy.manual', 'Manual', {}));
     const sizeInfo = [
       item.glove_size && item.glove_size !== 'N/A' ? `${tr('stock.gloveShort', 'Luva')}:${item.glove_size}` : '',
       item.size && item.size !== 'N/A' ? `${tr('stock.sizeShort', 'Tam')}:${item.size}` : '',
       item.uniform_size && item.uniform_size !== 'N/A' ? `${tr('stock.uniformShort', 'Unif')}:${item.uniform_size}` : '',
     ].filter(Boolean).join(' ') || '—';
-    return `<tr><td>${name}</td><td style="text-align:center;">${item.quantity_requested}</td><td style="text-align:center;color:var(--color-text-muted);font-size:11px;">${esc(sizeInfo)}</td><td style="text-align:center;color:var(--color-text-muted);font-size:11px;">${origin}</td><td style="text-align:center;"><button type="button" class="btn ghost" style="padding:1px 7px;font-size:12px;" data-remove-manual-item="${i}" aria-label="Remover item">✕</button></td></tr>`;
+    return `<tr><td>${name}</td><td style="text-align:center;">${item.quantity_requested}</td><td style="text-align:center;color:var(--color-text-muted);font-size:11px;">${esc(sizeInfo)}</td><td style="text-align:center;color:var(--color-text-muted);font-size:11px;">${origin}</td><td style="text-align:center;"><button type="button" class="btn ghost" style="padding:1px 7px;font-size:12px;" data-remove-manual-item="${i}" aria-label="Remover item" data-i18n-aria-label="ui.app.remover_item_57474c">✕</button></td></tr>`;
   }).join('');
-  preview.innerHTML = `<table style="width:100%;border-collapse:collapse;margin-top:4px;"><thead><tr style="font-size:12px;color:var(--color-text-muted);"><th scope="col" style="text-align:left;padding:2px 4px;">EPI</th><th scope="col" style="padding:2px 4px;">Qtd</th><th scope="col" style="padding:2px 4px;">Tamanho</th><th scope="col" style="padding:2px 4px;">Origem</th><th scope="col"></th></tr></thead><tbody>${rows}</tbody></table>`;
+  preview.innerHTML = `<table style="width:100%;border-collapse:collapse;margin-top:4px;"><thead><tr style="font-size:12px;color:var(--color-text-muted);"><th scope="col" style="text-align:left;padding:2px 4px;" data-i18n="epi.tableName">EPI</th><th scope="col" style="padding:2px 4px;" data-i18n="stock.receipt.qty">Qtd</th><th scope="col" style="padding:2px 4px;" data-i18n="delivery.size">Tamanho</th><th scope="col" style="padding:2px 4px;" data-i18n="dataMigration.jobSource">Origem</th><th scope="col"></th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 function _syncManualRequestItemsJson() {
@@ -15121,15 +15208,15 @@ function _syncManualRequestItemsJson() {
 
 // ── Módulo Aprovação de Solicitações de EPI ──────────────────────────────────
 const EPI_REQUEST_STATUS_LABELS = {
-  'solicitado': 'Solicitado',
-  'em análise': 'Em Análise',
-  'aprovado': 'Aprovado',
-  'rejeitado': 'Reprovado',
-  'prorrogado': 'Prorrogado',
-  'separado': 'Separado',
-  'entregue': 'Entregue',
-  'assinado': 'Assinado',
-  'included_in_request': 'Em Requisição'
+  get solicitado() { return (tr('portal.statusRequested', 'Solicitado', {})); },
+  get ["em an\u00e1lise"]() { return (tr('portal.statusInReview', 'Em Análise', {})); },
+  get aprovado() { return (tr('portal.statusApproved', 'Aprovado', {})); },
+  get rejeitado() { return (tr('portal.statusRejected', 'Reprovado', {})); },
+  get prorrogado() { return (tr('portal.statusPostponed', 'Prorrogado', {})); },
+  get separado() { return (tr('portal.statusSeparated', 'Separado', {})); },
+  get entregue() { return (tr('delivery.delivered', 'Entregue', {})); },
+  get assinado() { return (tr('portal.statusSigned', 'Assinado', {})); },
+  get included_in_request() { return (tr('portal.statusInRequest', 'Em Requisição', {})); }
 };
 
 function epiRequestStatusBadge(status) {
@@ -15159,14 +15246,14 @@ async function loadAprovacoesSolicitacoes() {
     _syncAprovacoesBtnVisibility();
     if (!_aprovacoesList.length) {
       if (table) table.style.display = 'none';
-      if (empty) { empty.style.display = ''; empty.textContent = 'Nenhuma solicitação pendente de aprovação.'; }
+      if (empty) { empty.style.display = ''; empty.textContent = ((globalThis.EpiI18n?.textFor?.(empty,"ui.compras.nenhuma_solicitacao_pendente_de_aprovacao_f70f67","Nenhuma solicita\u00e7\u00e3o pendente de aprova\u00e7\u00e3o.",{}) ?? globalThis.trEpi?.("ui.compras.nenhuma_solicitacao_pendente_de_aprovacao_f70f67","Nenhuma solicita\u00e7\u00e3o pendente de aprova\u00e7\u00e3o.",{})) ?? "Nenhuma solicita\u00e7\u00e3o pendente de aprova\u00e7\u00e3o."); }
       return;
     }
     if (table) table.style.display = '';
     if (empty) empty.style.display = 'none';
     tbody.innerHTML = _aprovacoesList.map((r, i) => {
       const sizeInfo = [r.glove_size !== 'N/A' ? `Luva:${r.glove_size}` : '', r.size !== 'N/A' ? `Tam:${r.size}` : '', r.uniform_size !== 'N/A' ? `Unif:${r.uniform_size}` : ''].filter(Boolean).join(' ') || '—';
-      const extra = r.status === 'rejeitado' && r.rejection_reason ? `<br><small style="color:var(--color-danger)">${esc(r.rejection_reason)}</small>` : r.status === 'prorrogado' && r.postponed_until ? `<br><small style="color:var(--color-warning)">Até: ${formatDate(r.postponed_until)}</small>` : '';
+      const extra = r.status === 'rejeitado' && r.rejection_reason ? `<br><small style="color:var(--color-danger)">${esc(r.rejection_reason)}</small>` : r.status === 'prorrogado' && r.postponed_until ? `<br><small style="color:var(--color-warning)">${(globalThis.EpiI18n?.bindText?.("ui.app.ate_p0_ce0eec",{p0:(formatDate(r.postponed_until))},"At\u00e9: {p0}") ?? `Até: ${formatDate(r.postponed_until)}`)}</small>` : '';
       return `<tr>
         <td><input type="checkbox" class="aprovacao-check" data-idx="${i}"></td>
         <td>${esc(r.employee_name || '—')}<br><small>${esc(r.employee_id_code || '')}</small></td>
@@ -15191,8 +15278,8 @@ async function loadAprovacoesSolicitacoes() {
     if (empty) {
       empty.style.display = '';
       empty.textContent = isTemporaryBootstrapUnavailable(e)
-        ? 'Sistema inicializando — clique em Atualizar para tentar novamente.'
-        : 'Erro ao carregar solicitações.';
+        ? ((globalThis.EpiI18n?.textFor?.(empty,"ui.app.sistema_inicializando_clique_em_atualizar_para_tentar_novamente_6fa274","Sistema inicializando \u2014 clique em Atualizar para tentar novamente.",{}) ?? globalThis.trEpi?.("ui.app.sistema_inicializando_clique_em_atualizar_para_tentar_novamente_6fa274","Sistema inicializando \u2014 clique em Atualizar para tentar novamente.",{})) ?? "Sistema inicializando \u2014 clique em Atualizar para tentar novamente.")
+        : ((globalThis.EpiI18n?.textFor?.(empty,"ui.app.erro_ao_carregar_solicitacoes_cdb40e","Erro ao carregar solicita\u00e7\u00f5es.",{}) ?? globalThis.trEpi?.("ui.app.erro_ao_carregar_solicitacoes_cdb40e","Erro ao carregar solicita\u00e7\u00f5es.",{})) ?? "Erro ao carregar solicita\u00e7\u00f5es.");
     }
   }
 }
@@ -15208,11 +15295,11 @@ function _syncAprovacoesBtnVisibility() {
 async function _executarAprovacaoEmLote(updates) {
   try {
     await api('/api/requests/bulk-status', { method: 'POST', body: JSON.stringify({ actor_user_id: state.user?.id, updates }) });
-    showToast('Solicitações atualizadas com sucesso!');
+    showToast((tr('ui.app.solicitacoes_atualizadas_com_sucesso_f904aa', 'Solicitações atualizadas com sucesso!', {})));
     _selectedAprovacoes.clear();
     await loadAprovacoesSolicitacoes();
   } catch(e) {
-    alert(e.message || 'Erro ao atualizar solicitações.');
+    alert(e.message || (tr('ui.app.erro_ao_atualizar_solicitacoes_5dd6e1', 'Erro ao atualizar solicitações.', {})));
   }
 }
 
@@ -15222,7 +15309,7 @@ function _buildBulkUpdates(status, extra = {}) {
 
 function exportAprovacoesCsv() {
   const rows = _aprovacoesList;
-  if (!rows.length) { alert('Nenhuma solicitação para exportar.'); return; }
+  if (!rows.length) { alert((tr('ui.app.nenhuma_solicitacao_para_exportar_e649d9', 'Nenhuma solicitação para exportar.', {}))); return; }
   const header = ['ID', 'Colaborador', 'Matrícula', 'Setor', 'Unidade', 'EPI', tr('epi.caShort', 'CA'), 'Luva', 'Tamanho', 'Uniforme', 'Qtd', 'Status', 'Motivo Reprovação', 'Prorrogado Até', 'Data Solicitação'];
   const lines = rows.map(r => [
     r.id, r.employee_name, r.employee_id_code, r.employee_sector, r.unit_name, r.epi_name, r.ca,
@@ -15270,7 +15357,7 @@ function exportPrCsv(pr, items) {
     i.id || i.purchase_request_item_id || '', pr.id || '', pr.unit_name || '',
     i.epi_name || i.epi_display_name, i.ca || i.epi_ca, i.manufacturer, i.supplier,
     i.employee_name, i.employee_sector,
-    i.origin === 'employee_request' ? 'Colaborador' : 'Estoque Mínimo',
+    i.origin === 'employee_request' ? (tr('handover.collaborator', 'Colaborador', {})) : (tr('stock.minimumBalance', 'Estoque Mínimo', {})),
     i.glove_size !== 'N/A' ? i.glove_size : '',
     i.size !== 'N/A' ? i.size : '',
     i.uniform_size !== 'N/A' ? i.uniform_size : '',
@@ -15290,17 +15377,17 @@ function exportPrCsv(pr, items) {
 }
 
 function emailPrToComprador(pr, items) {
-  const subject = encodeURIComponent(`Requisição de Compra de EPI #${pr.id} — ${pr.title || ''}`);
+  const subject = encodeURIComponent((tr('ui.app.requisicao_de_compra_de_epi_p0_p1_9abce0', 'Requisição de Compra de EPI #{p0} — {p1}', {p0:(pr.id),p1:(pr.title || '')})));
   const unit = pr.unit_name || '—';
   const date = (pr.created_at || '').slice(0, 10);
   const itemLines = items.map((i, idx) => {
     const sizeInfo = [i.glove_size !== 'N/A' ? `Luva:${i.glove_size}`:null, i.size !== 'N/A'?`Tam:${i.size}`:null, i.uniform_size !== 'N/A'?`Unif:${i.uniform_size}`:null].filter(Boolean).join(' ') || '—';
-    return `${idx+1}. ${i.epi_name || i.epi_display_name} | ${tr('epi.caShort', 'CA')}: ${i.ca || '—'} | ${sizeInfo} | Qtd: ${i.quantity_requested || 1} | Colaborador: ${i.employee_name || '—'}`;
+    return (tr('ui.app.p0_p1_p2_p3_p4_qtd_p5_colaborador_p6_f5b396', '{p0}. {p1} | {p2}: {p3} | {p4} | Qtd: {p5} | Colaborador: {p6}', {p0:(idx+1),p1:(i.epi_name || i.epi_display_name),p2:(tr('epi.caShort', 'CA')),p3:(i.ca || '—'),p4:(sizeInfo),p5:(i.quantity_requested || 1),p6:(i.employee_name || '—')}));
   }).join('\n');
   const body = encodeURIComponent(
-    `Olá,\n\nSegue a Requisição de Compra de EPI #${pr.id}.\n` +
+    (tr('ui.app.ola_segue_a_requisicao_de_compra_de_epi_p0_5649ce', 'Olá,\n\nSegue a Requisição de Compra de EPI #{p0}.\n', {p0:(pr.id)})) +
     `Unidade: ${unit}\nData: ${date}\n\nItens:\n${itemLines}\n\n` +
-    `Por favor, crie a PO no sistema interno e faça o upload dos valores no sistema de EPI.\n\nAtenciosamente,\n${state.user?.full_name || state.user?.username || 'Administrador'}`
+    (tr('ui.app.por_favor_crie_a_po_no_sistema_interno_e_faca_o_upload_dos_valores_no_siste_7b045e', 'Por favor, crie a PO no sistema interno e faça o upload dos valores no sistema de EPI.\n\nAtenciosamente,\n{p0}', {p0:(state.user?.full_name || state.user?.username || (tr('ui.app.administrador_d45845', 'Administrador', {})))}))
   );
   window.open(`mailto:?subject=${subject}&body=${body}`, '_blank');
 }
@@ -15314,7 +15401,7 @@ function _readFileAsBase64(file) {
       const result = String(reader.result || '');
       resolve(result.includes(',') ? result.split(',', 2)[1] : result);
     };
-    reader.onerror = () => reject(reader.error || new Error('Erro ao ler arquivo.'));
+    reader.onerror = () => reject(reader.error || new Error((tr('ui.app.erro_ao_ler_arquivo_0c41fa', 'Erro ao ler arquivo.', {}))));
     reader.readAsDataURL(file);
   });
 }
@@ -15346,18 +15433,18 @@ async function _parsePoImportFile(file, purchaseRequestId) {
 
 (function initAvaliaoesModule() {
   const PORTAL_STATUS_LABELS = {
-    '': 'Enviada', enviado_gestor: 'Em Análise', enviado_admin: 'Encaminh. Admin',
-    aceito: 'Aceito', recusado: 'Recusado', bem_avaliado: '⭐ Bem Avaliado',
-    mal_avaliado: '⚠ Mal Avaliado', em_reavaliacao_3m: 'Reavaliação 3m', em_reavaliacao_6m: 'Reavaliação 6m',
+    get [""]() { return (tr('portal.statusSent', 'Enviada', {})); }, get enviado_gestor() { return (tr('portal.statusInReview', 'Em Análise', {})); }, get enviado_admin() { return (tr('portal.statusForwardedAdmin', 'Encaminh. Admin', {})); },
+    aceito: 'Aceito', get recusado() { return (tr('portal.statusRefused', 'Recusado', {})); }, get bem_avaliado() { return (tr('portal.statusWellRated', '⭐ Bem Avaliado', {})); },
+    get mal_avaliado() { return (tr('portal.statusPoorlyRated', '⚠ Mal Avaliado', {})); }, get em_reavaliacao_3m() { return (tr('portal.statusReevaluation3m', 'Reavaliação 3m', {})); }, get em_reavaliacao_6m() { return (tr('portal.statusReevaluation6m', 'Reavaliação 6m', {})); },
   };
   const PORTAL_STATUS_COLORS = {
     aceito: 'success', recusado: 'danger', bem_avaliado: 'success', mal_avaliado: 'danger',
     em_reavaliacao_3m: 'warning', em_reavaliacao_6m: 'warning', enviado_admin: 'accent',
     enviado_gestor: 'info',
   };
-  const EVAL_STATUS_LABELS = { normal: 'Normal', super_bem_avaliado: '⭐⭐ Super Bem Avaliado', super_mal_avaliado: '⚠⚠ Super Mal Avaliado' };
+  const EVAL_STATUS_LABELS = { get normal() { return (tr('stock.statusNormal', 'Normal', {})); }, super_bem_avaliado: '⭐⭐ Super Bem Avaliado', super_mal_avaliado: '⚠⚠ Super Mal Avaliado' };
   const EVAL_STATUS_COLORS = { normal: '', super_bem_avaliado: 'success', super_mal_avaliado: 'danger' };
-  const RISK_LABELS = { nenhum: 'Nenhum', baixo: 'Baixo', alto: '⚠ Alto' };
+  const RISK_LABELS = { get nenhum() { return (tr('ui.aval_action_modal.nenhum_496a53', 'Nenhum', {})); }, get baixo() { return (tr('ui.aval_action_modal.baixo_2914b0', 'Baixo', {})); }, alto: '⚠ Alto' };
   const RISK_COLORS = { nenhum: '', baixo: 'warning', alto: 'danger' };
 
   let _summaryData = null;
@@ -15463,7 +15550,7 @@ async function _parsePoImportFile(file, purchaseRequestId) {
     if (!tbody) return;
     const isGeneralAdmin = role === 'general_admin';
     const headerEl = document.querySelector('#avaliacoes-pane-pendentes h3');
-    if (headerEl) headerEl.textContent = isAdmin ? 'Avaliações Pendentes de Ação Administrativa' : 'Avaliações Pendentes de Validação';
+    if (headerEl) headerEl.textContent = isAdmin ? 'Avaliações Pendentes de Ação Administrativa' : ((globalThis.EpiI18n?.textFor?.(headerEl,'evaluation.pendingValidation','Avaliações Pendentes de Validação',{}) ?? tr('evaluation.pendingValidation', 'Avaliações Pendentes de Validação', {})));
 
     if (!isAdmin) {
       const pending = items.filter((i) => (i.manager_eval_status || 'pendente') === 'pendente');
@@ -15476,12 +15563,12 @@ async function _parsePoImportFile(file, purchaseRequestId) {
         if (t === 'elogio') return '<span style="background:var(--success-soft);color:var(--success);font-size:10px;padding:1px 6px;border-radius:99px;">👍 Elogio EPI</span>';
         if (t === 'reclamacao') return '<span style="background:var(--danger-soft);color:var(--danger);font-size:10px;padding:1px 6px;border-radius:99px;">👎 Reclamação EPI</span>';
         if (t === 'sugestao' || t === 'sugestao_nova' || fb.suggested_new_epi_name) return '<span style="background:var(--accent-soft);color:var(--accent);font-size:10px;padding:1px 6px;border-radius:99px;">💡 Sugestão</span>';
-        return '<span style="background:var(--muted-soft);color:var(--color-text-muted);font-size:10px;padding:1px 6px;border-radius:99px;">📋 Avaliação</span>';
+        return "<span style=\"background:var(--muted-soft);color:var(--color-text-muted);font-size:10px;padding:1px 6px;border-radius:99px;\" data-i18n=\"evaluation.singleIcon\">\ud83d\udccb Avalia\u00e7\u00e3o</span>";
       };
       tbody.innerHTML = pending.map((fb) => {
         const actions = canManagerEval()
           ? `<button class="primary" style="font-size:11px;padding:3px 8px;" data-aval-validate="${esc(fb.id)}" type="button">Validar</button>
-             <button class="ghost" style="font-size:11px;padding:3px 8px;margin-left:4px;" data-aval-reject="${esc(fb.id)}" type="button">Rejeitar</button>`
+             <button class="ghost" style="font-size:11px;padding:3px 8px;margin-left:4px;" data-aval-reject="${esc(fb.id)}" type="button" data-i18n="dataMigration.action.reject">Rejeitar</button>`
           : '—';
         return `<tr>
           <td>#${esc(fb.id)}</td><td>${esc(fb.epi_name || '—')}</td><td>${esc(fb.employee_name || '—')}</td>
@@ -15510,7 +15597,7 @@ async function _parsePoImportFile(file, purchaseRequestId) {
       if (t === 'elogio') return '<span style="background:var(--success-soft);color:var(--success);font-size:10px;padding:1px 6px;border-radius:99px;">👍 Elogio EPI</span>';
       if (t === 'reclamacao') return '<span style="background:var(--danger-soft);color:var(--danger);font-size:10px;padding:1px 6px;border-radius:99px;">👎 Reclamação EPI</span>';
       if (t === 'sugestao' || t === 'sugestao_nova' || fb.suggested_new_epi_name) return '<span style="background:var(--accent-soft);color:var(--accent);font-size:10px;padding:1px 6px;border-radius:99px;">💡 Sugestão</span>';
-      return '<span style="background:var(--muted-soft);color:var(--color-text-muted);font-size:10px;padding:1px 6px;border-radius:99px;">📋 Avaliação</span>';
+      return "<span style=\"background:var(--muted-soft);color:var(--color-text-muted);font-size:10px;padding:1px 6px;border-radius:99px;\" data-i18n=\"evaluation.singleIcon\">\ud83d\udccb Avalia\u00e7\u00e3o</span>";
     };
     const rowHtml = (fb, actionHtml) => `<tr>
       <td>#${esc(fb.id)}</td><td>${esc(fb.epi_name || '—')}</td><td>${esc(fb.employee_name || '—')}</td>
@@ -15536,7 +15623,7 @@ async function _parsePoImportFile(file, purchaseRequestId) {
       html += finalEvalItems.map((fb) => {
         const btn = isGeneralAdmin && canDecide()
           ? `<button class="primary" style="font-size:11px;padding:3px 8px;background:#16a34a;" data-aval-admin-eval="${esc(fb.id)}" type="button">Avaliação Final</button>`
-          : '<span style="font-size:11px;opacity:.6;">Prévia Concluída</span>';
+          : "<span style=\"font-size:11px;opacity:.6;\" data-i18n=\"evaluation.previousCompleted\">Pr\u00e9via Conclu\u00edda</span>";
         return rowHtml(fb, btn);
       }).join('');
     }
@@ -15658,7 +15745,7 @@ async function _parsePoImportFile(file, purchaseRequestId) {
         ? `<button class="primary" style="font-size:11px;padding:3px 8px;" data-aval-accept="${esc(fb.id)}" type="button">Aceitar</button>`
         : '';
       const rejectBtn = canDecide()
-        ? `<button class="ghost" style="font-size:11px;padding:3px 8px;margin-left:4px;" data-aval-reject-sug="${esc(fb.id)}" type="button">Recusar</button>`
+        ? `<button class="ghost" style="font-size:11px;padding:3px 8px;margin-left:4px;" data-aval-reject-sug="${esc(fb.id)}" type="button" data-i18n="ui.procurement.recusar_ce4328">Recusar</button>`
         : '';
       const sugPortalStatus = fb.employee_portal_status || '';
       const sugTechAction = (sugPortalStatus === 'avaliacao_previa' && canDecide()) ? 'admin_evaluate' : (canPreEval() ? 'pre_evaluate' : null);
@@ -15719,7 +15806,7 @@ async function _parsePoImportFile(file, purchaseRequestId) {
       }
       if (sugTbody) {
         const sugs = sugData.items || [];
-        const SUG_STATUS_LABELS = { aceito: '✓ Aceito', recusado: '✗ Recusado', '': 'Pendente' };
+        const SUG_STATUS_LABELS = { aceito: '✓ Aceito', recusado: '✗ Recusado', get [""]() { return (tr('purchase.status.pending', 'Pendente', {})); } };
         const SUG_STATUS_COLORS = { aceito: 'success', recusado: 'danger', '': 'muted' };
         sugTbody.innerHTML = sugs.length ? sugs.map((s, idx) => {
           const sc = Number(s.score_sugestao) || 0;
@@ -15804,9 +15891,9 @@ async function _parsePoImportFile(file, purchaseRequestId) {
           techEl.value = 'recomenda_aceitar';
         }
       } else {
-        if (labelEl) labelEl.textContent = 'Decisão Final';
+        if (labelEl) labelEl.textContent = ((globalThis.EpiI18n?.textFor?.(labelEl,'ui.aval_action_modal.decisao_final_c32aff','Decisão Final',{}) ?? tr('ui.aval_action_modal.decisao_final_c32aff', 'Decisão Final', {})));
         if (techEl) {
-          techEl.innerHTML = '<option value="aceito">✓ Aceitar</option><option value="recusado">✗ Recusar</option>';
+          techEl.innerHTML = "<option value=\"aceito\" data-i18n=\"ui.aval_action_modal.aceitar_e4b9f9\">\u2713 Aceitar</option><option value=\"recusado\" data-i18n=\"ui.aval_action_modal.recusar_ba465f\">\u2717 Recusar</option>";
           techEl.value = 'aceito';
         }
       }
@@ -15819,7 +15906,7 @@ async function _parsePoImportFile(file, purchaseRequestId) {
     }
     const titleMap = { validate: 'Validar Avaliação', reject: 'Rejeitar Avaliação', reassessment: 'Definir Período de Reavaliação', accept_suggestion: 'Aceitar Sugestão de EPI', pre_evaluate: '📋 Avaliação Prévia Técnica', admin_evaluate: '✅ Avaliação Final — Admin Geral' };
     const titleEl = document.getElementById('aval-modal-title');
-    if (titleEl) titleEl.textContent = titleMap[action] || 'Ação';
+    if (titleEl) titleEl.textContent = titleMap[action] || ((globalThis.EpiI18n?.textFor?.(titleEl,'employee.action','Ação',{}) ?? tr('employee.action', 'Ação', {})));
     if (action === 'validate') {
       const subtypeEl = document.getElementById('aval-modal-subtype');
       if (subtypeEl) subtypeEl.value = fb.feedback_subtype || fb.type || 'reclamacao';
@@ -15842,7 +15929,7 @@ async function _parsePoImportFile(file, purchaseRequestId) {
       function updateRankOptions(subtype) {
         const opts = RANK_OPTIONS[subtype];
         if (rankSelect) {
-          rankSelect.innerHTML = '<option value="">Selecione</option>' +
+          rankSelect.innerHTML = "<option value=\"\" data-i18n=\"ui.aval_action_modal.selecione_987d5b\">Selecione</option>" +
             (opts ? opts.map(([v, l]) => `<option value="${v}">${l}</option>`).join('') : '');
         }
         if (rankField) rankField.style.display = opts ? '' : 'none';
@@ -15878,7 +15965,7 @@ async function _parsePoImportFile(file, purchaseRequestId) {
             notes,
           }),
         });
-        showToast('Avaliação validada e encaminhada ao administrador.');
+        showToast(tr('ppetest.ui.avaliacao_validada_e_encaminhada_ao_administrado', 'Avaliação validada e encaminhada ao administrador.'));
       } else if (action === 'reject') {
         const rejReason = document.getElementById('aval-modal-rejection-reason')?.value || 'outro';
         const supplierEval = document.getElementById('aval-modal-supplier-eval')?.checked || false;
@@ -15886,20 +15973,20 @@ async function _parsePoImportFile(file, purchaseRequestId) {
           method: 'POST',
           body: JSON.stringify({ actor_user_id: state.user?.id, feedback_id: feedbackId, rejection_reason: rejReason, supplier_eval_requested: supplierEval, notes }),
         });
-        showToast('Avaliação rejeitada.');
+        showToast(tr('ppetest.ui.avaliacao_rejeitada', 'Avaliação rejeitada.'));
       } else if (action === 'reassessment') {
         const period = document.getElementById('aval-modal-period')?.value || '3_meses';
         await api('/api/avaliacoes/set-reassessment', {
           method: 'POST',
           body: JSON.stringify({ actor_user_id: state.user?.id, feedback_id: feedbackId, period, notes }),
         });
-        showToast('Período de reavaliação definido.');
+        showToast(tr('ppetest.ui.periodo_de_reavaliacao_definido', 'Período de reavaliação definido.'));
       } else if (action === 'accept_suggestion') {
         await api('/api/avaliacoes/accept-suggestion', {
           method: 'POST',
           body: JSON.stringify({ actor_user_id: state.user?.id, feedback_id: feedbackId, notes }),
         });
-        showToast('Sugestão aceita — encaminhada ao fluxo de Novos EPIs em Teste.');
+        showToast(tr('ppetest.ui.sugestao_aceita_encaminhada_ao_fluxo_de_novos_ep', 'Sugestão aceita — encaminhada ao fluxo de Novos EPIs em Teste.'));
       } else if (action === 'pre_evaluate') {
         const preRec = document.getElementById('aval-modal-tech-decision')?.value || 'recomenda_aceitar';
         const atendeNr = document.getElementById('aval-modal-atende-nr')?.value || '';
@@ -15920,7 +16007,7 @@ async function _parsePoImportFile(file, purchaseRequestId) {
             admin_tech_notes: techNotes, marca_modelo_sugerido: marcaModelo, notes,
           }),
         });
-        showToast('Avaliação prévia registrada. Aguardando decisão final do Administrador Geral.');
+        showToast(tr('ppetest.ui.avaliacao_previa_registrada_aguardando_decisao_f', 'Avaliação prévia registrada. Aguardando decisão final do Administrador Geral.'));
       } else if (action === 'admin_evaluate') {
         const techDecision = document.getElementById('aval-modal-tech-decision')?.value || 'aceito';
         const atendeNr = document.getElementById('aval-modal-atende-nr')?.value || '';
@@ -15964,7 +16051,7 @@ async function _parsePoImportFile(file, purchaseRequestId) {
     } catch (e) {
       showToast(e.message || 'Erro ao computar status.', 'error');
     } finally {
-      if (btn) { btn.disabled = false; btn.textContent = '⚙ Computar Status EPIs'; }
+      if (btn) { btn.disabled = false; btn.textContent = ((globalThis.EpiI18n?.textFor?.(btn,'ui.avaliacoes.computar_status_epis_71a083','⚙ Computar Status EPIs',{}) ?? tr('ui.avaliacoes.computar_status_epis_71a083', '⚙ Computar Status EPIs', {}))); }
     }
   }
 
@@ -16020,10 +16107,10 @@ async function _parsePoImportFile(file, purchaseRequestId) {
 // ── Novos EPIs em Teste (fluxo separado — produto ainda não homologado) ───────
 (function initPpeTestsModule() {
   const STATUS_LABELS = {
-    rascunho: 'Rascunho', em_triagem: 'Em Triagem', em_analise_tecnica: 'Em Análise Técnica',
-    aprovado_para_teste: 'Aprovado para Teste', em_teste: 'Em Teste', teste_suspenso: 'Teste Suspenso',
-    teste_concluido: 'Teste Concluído', em_decisao: 'Em Decisão', aprovado: 'Aprovado',
-    reprovado: 'Reprovado', homologado: 'Homologado', arquivado: 'Arquivado',
+    get rascunho() { return (tr('purchase.poStatus.draft', 'Rascunho', {})); }, em_triagem: 'Em Triagem', em_analise_tecnica: 'Em Análise Técnica',
+    aprovado_para_teste: 'Aprovado para Teste', get em_teste() { return (tr('ppetest.inProgress', 'Em Teste', {})); }, teste_suspenso: 'Teste Suspenso',
+    teste_concluido: 'Teste Concluído', em_decisao: 'Em Decisão', get aprovado() { return (tr('portal.statusApproved', 'Aprovado', {})); },
+    get reprovado() { return (tr('portal.statusRejected', 'Reprovado', {})); }, homologado: 'Homologado', get arquivado() { return (tr('outsourcedCompany.linkInactive', 'Arquivado', {})); },
   };
   const STATUS_COLORS = {
     em_teste: 'info', teste_suspenso: 'warning', teste_concluido: 'accent', em_decisao: 'pending',
@@ -16031,22 +16118,22 @@ async function _parsePoImportFile(file, purchaseRequestId) {
     aprovado_para_teste: 'accent',
   };
   const SUG_STATUS_LABELS = {
-    recebida: 'Recebida', em_triagem: 'Em Triagem', aprovada_para_analise: 'Aprovada p/ Análise',
+    get recebida() { return (tr('purchase.poStatus.received', 'Recebida', {})); }, em_triagem: 'Em Triagem', aprovada_para_analise: 'Aprovada p/ Análise',
     info_solicitada: 'Mais Informações', duplicada: 'Duplicada', inviavel: 'Inviável',
-    rejeitada: 'Rejeitada', convertida: 'Convertida',
+    get rejeitada() { return (tr('ui.compras.rejeitada_fcd760', 'Rejeitada', {})); }, convertida: 'Convertida',
   };
   const SOURCE_LABELS = {
     colaborador: 'Sugestão de colaborador', empresa: 'Proposta da empresa',
     representante: 'Representante responsável', seguranca_trabalho: 'Segurança do Trabalho',
-    fornecedor: 'Fornecedor', gestor_unidade: 'Gestor da unidade',
-    comissao_interna: 'Comissão interna', joint_venture: 'Joint Venture', outro: 'Outro',
+    get fornecedor() { return (tr('epi.supplierShort', 'Fornecedor', {})); }, gestor_unidade: 'Gestor da unidade',
+    comissao_interna: 'Comissão interna', joint_venture: 'Joint Venture', get outro() { return (tr('outsourcedCompany.kindOther', 'Outro', {})); },
   };
   const STAGE_LABELS = { inicial: 'Inicial', intermediaria: 'Intermediária', final: 'Final' };
   const SCALE_OPTIONS = [
     { value: '', label: '—' },
-    { value: '1', label: '1 — Muito ruim' }, { value: '2', label: '2 — Ruim' },
-    { value: '3', label: '3 — Regular' }, { value: '4', label: '4 — Bom' },
-    { value: '5', label: '5 — Excelente' },
+    { value: '1', label: tr('ppetest.ui.1_muito_ruim', '1 — Muito ruim') }, { value: '2', label: tr('ppetest.ui.2_ruim', '2 — Ruim') },
+    { value: '3', label: tr('ppetest.ui.3_regular', '3 — Regular') }, { value: '4', label: tr('ppetest.ui.4_bom', '4 — Bom') },
+    { value: '5', label: tr('ppetest.ui.5_excelente', '5 — Excelente') },
   ];
 
   let _suggestions = [];
@@ -16100,7 +16187,7 @@ async function _parsePoImportFile(file, purchaseRequestId) {
       });
       for (const f of fields) {
         if (f.required && !values[f.name]) {
-          showToast(`Campo obrigatório: ${f.label}`, 'error');
+          showToast(tr('ppetest.ui.required_field', 'Campo obrigatório: {field}', { field: f.label }), 'error');
           return;
         }
       }
@@ -16214,93 +16301,93 @@ async function _parsePoImportFile(file, purchaseRequestId) {
 
   // ── Ações de sugestão ───────────────────────────────────────────────────────
   function openNewSuggestion() {
-    openForm('Nova Sugestão de EPI em Teste', [
-      { name: 'suggested_name', label: 'Nome do EPI sugerido', required: true },
+    openForm(tr('ppetest.ui.nova_sugestao_de_epi_em_teste', 'Nova Sugestão de EPI em Teste'), [
+      { name: 'suggested_name', label: (tr('portal.suggestedPpeName', 'Nome do EPI sugerido', {})), required: true },
       {
-        name: 'source_type', label: 'Origem', type: 'select', value: 'colaborador',
+        name: 'source_type', label: (tr('dataMigration.jobSource', 'Origem', {})), type: 'select', value: 'colaborador',
         options: Object.entries(SOURCE_LABELS).map(([value, label]) => ({ value, label })),
       },
-      { name: 'requester_name', label: 'Nome do solicitante', required: true, value: state.user?.full_name || '' },
+      { name: 'requester_name', label: tr('ppetest.ui.nome_do_solicitante', 'Nome do solicitante'), required: true, value: state.user?.full_name || '' },
       {
-        name: 'unit_id', label: 'Unidade', type: 'select',
+        name: 'unit_id', label: (tr('moduleVisibility.unitLabel', 'Unidade', {})), type: 'select',
         options: [{ value: '', label: '—' }].concat((state.units || []).map((u) => ({ value: u.id, label: u.name }))),
       },
       {
-        name: 'employee_id', label: 'Colaborador (quando origem = colaborador)', type: 'select',
+        name: 'employee_id', label: tr('ppetest.ui.colaborador_quando_origem_colaborador', 'Colaborador (quando origem = colaborador)'), type: 'select',
         options: [{ value: '', label: '—' }].concat((state.employees || []).map((e) => ({ value: e.id, label: e.name }))),
       },
       {
-        name: 'current_epi_id', label: 'EPI atual utilizado', type: 'select',
+        name: 'current_epi_id', label: tr('ppetest.ui.epi_atual_utilizado', 'EPI atual utilizado'), type: 'select',
         options: [{ value: '', label: '—' }].concat((state.epis || []).map((e) => ({ value: e.id, label: e.name }))),
       },
-      { name: 'reason', label: 'Motivo', type: 'textarea', required: true },
-      { name: 'problem_identified', label: 'Problema identificado', type: 'textarea' },
-      { name: 'expected_benefit', label: 'Benefício esperado', type: 'textarea' },
-      { name: 'related_activity', label: 'Função ou atividade relacionada' },
-      { name: 'risks', label: 'Riscos que pretende controlar' },
-      { name: 'current_epi_issue', label: 'Dificuldade encontrada no EPI atual', type: 'textarea' },
-      { name: 'notes', label: 'Observações', type: 'textarea' },
+      { name: 'reason', label: (tr('ppetest.reason', 'Motivo', {})), type: 'textarea', required: true },
+      { name: 'problem_identified', label: tr('ppetest.ui.problema_identificado', 'Problema identificado'), type: 'textarea' },
+      { name: 'expected_benefit', label: tr('ppetest.ui.beneficio_esperado', 'Benefício esperado'), type: 'textarea' },
+      { name: 'related_activity', label: tr('ppetest.ui.funcao_ou_atividade_relacionada', 'Função ou atividade relacionada') },
+      { name: 'risks', label: tr('ppetest.ui.riscos_que_pretende_controlar', 'Riscos que pretende controlar') },
+      { name: 'current_epi_issue', label: tr('ppetest.ui.dificuldade_encontrada_no_epi_atual', 'Dificuldade encontrada no EPI atual'), type: 'textarea' },
+      { name: 'notes', label: (tr('outsourcedCompany.employeeNotesLabel', 'Observações', {})), type: 'textarea' },
     ], async (values) => {
       await post('/api/ppe-test-suggestions', values);
-      showToast('Sugestão registrada. Ela seguirá para triagem.');
+      showToast(tr('ppetest.ui.sugestao_registrada_ela_seguira_para_triagem', 'Sugestão registrada. Ela seguirá para triagem.'));
       await loadPpeTests();
     });
   }
 
   function openTriage(suggestionId) {
-    openForm('Triagem Inicial da Sugestão', [
+    openForm(tr('ppetest.ui.triagem_inicial_da_sugestao', 'Triagem Inicial da Sugestão'), [
       {
-        name: 'result', label: 'Resultado da triagem', type: 'select', required: true,
+        name: 'result', label: tr('ppetest.ui.resultado_da_triagem', 'Resultado da triagem'), type: 'select', required: true,
         options: [
-          { value: 'aprovado_analise_tecnica', label: 'Aprovado para análise técnica' },
-          { value: 'solicitar_informacoes', label: 'Solicitar mais informações' },
-          { value: 'duplicado', label: 'Duplicado' },
-          { value: 'inviavel', label: 'Inviável para teste' },
-          { value: 'rejeitado', label: 'Rejeitado na triagem' },
+          { value: 'aprovado_analise_tecnica', label: tr('ppetest.ui.aprovado_para_analise_tecnica', 'Aprovado para análise técnica') },
+          { value: 'solicitar_informacoes', label: tr('ppetest.ui.solicitar_mais_informacoes', 'Solicitar mais informações') },
+          { value: 'duplicado', label: (tr('dataMigration.classification.duplicate', 'Duplicado', {})) },
+          { value: 'inviavel', label: tr('ppetest.ui.inviavel_para_teste', 'Inviável para teste') },
+          { value: 'rejeitado', label: tr('ppetest.ui.rejeitado_na_triagem', 'Rejeitado na triagem') },
         ],
       },
-      { name: 'ck_banco', label: 'Verificado: EPI não existe no banco aprovado', type: 'checkbox' },
-      { name: 'ck_teste', label: 'Verificado: não há teste semelhante em andamento', type: 'checkbox' },
-      { name: 'ck_ca', label: 'Verificado: CA válido (quando aplicável)', type: 'checkbox' },
-      { name: 'ck_risco', label: 'Verificado: produto atende ao risco', type: 'checkbox' },
-      { name: 'ck_fornecedor', label: 'Verificado: fornecedor regular', type: 'checkbox' },
-      { name: 'ck_orcamento', label: 'Verificado: há orçamento e unidade para o piloto', type: 'checkbox' },
-      { name: 'notes', label: 'Justificativa / observações (obrigatória para rejeição)', type: 'textarea' },
+      { name: 'ck_banco', label: tr('ppetest.ui.verificado_epi_nao_existe_no_banco_aprovado', 'Verificado: EPI não existe no banco aprovado'), type: 'checkbox' },
+      { name: 'ck_teste', label: tr('ppetest.ui.verificado_nao_ha_teste_semelhante_em_andamento', 'Verificado: não há teste semelhante em andamento'), type: 'checkbox' },
+      { name: 'ck_ca', label: tr('ppetest.ui.verificado_ca_valido_quando_aplicavel', 'Verificado: CA válido (quando aplicável)'), type: 'checkbox' },
+      { name: 'ck_risco', label: tr('ppetest.ui.verificado_produto_atende_ao_risco', 'Verificado: produto atende ao risco'), type: 'checkbox' },
+      { name: 'ck_fornecedor', label: tr('ppetest.ui.verificado_fornecedor_regular', 'Verificado: fornecedor regular'), type: 'checkbox' },
+      { name: 'ck_orcamento', label: tr('ppetest.ui.verificado_ha_orcamento_e_unidade_para_o_piloto', 'Verificado: há orçamento e unidade para o piloto'), type: 'checkbox' },
+      { name: 'notes', label: tr('ppetest.ui.justificativa_observacoes_obrigatoria_para_rejei', 'Justificativa / observações (obrigatória para rejeição)'), type: 'textarea' },
     ], async (values) => {
       const checklist = {};
       Object.keys(values).filter((k) => k.startsWith('ck_')).forEach((k) => { checklist[k.slice(3)] = !!values[k]; });
       await post(`/api/ppe-test-suggestions/${suggestionId}/triage`, {
         result: values.result, notes: values.notes, checklist,
       });
-      showToast('Triagem registrada.');
+      showToast(tr('ppetest.ui.triagem_registrada', 'Triagem registrada.'));
       await loadPpeTests();
     });
   }
 
   function openNewCandidate(suggestionId = null) {
     const sug = suggestionId ? _suggestions.find((s) => String(s.id) === String(suggestionId)) : null;
-    openForm('Cadastro Provisório do EPI em Teste', [
-      { name: 'name', label: 'Nome provisório', required: true, value: sug?.suggested_name || '' },
-      { name: 'category', label: 'Categoria / setor' },
-      { name: 'protection_type', label: 'Tipo de proteção' },
-      { name: 'manufacturer', label: 'Fabricante' },
-      { name: 'model_reference', label: 'Modelo' },
-      { name: 'supplier', label: 'Fornecedor' },
+    openForm(tr('ppetest.ui.cadastro_provisorio_do_epi_em_teste', 'Cadastro Provisório do EPI em Teste'), [
+      { name: 'name', label: tr('ppetest.ui.nome_provisorio', 'Nome provisório'), required: true, value: sug?.suggested_name || '' },
+      { name: 'category', label: tr('ppetest.ui.categoria_setor', 'Categoria / setor') },
+      { name: 'protection_type', label: tr('ppetest.ui.tipo_de_protecao', 'Tipo de proteção') },
+      { name: 'manufacturer', label: (tr('epi.manufacturer', 'Fabricante', {})) },
+      { name: 'model_reference', label: tr('ppetest.ui.modelo', 'Modelo') },
+      { name: 'supplier', label: (tr('epi.supplierShort', 'Fornecedor', {})) },
       { name: 'ca', label: 'CA' },
-      { name: 'ca_expiry', label: 'Validade do CA', type: 'date' },
-      { name: 'size', label: 'Tamanho' },
-      { name: 'material', label: 'Material' },
-      { name: 'test_batch', label: 'Lote de teste' },
-      { name: 'quantity_available', label: 'Quantidade disponível para o teste', type: 'number', value: '0' },
-      { name: 'estimated_value', label: 'Valor estimado' },
-      { name: 'test_cost', label: 'Custo do teste' },
-      { name: 'risks_covered', label: 'Riscos atendidos', type: 'textarea' },
-      { name: 'activities', label: 'Atividades indicadas' },
-      { name: 'restrictions', label: 'Restrições' },
-      { name: 'notes', label: 'Observações', type: 'textarea' },
+      { name: 'ca_expiry', label: (tr('epi.caExpiry', 'Validade do CA', {})), type: 'date' },
+      { name: 'size', label: (tr('delivery.size', 'Tamanho', {})) },
+      { name: 'material', label: tr('ppetest.ui.material', 'Material') },
+      { name: 'test_batch', label: tr('ppetest.ui.lote_de_teste', 'Lote de teste') },
+      { name: 'quantity_available', label: tr('ppetest.ui.quantidade_disponivel_para_o_teste', 'Quantidade disponível para o teste'), type: 'number', value: '0' },
+      { name: 'estimated_value', label: tr('ppetest.ui.valor_estimado', 'Valor estimado') },
+      { name: 'test_cost', label: tr('ppetest.ui.custo_do_teste', 'Custo do teste') },
+      { name: 'risks_covered', label: tr('ppetest.ui.riscos_atendidos', 'Riscos atendidos'), type: 'textarea' },
+      { name: 'activities', label: tr('ppetest.ui.atividades_indicadas', 'Atividades indicadas') },
+      { name: 'restrictions', label: tr('ppetest.ui.restricoes', 'Restrições') },
+      { name: 'notes', label: (tr('outsourcedCompany.employeeNotesLabel', 'Observações', {})), type: 'textarea' },
     ], async (values) => {
       await post('/api/ppe-tests', { ...values, suggestion_id: suggestionId || undefined });
-      showToast('Cadastro provisório criado — fora do banco oficial de EPIs.');
+      showToast(tr('ppetest.ui.cadastro_provisorio_criado_fora_do_banco_oficial', 'Cadastro provisório criado — fora do banco oficial de EPIs.'));
       await loadPpeTests();
     });
   }
@@ -16429,7 +16516,7 @@ async function _parsePoImportFile(file, purchaseRequestId) {
     const participants = t.participants || [];
     sections.push(`<h4 style="margin:14px 0 6px;">Participantes (${participants.length})</h4>
       ${participants.length ? `<div class="table-wrap"><table>
-        <thead><tr><th>Colaborador</th><th>Unidade</th><th>Tamanho</th><th>Entrega</th><th>Status</th></tr></thead>
+        <thead><tr><th data-i18n="handover.collaborator">Colaborador</th><th data-i18n="moduleVisibility.unitLabel">Unidade</th><th data-i18n="delivery.size">Tamanho</th><th data-i18n="delivery.title">Entrega</th><th data-i18n="user.status">Status</th></tr></thead>
         <tbody>${participants.map((p) => `<tr>
           <td>${esc(p.employee_name || p.employee_id)}</td>
           <td>${esc(p.unit_name || '—')}</td>
@@ -16442,7 +16529,7 @@ async function _parsePoImportFile(file, purchaseRequestId) {
     sections.push(`<h4 style="margin:14px 0 6px;">Distribuição Controlada</h4>
       <p style="margin:0 0 6px;">Recebido: <strong>${bal.recebido ?? 0}</strong> · Entregue: <strong>${bal.entregue ?? 0}</strong> · Devolvido: <strong>${bal.devolvido ?? 0}</strong> · Descartado: <strong>${bal.descartado ?? 0}</strong> · Saldo: <strong>${bal.saldo ?? 0}</strong></p>
       ${distributions.length ? `<div class="table-wrap"><table>
-        <thead><tr><th>Data</th><th>Movimento</th><th>Qtd</th><th>Lote</th><th>Responsável</th><th>Obs.</th></tr></thead>
+        <thead><tr><th data-i18n="outsourcedCompany.requestDate">Data</th><th>Movimento</th><th data-i18n="stock.receipt.qty">Qtd</th><th data-i18n="handover.lot">Lote</th><th data-i18n="dataMigration.jobActor">Responsável</th><th>Obs.</th></tr></thead>
         <tbody>${distributions.map((d) => `<tr>
           <td>${fmtDate(d.created_at)}</td><td>${esc(d.movement_type)}</td><td>${d.quantity}</td>
           <td>${esc(d.batch || '—')}</td><td>${esc(d.responsible_name || '—')}</td><td>${esc(d.notes || '—')}</td>
@@ -16464,12 +16551,12 @@ async function _parsePoImportFile(file, purchaseRequestId) {
       const canManage = hasPermission('ppe_test:manage');
       sections.push(`<h4 style="margin:14px 0 6px;">Ocorrências (${incidents.length})</h4>
         <div class="table-wrap"><table>
-        <thead><tr><th>Data</th><th>Tipo</th><th>Gravidade</th><th>Descrição</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th data-i18n="outsourcedCompany.requestDate">Data</th><th data-i18n="outsourcedCompany.filterKind">Tipo</th><th>Gravidade</th><th data-i18n="ui.procurement.descricao_46332f">Descrição</th><th data-i18n="user.status">Status</th><th></th></tr></thead>
         <tbody>${incidents.map((i) => `<tr>
           <td>${fmtDate(i.created_at)}</td><td>${esc(i.incident_type)}</td>
           <td>${i.severity === 'critica' ? '<strong style="color:var(--danger);">CRÍTICA</strong>' : esc(i.severity)}</td>
           <td>${esc(i.description)}</td>
-          <td>${i.status === 'resolvida' ? '<span style="color:var(--success);">Resolvida</span>' : '<span style="color:var(--pending);">Aberta</span>'}</td>
+          <td>${i.status === 'resolvida' ? '<span style="color:var(--success);">Resolvida</span>' : "<span style=\"color:var(--pending);\" data-i18n=\"ui.compras.aberta_262ff7\">Aberta</span>"}</td>
           <td>${canManage && i.status !== 'resolvida' ? `<button class="btn ghost" data-ppe-incident-resolve="${i.id}" style="font-size:11px;">Tratar</button>` : ''}</td>
         </tr>`).join('')}</tbody></table></div>`);
     }
@@ -16505,184 +16592,184 @@ async function _parsePoImportFile(file, purchaseRequestId) {
     const participantOptions = (t.participants || []).map((p) => ({ value: p.id, label: p.employee_name || `#${p.employee_id}` }));
     switch (action) {
       case 'tech-review':
-        openForm('Análise Técnica e Documental', [
+        openForm(tr('ppetest.ui.analise_tecnica_e_documental', 'Análise Técnica e Documental'), [
           {
-            name: 'result', label: 'Resultado', type: 'select', required: true,
+            name: 'result', label: (tr('dataMigration.jobCounters', 'Resultado', {})), type: 'select', required: true,
             options: [
-              { value: 'aprovar_para_teste', label: 'Aprovar para teste' },
-              { value: 'solicitar_correcao', label: 'Solicitar correção' },
-              { value: 'solicitar_documento', label: 'Solicitar documento' },
-              { value: 'encaminhar_aprovacao_superior', label: 'Encaminhar para aprovação superior' },
-              { value: 'rejeitar', label: 'Rejeitar' },
+              { value: 'aprovar_para_teste', label: tr('ppetest.ui.aprovar_para_teste', 'Aprovar para teste') },
+              { value: 'solicitar_correcao', label: tr('ppetest.ui.solicitar_correcao', 'Solicitar correção') },
+              { value: 'solicitar_documento', label: tr('ppetest.ui.solicitar_documento', 'Solicitar documento') },
+              { value: 'encaminhar_aprovacao_superior', label: tr('ppetest.ui.encaminhar_para_aprovacao_superior', 'Encaminhar para aprovação superior') },
+              { value: 'rejeitar', label: (tr('dataMigration.action.reject', 'Rejeitar', {})) },
             ],
           },
-          { name: 'ck_ca_valido', label: 'CA válido', type: 'checkbox' },
-          { name: 'ck_compatibilidade_risco', label: 'Compatível com o risco', type: 'checkbox' },
-          { name: 'ck_ficha_tecnica', label: 'Ficha técnica presente', type: 'checkbox' },
-          { name: 'ck_normas', label: 'Normas aplicáveis atendidas', type: 'checkbox' },
-          { name: 'ck_higienizacao', label: 'Instruções de uso/higienização/manutenção', type: 'checkbox' },
-          { name: 'ck_compatibilidade_epis', label: 'Compatível com outros EPIs', type: 'checkbox' },
-          { name: 'ck_treinamento', label: 'Necessidade de treinamento avaliada', type: 'checkbox' },
-          { name: 'ck_custo', label: 'Custo/impacto operacional avaliado', type: 'checkbox' },
-          { name: 'notes', label: 'Parecer / justificativa', type: 'textarea' },
+          { name: 'ck_ca_valido', label: tr('ppetest.ui.ca_valido', 'CA válido'), type: 'checkbox' },
+          { name: 'ck_compatibilidade_risco', label: tr('ppetest.ui.compativel_com_o_risco', 'Compatível com o risco'), type: 'checkbox' },
+          { name: 'ck_ficha_tecnica', label: tr('ppetest.ui.ficha_tecnica_presente', 'Ficha técnica presente'), type: 'checkbox' },
+          { name: 'ck_normas', label: tr('ppetest.ui.normas_aplicaveis_atendidas', 'Normas aplicáveis atendidas'), type: 'checkbox' },
+          { name: 'ck_higienizacao', label: tr('ppetest.ui.instrucoes_de_uso_higienizacao_manutencao', 'Instruções de uso/higienização/manutenção'), type: 'checkbox' },
+          { name: 'ck_compatibilidade_epis', label: tr('ppetest.ui.compativel_com_outros_epis', 'Compatível com outros EPIs'), type: 'checkbox' },
+          { name: 'ck_treinamento', label: tr('ppetest.ui.necessidade_de_treinamento_avaliada', 'Necessidade de treinamento avaliada'), type: 'checkbox' },
+          { name: 'ck_custo', label: tr('ppetest.ui.custo_impacto_operacional_avaliado', 'Custo/impacto operacional avaliado'), type: 'checkbox' },
+          { name: 'notes', label: tr('ppetest.ui.parecer_justificativa', 'Parecer / justificativa'), type: 'textarea' },
         ], async (values) => {
           const checklist = {};
           Object.keys(values).filter((k) => k.startsWith('ck_')).forEach((k) => { checklist[k.slice(3)] = !!values[k]; });
           await post(`/api/ppe-tests/${id}/technical-review`, { result: values.result, notes: values.notes, checklist });
-          showToast('Análise técnica registrada.');
+          showToast(tr('ppetest.ui.analise_tecnica_registrada', 'Análise técnica registrada.'));
           await reloadDetail();
         });
         break;
       case 'plan': {
         const plan = t.plan || {};
-        openForm('Plano de Teste', [
-          { name: 'start_date', label: 'Data inicial', type: 'date', required: true, value: plan.start_date || '' },
-          { name: 'end_date', label: 'Data final prevista', type: 'date', required: true, value: plan.end_date || '' },
+        openForm(tr('ppetest.ui.plano_de_teste', 'Plano de Teste'), [
+          { name: 'start_date', label: (tr('delivery.startDate', 'Data inicial', {})), type: 'date', required: true, value: plan.start_date || '' },
+          { name: 'end_date', label: tr('ppetest.ui.data_final_prevista', 'Data final prevista'), type: 'date', required: true, value: plan.end_date || '' },
           {
-            name: 'pilot_unit_id', label: 'Unidade piloto', type: 'select', value: plan.pilot_unit_id || '',
+            name: 'pilot_unit_id', label: tr('ppetest.ui.unidade_piloto', 'Unidade piloto'), type: 'select', value: plan.pilot_unit_id || '',
             options: [{ value: '', label: '—' }].concat((state.units || []).map((u) => ({ value: u.id, label: u.name }))),
           },
-          { name: 'objective', label: 'Objetivo do teste', type: 'textarea', value: plan.objective || '' },
-          { name: 'hypothesis', label: 'Hipótese', value: plan.hypothesis || '' },
-          { name: 'sector', label: 'Setor', value: plan.sector || '' },
-          { name: 'activity', label: 'Atividade', value: plan.activity || '' },
-          { name: 'participants_target', label: 'Quantidade de participantes', type: 'number', value: plan.participants_target || '' },
-          { name: 'epis_quantity', label: 'Quantidade de EPIs', type: 'number', value: plan.epis_quantity || '' },
+          { name: 'objective', label: tr('ppetest.ui.objetivo_do_teste', 'Objetivo do teste'), type: 'textarea', value: plan.objective || '' },
+          { name: 'hypothesis', label: tr('ppetest.ui.hipotese', 'Hipótese'), value: plan.hypothesis || '' },
+          { name: 'sector', label: (tr('employee.sector', 'Setor', {})), value: plan.sector || '' },
+          { name: 'activity', label: tr('ppetest.ui.atividade', 'Atividade'), value: plan.activity || '' },
+          { name: 'participants_target', label: tr('ppetest.ui.quantidade_de_participantes', 'Quantidade de participantes'), type: 'number', value: plan.participants_target || '' },
+          { name: 'epis_quantity', label: tr('ppetest.ui.quantidade_de_epis', 'Quantidade de EPIs'), type: 'number', value: plan.epis_quantity || '' },
           {
-            name: 'current_epi_id', label: 'Modelo comparativo atual', type: 'select', value: plan.current_epi_id || '',
+            name: 'current_epi_id', label: tr('ppetest.ui.modelo_comparativo_atual', 'Modelo comparativo atual'), type: 'select', value: plan.current_epi_id || '',
             options: [{ value: '', label: '—' }].concat((state.epis || []).map((e) => ({ value: e.id, label: e.name }))),
           },
-          { name: 'approval_criteria', label: 'Critérios de aprovação', type: 'textarea', value: plan.approval_criteria || '' },
-          { name: 'rejection_criteria', label: 'Critérios de reprovação', type: 'textarea', value: plan.rejection_criteria || '' },
-          { name: 'evaluation_frequency', label: 'Frequência das avaliações (ex.: inicial, 15d, 30d, final)', value: plan.evaluation_frequency || '' },
-          { name: 'technical_manager', label: 'Responsável técnico', value: plan.technical_manager || '' },
-          { name: 'operational_manager', label: 'Responsável operacional', value: plan.operational_manager || '' },
-          { name: 'min_participants', label: 'Mínimo de participantes p/ decisão', type: 'number', value: plan.min_participants || '' },
-          { name: 'min_response_rate', label: 'Taxa mínima de respostas (%)', type: 'number', value: plan.min_response_rate || '' },
-          { name: 'training_required', label: 'Exige treinamento', type: 'checkbox', value: !!plan.training_required },
-          { name: 'contingency_plan', label: 'Plano de contingência', type: 'textarea', value: plan.contingency_plan || '' },
-          { name: 'interruption_condition', label: 'Condição de interrupção', value: plan.interruption_condition || '' },
+          { name: 'approval_criteria', label: tr('ppetest.ui.criterios_de_aprovacao', 'Critérios de aprovação'), type: 'textarea', value: plan.approval_criteria || '' },
+          { name: 'rejection_criteria', label: tr('ppetest.ui.criterios_de_reprovacao', 'Critérios de reprovação'), type: 'textarea', value: plan.rejection_criteria || '' },
+          { name: 'evaluation_frequency', label: tr('ppetest.ui.frequencia_das_avaliacoes_ex_inicial_15d_30d_fin', 'Frequência das avaliações (ex.: inicial, 15d, 30d, final)'), value: plan.evaluation_frequency || '' },
+          { name: 'technical_manager', label: tr('ppetest.ui.responsavel_tecnico', 'Responsável técnico'), value: plan.technical_manager || '' },
+          { name: 'operational_manager', label: tr('ppetest.ui.responsavel_operacional', 'Responsável operacional'), value: plan.operational_manager || '' },
+          { name: 'min_participants', label: tr('ppetest.ui.minimo_de_participantes_p_decisao', 'Mínimo de participantes p/ decisão'), type: 'number', value: plan.min_participants || '' },
+          { name: 'min_response_rate', label: tr('ppetest.ui.taxa_minima_de_respostas', 'Taxa mínima de respostas (%)'), type: 'number', value: plan.min_response_rate || '' },
+          { name: 'training_required', label: tr('ppetest.ui.exige_treinamento', 'Exige treinamento'), type: 'checkbox', value: !!plan.training_required },
+          { name: 'contingency_plan', label: tr('ppetest.ui.plano_de_contingencia', 'Plano de contingência'), type: 'textarea', value: plan.contingency_plan || '' },
+          { name: 'interruption_condition', label: tr('ppetest.ui.condicao_de_interrupcao', 'Condição de interrupção'), value: plan.interruption_condition || '' },
         ], async (values) => {
           await post(`/api/ppe-tests/${id}/plan`, values);
-          showToast('Plano de teste salvo.');
+          showToast(tr('ppetest.ui.plano_de_teste_salvo', 'Plano de teste salvo.'));
           await reloadDetail();
         });
         break;
       }
       case 'participant':
-        openForm('Selecionar Participante', [
+        openForm(tr('ppetest.ui.selecionar_participante', 'Selecionar Participante'), [
           {
-            name: 'employee_id', label: 'Colaborador', type: 'select', required: true,
-            options: [{ value: '', label: 'Selecione' }].concat((state.employees || []).map((e) => ({ value: e.id, label: `${e.name} (${e.role_name || '—'})` }))),
+            name: 'employee_id', label: (tr('handover.collaborator', 'Colaborador', {})), type: 'select', required: true,
+            options: [{ value: '', label: (tr('ui.aval_action_modal.selecione_987d5b', 'Selecione', {})) }].concat((state.employees || []).map((e) => ({ value: e.id, label: `${e.name} (${e.role_name || '—'})` }))),
           },
-          { name: 'size', label: 'Tamanho necessário' },
+          { name: 'size', label: tr('ppetest.ui.tamanho_necessario', 'Tamanho necessário') },
           {
-            name: 'current_epi_id', label: 'EPI atual do participante', type: 'select',
+            name: 'current_epi_id', label: tr('ppetest.ui.epi_atual_do_participante', 'EPI atual do participante'), type: 'select',
             options: [{ value: '', label: '—' }].concat((state.epis || []).map((e) => ({ value: e.id, label: e.name }))),
           },
-          { name: 'orientation_confirmed', label: 'Orientação de uso confirmada', type: 'checkbox' },
-          { name: 'signature_name', label: 'Assinatura (nome)' },
+          { name: 'orientation_confirmed', label: tr('ppetest.ui.orientacao_de_uso_confirmada', 'Orientação de uso confirmada'), type: 'checkbox' },
+          { name: 'signature_name', label: tr('ppetest.ui.assinatura_nome', 'Assinatura (nome)') },
           {
-            name: 'status', label: 'Status inicial', type: 'select', value: 'convidado',
-            options: [{ value: 'convidado', label: 'Convidado' }, { value: 'confirmado', label: 'Confirmado' }],
+            name: 'status', label: tr('ppetest.ui.status_inicial', 'Status inicial'), type: 'select', value: 'convidado',
+            options: [{ value: 'convidado', label: tr('ppetest.ui.convidado', 'Convidado') }, { value: 'confirmado', label: tr('ppetest.ui.confirmado', 'Confirmado') }],
           },
         ], async (values) => {
           await post(`/api/ppe-tests/${id}/participants`, values);
-          showToast('Participante adicionado.');
+          showToast(tr('ppetest.ui.participante_adicionado', 'Participante adicionado.'));
           await reloadDetail();
         });
         break;
       case 'receive':
-        openForm('Receber Lote de Teste', [
-          { name: 'quantity', label: 'Quantidade recebida', type: 'number', required: true },
-          { name: 'batch', label: 'Lote' },
-          { name: 'supplier', label: 'Fornecedor' },
-          { name: 'storage_location', label: 'Local de armazenamento' },
-          { name: 'notes', label: 'Observações', type: 'textarea' },
+        openForm(tr('ppetest.ui.receber_lote_de_teste', 'Receber Lote de Teste'), [
+          { name: 'quantity', label: tr('ppetest.ui.quantidade_recebida', 'Quantidade recebida'), type: 'number', required: true },
+          { name: 'batch', label: (tr('handover.lot', 'Lote', {})) },
+          { name: 'supplier', label: (tr('epi.supplierShort', 'Fornecedor', {})) },
+          { name: 'storage_location', label: tr('ppetest.ui.local_de_armazenamento', 'Local de armazenamento') },
+          { name: 'notes', label: (tr('outsourcedCompany.employeeNotesLabel', 'Observações', {})), type: 'textarea' },
         ], async (values) => {
           await post(`/api/ppe-tests/${id}/distributions`, { ...values, movement_type: 'recebimento' });
-          showToast('Recebimento registrado no controle próprio do teste.');
+          showToast(tr('ppetest.ui.recebimento_registrado_no_controle_proprio_do_te', 'Recebimento registrado no controle próprio do teste.'));
           await reloadDetail();
         });
         break;
       case 'deliver':
-        openForm('Entregar EPI de Teste (uso controlado)', [
-          { name: 'participant_id', label: 'Participante', type: 'select', required: true, options: [{ value: '', label: 'Selecione' }].concat(participantOptions) },
-          { name: 'quantity', label: 'Quantidade', type: 'number', required: true, value: '1' },
-          { name: 'signature_name', label: 'Assinatura (nome)' },
-          { name: 'expected_return', label: 'Devolução esperada', type: 'date' },
-          { name: 'notes', label: 'Observações', type: 'textarea' },
+        openForm(tr('ppetest.ui.entregar_epi_de_teste_uso_controlado', 'Entregar EPI de Teste (uso controlado)'), [
+          { name: 'participant_id', label: tr('ppetest.ui.participante', 'Participante'), type: 'select', required: true, options: [{ value: '', label: (tr('ui.aval_action_modal.selecione_987d5b', 'Selecione', {})) }].concat(participantOptions) },
+          { name: 'quantity', label: (tr('delivery.quantity', 'Quantidade', {})), type: 'number', required: true, value: '1' },
+          { name: 'signature_name', label: tr('ppetest.ui.assinatura_nome', 'Assinatura (nome)') },
+          { name: 'expected_return', label: tr('ppetest.ui.devolucao_esperada', 'Devolução esperada'), type: 'date' },
+          { name: 'notes', label: (tr('outsourcedCompany.employeeNotesLabel', 'Observações', {})), type: 'textarea' },
         ], async (values) => {
           await post(`/api/ppe-tests/${id}/distributions`, { ...values, movement_type: 'entrega' });
-          showToast('Entrega controlada registrada.');
+          showToast(tr('ppetest.ui.entrega_controlada_registrada', 'Entrega controlada registrada.'));
           await reloadDetail();
         });
         break;
       case 'start':
-        openForm('Iniciar Período de Teste', [
-          { name: 'notes', label: 'Observações', type: 'textarea' },
+        openForm(tr('ppetest.ui.iniciar_periodo_de_teste', 'Iniciar Período de Teste'), [
+          { name: 'notes', label: (tr('outsourcedCompany.employeeNotesLabel', 'Observações', {})), type: 'textarea' },
         ], async (values) => {
           await post(`/api/ppe-tests/${id}/start`, values);
-          showToast('Teste iniciado.');
+          showToast(tr('ppetest.ui.teste_iniciado', 'Teste iniciado.'));
           await reloadDetail();
         });
         break;
       case 'suspend':
-        openForm('Suspender Teste', [
-          { name: 'reason', label: 'Justificativa', type: 'textarea', required: true },
+        openForm(tr('ppetest.ui.suspender_teste', 'Suspender Teste'), [
+          { name: 'reason', label: (tr('portal.justification', 'Justificativa', {})), type: 'textarea', required: true },
         ], async (values) => {
           await post(`/api/ppe-tests/${id}/suspend`, values);
-          showToast('Teste suspenso.');
+          showToast(tr('ppetest.ui.teste_suspenso', 'Teste suspenso.'));
           await reloadDetail();
         });
         break;
       case 'resume':
-        openForm('Retomar Teste', [
-          { name: 'notes', label: 'Observações', type: 'textarea' },
+        openForm(tr('ppetest.ui.retomar_teste', 'Retomar Teste'), [
+          { name: 'notes', label: (tr('outsourcedCompany.employeeNotesLabel', 'Observações', {})), type: 'textarea' },
         ], async (values) => {
           await post(`/api/ppe-tests/${id}/resume`, values);
-          showToast('Teste retomado.');
+          showToast(tr('ppetest.ui.teste_retomado', 'Teste retomado.'));
           await reloadDetail();
         });
         break;
       case 'complete':
-        openForm('Concluir Período de Teste', [
-          { name: 'notes', label: 'Observações', type: 'textarea' },
+        openForm(tr('ppetest.ui.concluir_periodo_de_teste', 'Concluir Período de Teste'), [
+          { name: 'notes', label: (tr('outsourcedCompany.employeeNotesLabel', 'Observações', {})), type: 'textarea' },
         ], async (values) => {
           await post(`/api/ppe-tests/${id}/complete`, values);
-          showToast('Teste concluído — pronto para consolidação e decisão.');
+          showToast(tr('ppetest.ui.teste_concluido_pronto_para_consolidacao_e_decis', 'Teste concluído — pronto para consolidação e decisão.'));
           await reloadDetail();
         });
         break;
       case 'evaluate':
-        openForm('Registrar Avaliação (escala 1–5)', [
-          { name: 'participant_id', label: 'Participante', type: 'select', required: true, options: [{ value: '', label: 'Selecione' }].concat(participantOptions) },
+        openForm(tr('ppetest.ui.registrar_avaliacao_escala_15', 'Registrar Avaliação (escala 1–5)'), [
+          { name: 'participant_id', label: tr('ppetest.ui.participante', 'Participante'), type: 'select', required: true, options: [{ value: '', label: (tr('ui.aval_action_modal.selecione_987d5b', 'Selecione', {})) }].concat(participantOptions) },
           {
-            name: 'stage', label: 'Momento', type: 'select', required: true,
+            name: 'stage', label: tr('ppetest.ui.momento', 'Momento'), type: 'select', required: true,
             options: Object.entries(STAGE_LABELS).map(([value, label]) => ({ value, label })),
           },
-          { type: 'section', label: 'Critérios do EPI em teste' },
+          { type: 'section', label: tr('ppetest.ui.criterios_do_epi_em_teste', 'Critérios do EPI em teste') },
           ...scaleFields([
             ['r_conforto', 'Conforto'], ['r_ergonomia', 'Ergonomia'], ['r_mobilidade', 'Mobilidade'],
             ['r_resistencia', 'Resistência'], ['r_peso', 'Peso'], ['r_facilidade_uso', 'Facilidade de uso'],
             ['r_protecao_percebida', 'Proteção percebida'], ['r_satisfacao_geral', 'Satisfação geral'],
             ['r_durabilidade', 'Durabilidade'], ['r_adequacao_funcao', 'Adequação à função'],
           ]),
-          { type: 'section', label: 'Comparação com o EPI atual (opcional)' },
+          { type: 'section', label: tr('ppetest.ui.comparacao_com_o_epi_atual_opcional', 'Comparação com o EPI atual (opcional)') },
           ...scaleFields([
             ['c_conforto', 'Conforto (EPI atual)'], ['c_mobilidade', 'Mobilidade (EPI atual)'],
             ['c_facilidade_uso', 'Facilidade de uso (EPI atual)'], ['c_protecao_percebida', 'Proteção percebida (EPI atual)'],
             ['c_durabilidade', 'Durabilidade (EPI atual)'],
           ]),
           {
-            name: 'preference', label: 'Preferência', type: 'select',
-            options: [{ value: '', label: '—' }, { value: 'novo', label: 'EPI em teste' }, { value: 'atual', label: 'EPI atual' }, { value: 'indiferente', label: 'Indiferente' }],
+            name: 'preference', label: tr('ppetest.ui.preferencia', 'Preferência'), type: 'select',
+            options: [{ value: '', label: '—' }, { value: 'novo', label: tr('ppetest.ui.epi_em_teste', 'EPI em teste') }, { value: 'atual', label: tr('ppetest.ui.epi_atual', 'EPI atual') }, { value: 'indiferente', label: tr('ppetest.ui.indiferente', 'Indiferente') }],
           },
-          { name: 'recommend', label: 'Recomenda a aprovação', type: 'checkbox' },
-          { name: 'continue_intent', label: 'Pretende continuar usando', type: 'checkbox' },
-          { name: 'positive_points', label: 'Pontos positivos', type: 'textarea' },
-          { name: 'negative_points', label: 'Pontos negativos', type: 'textarea' },
-          { name: 'comments', label: 'Comentários (pergunta aberta)', type: 'textarea' },
+          { name: 'recommend', label: tr('ppetest.ui.recomenda_a_aprovacao', 'Recomenda a aprovação'), type: 'checkbox' },
+          { name: 'continue_intent', label: tr('ppetest.ui.pretende_continuar_usando', 'Pretende continuar usando'), type: 'checkbox' },
+          { name: 'positive_points', label: tr('ppetest.ui.pontos_positivos', 'Pontos positivos'), type: 'textarea' },
+          { name: 'negative_points', label: tr('ppetest.ui.pontos_negativos', 'Pontos negativos'), type: 'textarea' },
+          { name: 'comments', label: tr('ppetest.ui.comentarios_pergunta_aberta', 'Comentários (pergunta aberta)'), type: 'textarea' },
         ], async (values) => {
           const ratings = {};
           const current = {};
@@ -16698,25 +16785,25 @@ async function _parsePoImportFile(file, purchaseRequestId) {
             positive_points: values.positive_points, negative_points: values.negative_points,
             comments: values.comments,
           });
-          showToast('Avaliação registrada.');
+          showToast(tr('ppetest.ui.avaliacao_registrada', 'Avaliação registrada.'));
           await reloadDetail();
         });
         break;
       case 'incident':
-        openForm('Registrar Ocorrência', [
-          { name: 'participant_id', label: 'Participante', type: 'select', options: [{ value: '', label: '—' }].concat(participantOptions) },
+        openForm(tr('ppetest.ui.registrar_ocorrencia', 'Registrar Ocorrência'), [
+          { name: 'participant_id', label: tr('ppetest.ui.participante', 'Participante'), type: 'select', options: [{ value: '', label: '—' }].concat(participantOptions) },
           {
-            name: 'incident_type', label: 'Tipo', type: 'select', required: true,
+            name: 'incident_type', label: (tr('outsourcedCompany.filterKind', 'Tipo', {})), type: 'select', required: true,
             options: ['desconforto', 'irritacao', 'falha', 'ruptura', 'incompatibilidade', 'tamanho_inadequado', 'perda', 'dano', 'incidente', 'quase_acidente', 'interrupcao_uso', 'substituicao', 'recusa', 'treinamento_adicional'].map((v) => ({ value: v, label: v.replace(/_/g, ' ') })),
           },
           {
-            name: 'severity', label: 'Gravidade', type: 'select', required: true,
-            options: [{ value: 'leve', label: 'Leve' }, { value: 'moderada', label: 'Moderada' }, { value: 'grave', label: 'Grave' }, { value: 'critica', label: 'Crítica' }],
+            name: 'severity', label: tr('ppetest.ui.gravidade', 'Gravidade'), type: 'select', required: true,
+            options: [{ value: 'leve', label: tr('ppetest.ui.leve', 'Leve') }, { value: 'moderada', label: tr('ppetest.ui.moderada', 'Moderada') }, { value: 'grave', label: tr('ppetest.ui.grave', 'Grave') }, { value: 'critica', label: tr('ppetest.ui.critica', 'Crítica') }],
           },
-          { name: 'description', label: 'Descrição', type: 'textarea', required: true },
-          { name: 'evidence', label: 'Evidência' },
-          { name: 'action_taken', label: 'Ação tomada' },
-          { name: 'suspend_test', label: 'Suspender o teste (apenas gravidade crítica)', type: 'checkbox' },
+          { name: 'description', label: (tr('ui.procurement.descricao_46332f', 'Descrição', {})), type: 'textarea', required: true },
+          { name: 'evidence', label: (tr('stock.receipt.evidence', 'Evidência', {})) },
+          { name: 'action_taken', label: tr('ppetest.ui.acao_tomada', 'Ação tomada') },
+          { name: 'suspend_test', label: tr('ppetest.ui.suspender_o_teste_apenas_gravidade_critica', 'Suspender o teste (apenas gravidade crítica)'), type: 'checkbox' },
         ], async (values) => {
           const result = await post(`/api/ppe-tests/${id}/incidents`, { ...values, suspend_test: !!values.suspend_test });
           showToast(result.suspended ? 'Ocorrência crítica registrada — teste suspenso.' : 'Ocorrência registrada.');
@@ -16724,55 +16811,55 @@ async function _parsePoImportFile(file, purchaseRequestId) {
         });
         break;
       case 'decision':
-        openForm('Decisão Técnica Formal', [
+        openForm(tr('ppetest.ui.decisao_tecnica_formal', 'Decisão Técnica Formal'), [
           {
-            name: 'decision', label: 'Decisão', type: 'select', required: true,
+            name: 'decision', label: tr('ppetest.ui.decisao', 'Decisão'), type: 'select', required: true,
             options: [
-              { value: 'aprovar', label: 'Aprovar' },
-              { value: 'aprovar_com_restricao', label: 'Aprovar com restrição' },
-              { value: 'prorrogar_teste', label: 'Prorrogar teste' },
-              { value: 'nova_rodada', label: 'Nova rodada de avaliação' },
-              { value: 'solicitar_ajuste_fornecedor', label: 'Solicitar ajuste ao fornecedor' },
-              { value: 'rejeitar', label: 'Rejeitar' },
-              { value: 'arquivar', label: 'Arquivar' },
+              { value: 'aprovar', label: (tr('purchase.approve', 'Aprovar', {})) },
+              { value: 'aprovar_com_restricao', label: tr('ppetest.ui.aprovar_com_restricao', 'Aprovar com restrição') },
+              { value: 'prorrogar_teste', label: tr('ppetest.ui.prorrogar_teste', 'Prorrogar teste') },
+              { value: 'nova_rodada', label: tr('ppetest.ui.nova_rodada_de_avaliacao', 'Nova rodada de avaliação') },
+              { value: 'solicitar_ajuste_fornecedor', label: tr('ppetest.ui.solicitar_ajuste_ao_fornecedor', 'Solicitar ajuste ao fornecedor') },
+              { value: 'rejeitar', label: (tr('dataMigration.action.reject', 'Rejeitar', {})) },
+              { value: 'arquivar', label: (tr('outsourcedCompany.archive', 'Arquivar', {})) },
             ],
           },
-          { name: 'reason', label: 'Justificativa', type: 'textarea', required: true },
-          { name: 'technical_opinion', label: 'Parecer técnico (obrigatório p/ aprovação)', type: 'textarea' },
-          { name: 'operational_opinion', label: 'Parecer operacional', type: 'textarea' },
-          { name: 'purchasing_opinion', label: 'Parecer de compras', type: 'textarea' },
-          { name: 'restrictions', label: 'Restrições' },
-          { name: 'conditions', label: 'Condições' },
-          { name: 'approval_validity', label: 'Validade da aprovação' },
-          { name: 'new_end_date', label: 'Nova data final (se prorrogar)', type: 'date' },
-          { name: 'override_minimums', label: 'Exceção justificada aos critérios mínimos', type: 'checkbox' },
+          { name: 'reason', label: (tr('portal.justification', 'Justificativa', {})), type: 'textarea', required: true },
+          { name: 'technical_opinion', label: tr('ppetest.ui.parecer_tecnico_obrigatorio_p_aprovacao', 'Parecer técnico (obrigatório p/ aprovação)'), type: 'textarea' },
+          { name: 'operational_opinion', label: tr('ppetest.ui.parecer_operacional', 'Parecer operacional'), type: 'textarea' },
+          { name: 'purchasing_opinion', label: tr('ppetest.ui.parecer_de_compras', 'Parecer de compras'), type: 'textarea' },
+          { name: 'restrictions', label: tr('ppetest.ui.restricoes', 'Restrições') },
+          { name: 'conditions', label: tr('ppetest.ui.condicoes', 'Condições') },
+          { name: 'approval_validity', label: tr('ppetest.ui.validade_da_aprovacao', 'Validade da aprovação') },
+          { name: 'new_end_date', label: tr('ppetest.ui.nova_data_final_se_prorrogar', 'Nova data final (se prorrogar)'), type: 'date' },
+          { name: 'override_minimums', label: tr('ppetest.ui.excecao_justificada_aos_criterios_minimos', 'Exceção justificada aos critérios mínimos'), type: 'checkbox' },
         ], async (values) => {
           await post(`/api/ppe-tests/${id}/decision`, { ...values, override_minimums: !!values.override_minimums });
-          showToast('Decisão registrada.');
+          showToast(tr('ppetest.ui.decisao_registrada', 'Decisão registrada.'));
           await reloadDetail();
         });
         break;
       case 'homologate':
-        openForm('Homologar — Definir Escopo de Validade', [
+        openForm(tr('ppetest.ui.homologar_definir_escopo_de_validade', 'Homologar — Definir Escopo de Validade'), [
           {
-            name: 'scope_type', label: 'Escopo de aprovação', type: 'select', required: true,
+            name: 'scope_type', label: tr('ppetest.ui.escopo_de_aprovacao', 'Escopo de aprovação'), type: 'select', required: true,
             options: [
-              { value: 'GLOBAL', label: 'Global da empresa' },
-              { value: 'JOINT_VENTURE', label: 'Joint Venture' },
-              { value: 'UNIT', label: 'Exclusivo de uma unidade' },
+              { value: 'GLOBAL', label: tr('ppetest.ui.global_da_empresa', 'Global da empresa') },
+              { value: 'JOINT_VENTURE', label: tr('ppetest.ui.joint_venture', 'Joint Venture') },
+              { value: 'UNIT', label: tr('ppetest.ui.exclusivo_de_uma_unidade', 'Exclusivo de uma unidade') },
             ],
           },
           {
-            name: 'scope_unit_id', label: 'Unidade (escopo UNIT ou JV)', type: 'select',
+            name: 'scope_unit_id', label: tr('ppetest.ui.unidade_escopo_unit_ou_jv', 'Unidade (escopo UNIT ou JV)'), type: 'select',
             options: [{ value: '', label: '—' }].concat((state.units || []).map((u) => ({ value: u.id, label: u.name }))),
           },
-          { name: 'scope_joint_venture', label: 'Joint Venture (nome da operação, escopo JV)' },
-          { name: 'official_name', label: 'Nome oficial do EPI', value: t.name },
-          { name: 'purchase_code', label: 'Código oficial (vazio = automático)' },
-          { name: 'manufacture_date', label: 'Data de fabricação', type: 'date' },
-          { name: 'epi_validity_date', label: 'Validade do EPI', type: 'date' },
-          { name: 'validity_days', label: 'Validade (dias) p/ substituição', type: 'number' },
-          { name: 'notes', label: 'Observações da homologação', type: 'textarea' },
+          { name: 'scope_joint_venture', label: tr('ppetest.ui.joint_venture_nome_da_operacao_escopo_jv', 'Joint Venture (nome da operação, escopo JV)') },
+          { name: 'official_name', label: tr('ppetest.ui.nome_oficial_do_epi', 'Nome oficial do EPI'), value: t.name },
+          { name: 'purchase_code', label: tr('ppetest.ui.codigo_oficial_vazio_automatico', 'Código oficial (vazio = automático)') },
+          { name: 'manufacture_date', label: tr('ppetest.ui.data_de_fabricacao', 'Data de fabricação'), type: 'date' },
+          { name: 'epi_validity_date', label: (tr('epi.validityDate', 'Validade do EPI', {})), type: 'date' },
+          { name: 'validity_days', label: tr('ppetest.ui.validade_dias_p_substituicao', 'Validade (dias) p/ substituição'), type: 'number' },
+          { name: 'notes', label: tr('ppetest.ui.observacoes_da_homologacao', 'Observações da homologação'), type: 'textarea' },
         ], async (values) => {
           const result = await post(`/api/ppe-tests/${id}/homologate`, values);
           const scope = result.scope || {};
@@ -16781,20 +16868,20 @@ async function _parsePoImportFile(file, purchaseRequestId) {
         });
         break;
       case 'reject':
-        openForm('Reprovar EPI em Teste', [
-          { name: 'reason', label: 'Justificativa', type: 'textarea', required: true },
+        openForm(tr('ppetest.ui.reprovar_epi_em_teste', 'Reprovar EPI em Teste'), [
+          { name: 'reason', label: (tr('portal.justification', 'Justificativa', {})), type: 'textarea', required: true },
           {
-            name: 'items_destination', label: 'Destino dos itens', type: 'select',
+            name: 'items_destination', label: tr('ppetest.ui.destino_dos_itens', 'Destino dos itens'), type: 'select',
             options: [
               { value: '', label: '—' },
-              { value: 'devolucao_fornecedor', label: 'Devolução ao fornecedor' },
-              { value: 'descarte', label: 'Descarte' },
-              { value: 'recolhimento', label: 'Recolhimento e guarda' },
+              { value: 'devolucao_fornecedor', label: tr('ppetest.ui.devolucao_ao_fornecedor', 'Devolução ao fornecedor') },
+              { value: 'descarte', label: (tr('stock.physical.discard', 'Descarte', {})) },
+              { value: 'recolhimento', label: tr('ppetest.ui.recolhimento_e_guarda', 'Recolhimento e guarda') },
             ],
           },
         ], async (values) => {
           await post(`/api/ppe-tests/${id}/reject`, values);
-          showToast('EPI reprovado — novas distribuições bloqueadas.');
+          showToast(tr('ppetest.ui.epi_reprovado_novas_distribuicoes_bloqueadas', 'EPI reprovado — novas distribuições bloqueadas.'));
           await reloadDetail();
         });
         break;
@@ -16806,12 +16893,12 @@ async function _parsePoImportFile(file, purchaseRequestId) {
   function openIncidentResolve(incidentId) {
     const t = _detail;
     if (!t) return;
-    openForm('Tratar Ocorrência', [
-      { name: 'action_taken', label: 'Ação tomada' },
-      { name: 'conclusion_notes', label: 'Conclusão', type: 'textarea', required: true },
+    openForm(tr('ppetest.ui.tratar_ocorrencia', 'Tratar Ocorrência'), [
+      { name: 'action_taken', label: tr('ppetest.ui.acao_tomada', 'Ação tomada') },
+      { name: 'conclusion_notes', label: tr('ppetest.ui.conclusao', 'Conclusão'), type: 'textarea', required: true },
     ], async (values) => {
       await post(`/api/ppe-tests/${t.id}/incidents/${incidentId}/resolve`, values);
-      showToast('Ocorrência tratada.');
+      showToast(tr('ppetest.ui.ocorrencia_tratada', 'Ocorrência tratada.'));
       await loadPpeTests();
       await openDetail(t.id);
     });

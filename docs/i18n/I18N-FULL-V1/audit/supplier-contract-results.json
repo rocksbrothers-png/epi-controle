@@ -1,0 +1,11 @@
+{
+  "baseline": "3f32341d",
+  "tokenExtraction": "EXACTLY_EQUAL",
+  "quoteBodyAndItems": "EXACTLY_EQUAL",
+  "confirmationBodyAndStatusCodes": "EXACTLY_EQUAL",
+  "attachmentDataURLNameMime": "EXACTLY_EQUAL",
+  "numericParsers": "EXACTLY_EQUAL",
+  "alreadyAnsweredPredicate": "EXACTLY_EQUAL",
+  "backendServicesRoutesSecurityPermissions": "UNCHANGED",
+  "limits": "AST/source comparison only; no real request, authentication or authorization execution."
+}

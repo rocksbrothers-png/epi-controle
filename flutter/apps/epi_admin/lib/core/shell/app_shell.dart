@@ -25,31 +25,134 @@ class AppShell extends StatelessWidget {
   /// separada. Antes havia duas listas casadas por índice, e foi por isso que a
   /// tela de CNPJs ficou sem entrada de menu: o destino entrou numa, o rótulo
   /// não entrou na outra, e nada acusou. Aqui os dois nascem juntos.
-  static const _destinations = <(String, IconData, IconData, String, String Function(AppLocalizations))>[
-    (Routes.dashboard,  Icons.dashboard_outlined,          Icons.dashboard_rounded,          'dashboard:view',        _navDashboard),
-    (Routes.employees,  Icons.people_outline_rounded,      Icons.people_rounded,             'employees:view',        _navEmployees),
-    (Routes.safetyLibrary, Icons.library_books_outlined, Icons.library_books, 'safety_library:manage', _navSafetyLibrary),
-    (Routes.epis,       Icons.shield_outlined,             Icons.shield_rounded,             'epis:view',             _navEpis),
-    (Routes.deliveries, Icons.local_shipping_outlined,     Icons.local_shipping_rounded,     'deliveries:view',       _navDeliveries),
-    (Routes.returns,    Icons.assignment_return_outlined,  Icons.assignment_return_rounded,  'deliveries:view',       _navReturns),
-    (Routes.records,    Icons.folder_outlined,             Icons.folder_rounded,             'fichas:view',           _navRecords),
-    (Routes.stock,      Icons.inventory_2_outlined,        Icons.inventory_2_rounded,        'stock:view',            _navStock),
-    (Routes.purchases,  Icons.shopping_cart_outlined,      Icons.shopping_cart_rounded,      'purchase_requests:view', _navPurchases),
-    (Routes.companies,  Icons.business_outlined,           Icons.business_rounded,           'companies:view',        _navCompanies),
-    (Routes.reports,    Icons.bar_chart_outlined,          Icons.bar_chart_rounded,          'reports:view',          _navReports),
-    (Routes.users,      Icons.manage_accounts_outlined,    Icons.manage_accounts_rounded,    'users:view',            _navUsers),
-    (Routes.units,      Icons.location_on_outlined,        Icons.location_on_rounded,        'units:view',            _navUnits),
-    // CNPJ fica ao lado de Unidades: é o nível imediatamente acima dela na
-    // hierarquia Empresa → CNPJ → Unidade.
-    (Routes.legalEntities, Icons.domain_outlined,          Icons.domain_rounded,             'legal_entities:view',   _navLegalEntities),
-    // Terceirizados e Prestadores (ADR-0002) — subpasta de Colaboradores.
-    // Reaproveita o piso técnico de criar colaborador (employees:create);
-    // a visibilidade real é module_visibility (oculto por padrão até o
-    // Administrador Geral ligar em Configuração → Regras → Visualização).
-    (Routes.outsourcedCompanies, Icons.groups_outlined,    Icons.groups_rounded,              'employees:create',      _navTerceirizados),
-    (Routes.feedback,   Icons.rate_review_outlined,        Icons.rate_review_rounded,        'epi_feedback:view',     _navFeedback),
-    (Routes.settings,   Icons.settings_outlined,           Icons.settings_rounded,           'settings:view',         _navSettings),
-  ];
+  static const _destinations =
+      <(String, IconData, IconData, String, String Function(AppLocalizations))>[
+        (
+          Routes.dashboard,
+          Icons.dashboard_outlined,
+          Icons.dashboard_rounded,
+          'dashboard:view',
+          _navDashboard,
+        ),
+        (
+          Routes.employees,
+          Icons.people_outline_rounded,
+          Icons.people_rounded,
+          'employees:view',
+          _navEmployees,
+        ),
+        (
+          Routes.safetyLibrary,
+          Icons.library_books_outlined,
+          Icons.library_books,
+          'safety_library:manage',
+          _navSafetyLibrary,
+        ),
+        (
+          Routes.epis,
+          Icons.shield_outlined,
+          Icons.shield_rounded,
+          'epis:view',
+          _navEpis,
+        ),
+        (
+          Routes.deliveries,
+          Icons.local_shipping_outlined,
+          Icons.local_shipping_rounded,
+          'deliveries:view',
+          _navDeliveries,
+        ),
+        (
+          Routes.returns,
+          Icons.assignment_return_outlined,
+          Icons.assignment_return_rounded,
+          'deliveries:view',
+          _navReturns,
+        ),
+        (
+          Routes.records,
+          Icons.folder_outlined,
+          Icons.folder_rounded,
+          'fichas:view',
+          _navRecords,
+        ),
+        (
+          Routes.stock,
+          Icons.inventory_2_outlined,
+          Icons.inventory_2_rounded,
+          'stock:view',
+          _navStock,
+        ),
+        (
+          Routes.purchases,
+          Icons.shopping_cart_outlined,
+          Icons.shopping_cart_rounded,
+          'purchase_requests:view',
+          _navPurchases,
+        ),
+        (
+          Routes.companies,
+          Icons.business_outlined,
+          Icons.business_rounded,
+          'companies:view',
+          _navCompanies,
+        ),
+        (
+          Routes.reports,
+          Icons.bar_chart_outlined,
+          Icons.bar_chart_rounded,
+          'reports:view',
+          _navReports,
+        ),
+        (
+          Routes.users,
+          Icons.manage_accounts_outlined,
+          Icons.manage_accounts_rounded,
+          'users:view',
+          _navUsers,
+        ),
+        (
+          Routes.units,
+          Icons.location_on_outlined,
+          Icons.location_on_rounded,
+          'units:view',
+          _navUnits,
+        ),
+        // CNPJ fica ao lado de Unidades: é o nível imediatamente acima dela na
+        // hierarquia Empresa → CNPJ → Unidade.
+        (
+          Routes.legalEntities,
+          Icons.domain_outlined,
+          Icons.domain_rounded,
+          'legal_entities:view',
+          _navLegalEntities,
+        ),
+        // Terceirizados e Prestadores (ADR-0002) — subpasta de Colaboradores.
+        // Reaproveita o piso técnico de criar colaborador (employees:create);
+        // a visibilidade real é module_visibility (oculto por padrão até o
+        // Administrador Geral ligar em Configuração → Regras → Visualização).
+        (
+          Routes.outsourcedCompanies,
+          Icons.groups_outlined,
+          Icons.groups_rounded,
+          'employees:create',
+          _navTerceirizados,
+        ),
+        (
+          Routes.feedback,
+          Icons.rate_review_outlined,
+          Icons.rate_review_rounded,
+          'epi_feedback:view',
+          _navFeedback,
+        ),
+        (
+          Routes.settings,
+          Icons.settings_outlined,
+          Icons.settings_rounded,
+          'settings:view',
+          _navSettings,
+        ),
+      ];
 
   // Seletores de rótulo. Precisam ser funções de topo para caber num `const`.
   static String _navDashboard(AppLocalizations l) => l.navDashboard;
@@ -72,12 +175,14 @@ class AppShell extends StatelessWidget {
 
   /// Rotas alcançáveis pelo menu — usado pelo teste que confronta navegação
   /// com as rotas gateadas.
-  static List<String> get destinationRoutes =>
-      [for (final d in _destinations) d.$1];
+  static List<String> get destinationRoutes => [
+    for (final d in _destinations) d.$1,
+  ];
 
   /// Permissões que liberam cada destino.
-  static List<String> get destinationPermissions =>
-      [for (final d in _destinations) d.$4];
+  static List<String> get destinationPermissions => [
+    for (final d in _destinations) d.$4,
+  ];
 
   static int get destinationCount => _destinations.length;
 
@@ -96,10 +201,18 @@ class AppShell extends StatelessWidget {
     return isModuleLocationAccessible(d.$1, moduleVisibility);
   }
 
-  int _selectedIndex(List<String> permissions, Map<String, bool> moduleVisibility) {
+  int _selectedIndex(
+    List<String> permissions,
+    Map<String, bool> moduleVisibility,
+  ) {
     var idx = 0;
     for (var i = 0; i < _destinations.length; i++) {
-      if (!_isDestinationVisible(_destinations[i], permissions, moduleVisibility)) continue;
+      if (!_isDestinationVisible(
+        _destinations[i],
+        permissions,
+        moduleVisibility,
+      ))
+        continue;
       final route = _destinations[i].$1;
       if (route == Routes.dashboard) {
         if (location == route) return idx;
@@ -111,8 +224,11 @@ class AppShell extends StatelessWidget {
     return 0;
   }
 
-  List<ds.EpiNavItem> _buildNavItems(AppLocalizations l10n, List<String> permissions,
-      Map<String, bool> moduleVisibility) {
+  List<ds.EpiNavItem> _buildNavItems(
+    AppLocalizations l10n,
+    List<String> permissions,
+    Map<String, bool> moduleVisibility,
+  ) {
     return [
       for (final d in _destinations)
         if (_isDestinationVisible(d, permissions, moduleVisibility))
@@ -120,8 +236,11 @@ class AppShell extends StatelessWidget {
     ];
   }
 
-  String _currentTitle(AppLocalizations l10n, List<String> permissions,
-      Map<String, bool> moduleVisibility) {
+  String _currentTitle(
+    AppLocalizations l10n,
+    List<String> permissions,
+    Map<String, bool> moduleVisibility,
+  ) {
     final items = _buildNavItems(l10n, permissions, moduleVisibility);
     if (items.isEmpty) return '';
     final idx = _selectedIndex(permissions, moduleVisibility);
@@ -146,19 +265,19 @@ class AppShell extends StatelessWidget {
 
     return ds.AppShell(
       selectedIndex: _selectedIndex(permissions, moduleVisibility),
-      navItems:      _buildNavItems(l10n, permissions, moduleVisibility),
+      navItems: _buildNavItems(l10n, permissions, moduleVisibility),
       onNavSelected: (i) {
         if (i < visibleRoutes.length) context.go(visibleRoutes[i]);
       },
-      title:  _currentTitle(l10n, permissions, moduleVisibility),
+      title: _currentTitle(l10n, permissions, moduleVisibility),
       actions: [
         IconButton(
-          tooltip: 'Sair',
+          tooltip: l10n.passwordChangeLogout,
           icon: const Icon(Icons.logout_rounded),
           onPressed: () => context.read<AuthCubit>().logout(),
         ),
       ],
-      child:  child,
+      child: child,
     );
   }
 }

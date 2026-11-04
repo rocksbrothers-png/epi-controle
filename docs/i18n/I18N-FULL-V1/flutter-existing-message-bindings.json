@@ -1,0 +1,187 @@
+[
+  {
+    "file": "flutter/apps/epi_admin/lib/features/employees/employees_screen.dart",
+    "bindings": [
+      {
+        "line": 197,
+        "source": "Motivo do arquivamento (auditoria)",
+        "key": "archiveReasonLabel",
+        "context": "dialogCtx"
+      },
+      {
+        "line": 212,
+        "source": "Arquivar",
+        "key": "archive",
+        "context": "dialogCtx"
+      },
+      {
+        "line": 265,
+        "source": "Arquivar",
+        "key": "archive",
+        "context": "context"
+      },
+      {
+        "line": 305,
+        "source": "Desarquivar",
+        "key": "restore",
+        "context": "dialogCtx"
+      },
+      {
+        "line": 357,
+        "source": "Desarquivar",
+        "key": "restore",
+        "context": "context"
+      }
+    ]
+  },
+  {
+    "file": "flutter/apps/epi_admin/lib/features/epis/epis_screen.dart",
+    "bindings": [
+      {
+        "line": 224,
+        "source": "Arquivar",
+        "key": "archive",
+        "context": "dialogCtx"
+      },
+      {
+        "line": 302,
+        "source": "Arquivar",
+        "key": "archive",
+        "context": "context"
+      },
+      {
+        "line": 342,
+        "source": "Desarquivar",
+        "key": "restore",
+        "context": "dialogCtx"
+      },
+      {
+        "line": 403,
+        "source": "Desarquivar",
+        "key": "restore",
+        "context": "context"
+      }
+    ]
+  },
+  {
+    "file": "flutter/apps/epi_admin/lib/features/units/units_screen.dart",
+    "bindings": [
+      {
+        "line": 176,
+        "source": "Motivo do arquivamento (auditoria)",
+        "key": "archiveReasonLabel",
+        "context": "ctx"
+      },
+      {
+        "line": 190,
+        "source": "Arquivar",
+        "key": "archive",
+        "context": "ctx"
+      },
+      {
+        "line": 255,
+        "source": "Arquivar",
+        "key": "archive",
+        "context": "ctx"
+      },
+      {
+        "line": 299,
+        "source": "Desarquivar",
+        "key": "restore",
+        "context": "ctx"
+      },
+      {
+        "line": 361,
+        "source": "Desarquivar",
+        "key": "restore",
+        "context": "context"
+      },
+      {
+        "line": 555,
+        "source": "Tipo",
+        "key": "legalEntityTypeLabel",
+        "context": "context"
+      },
+      {
+        "line": 580,
+        "source": "Empresa",
+        "key": "settingsCompanyLabel",
+        "context": "context"
+      },
+      {
+        "line": 630,
+        "source": "Observações (opcional)",
+        "key": "reportsRequestNotes",
+        "context": "context"
+      }
+    ]
+  },
+  {
+    "file": "flutter/apps/epi_admin/lib/features/users/users_screen.dart",
+    "bindings": [
+      {
+        "line": 423,
+        "source": "Nome completo",
+        "key": "employeeNameLabel",
+        "context": "context"
+      },
+      {
+        "line": 432,
+        "source": "Perfil",
+        "key": "moduleVisibilityRoleLabel",
+        "context": "context"
+      },
+      {
+        "line": 457,
+        "source": "Empresa",
+        "key": "settingsCompanyLabel",
+        "context": "context"
+      }
+    ]
+  },
+  {
+    "file": "flutter/apps/epi_admin/lib/features/feedback/feedback_screen.dart",
+    "bindings": [
+      {
+        "line": 131,
+        "source": "Tentar novamente",
+        "key": "retry",
+        "context": "ctx"
+      },
+      {
+        "line": 368,
+        "source": "Fechar",
+        "key": "close",
+        "context": "context"
+      }
+    ]
+  },
+  {
+    "file": "flutter/apps/epi_admin/lib/features/qr/qr_scanner_screen.dart",
+    "bindings": [
+      {
+        "line": 221,
+        "source": "Fechar",
+        "key": "close",
+        "context": "context"
+      }
+    ]
+  },
+  {
+    "file": "flutter/apps/epi_admin/lib/features/purchases/suppliers_screen.dart",
+    "bindings": [
+      {
+        "line": 243,
+        "source": "E-mail",
+        "key": "employeeContactEmail",
+        "context": "context"
+      },
+      {
+        "line": 244,
+        "source": "Portal",
+        "key": "navPortal",
+        "context": "context"
+      }
+    ]
+  }
+]

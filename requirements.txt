@@ -16,3 +16,6 @@ PyMuPDF>=2.0,<3
 xlrd>=2.0.2,<3
 olefile>=0.47,<1
 defusedxml>=0.7.1,<1
+
+# Per-request document presentation; no process-global locale.
+Babel>=2.18.0,<3

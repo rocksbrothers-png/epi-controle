@@ -1,0 +1,15 @@
+{
+  "source": "Real widgets with intercepted synthetic requests and locally loaded Inter/MaterialIcons fonts",
+  "baseline": "46fd5d677a10e5c4d1be0732f40c31a7c7393719 Corporate source; imports/public class names adapted in harness",
+  "current": "Localized source snapshot captured before the checkpoint commit; file hashes recorded below.",
+  "locale": "fr_FR",
+  "viewport": "390x844",
+  "sameFixture": true,
+  "writes": 0,
+  "layoutErrors": 0,
+  "limits": "Not deployed historical screenshots or an Android/iOS device/camera test. Caller test launcher supplies a synthetic authenticated role. Password fields empty.",
+  "currentSourceHashes": {
+    "flutter/apps/epi_admin/lib/features/users/users_screen.dart": "b4ff1ee0fde42d51690fd58f50b65f93ee1791966dd4982b4283c36515531f59",
+    "flutter/apps/epi_admin/lib/features/settings/archival_policy_screen.dart": "065f7629bfa5847e0bbc73491ee169186e5899129e0f540d3098d5a12fc4a25e"
+  }
+}

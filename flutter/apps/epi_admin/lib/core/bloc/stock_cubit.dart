@@ -228,6 +228,7 @@ class StockCubit extends Cubit<StockState> {
       if (criticos.isNotEmpty) {
         NotificationService().simulateNotification(
           AppNotification(
+            criticalStockCount: criticos.length,
             title: 'Estoque Crítico',
             body: '${criticos.length} EPI(s) abaixo do estoque mínimo',
             data: const {},

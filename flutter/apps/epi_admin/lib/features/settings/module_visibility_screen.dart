@@ -1,3 +1,4 @@
+import 'package:epi_admin/core/i18n/entity_labels.dart';
 import 'package:epi_design/epi_design.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -41,26 +42,26 @@ class ModuleVisibilityScreen extends StatelessWidget {
 // por Unidade" (module_unit_scope, restrito aos dois módulos opt-in) foi
 // retirado: o backend removeu suas rotas quando module_unit_scope deixou de
 // existir como mecanismo paralelo.
-const _kModuleVisibilityRoles = <(String value, String label)>[
-  ('admin', 'Administrador Local'),
-  ('user', 'Gestor de EPI'),
-  ('general_admin', 'Administrador Geral'),
-  ('registry_admin', 'Administrador de Registro'),
+const _kModuleVisibilityRoles = <String>[
+  'admin',
+  'user',
+  'general_admin',
+  'registry_admin',
 ];
 
 // Espelha MODULE_KEYS de epi_backend/rule_engine.py.
-const _kModuleVisibilityModules = <(String value, String label)>[
-  ('dashboard', 'Dashboard'),
-  ('compras', 'Compras'),
-  ('estoque', 'Estoque'),
-  ('entregas', 'Entregas'),
-  ('solicitacoes', 'Solicitações'),
-  ('fichas', 'Fichas de EPI'),
-  ('relatorios', 'Relatórios'),
-  ('administracao', 'Administração'),
-  ('configuracoes', 'Configurações'),
-  ('terceirizados', 'Terceirizados e Prestadores'),
-  ('terceirizados_colaboradores', 'Cadastro de Colaboradores'),
+const _kModuleVisibilityModules = <String>[
+  'dashboard',
+  'compras',
+  'estoque',
+  'entregas',
+  'solicitacoes',
+  'fichas',
+  'relatorios',
+  'administracao',
+  'configuracoes',
+  'terceirizados',
+  'terceirizados_colaboradores',
 ];
 
 // Espelha _UNIT_SCOPED_ROLES de epi_backend/rule_engine.py: só admin
@@ -80,7 +81,7 @@ class _ModuleVisibilityCard extends StatefulWidget {
 }
 
 class _ModuleVisibilityCardState extends State<_ModuleVisibilityCard> {
-  String _role = _kModuleVisibilityRoles.first.$1;
+  String _role = _kModuleVisibilityRoles.first;
   int? _unitId;
   // role -> bucket ("*" ou "<unit_id>") -> module -> bool
   Map<String, Map<String, Map<String, bool>>> _visibility = const {};
@@ -111,9 +112,15 @@ class _ModuleVisibilityCardState extends State<_ModuleVisibilityCard> {
       _error = null;
     });
     try {
-      final res = await ApiClient.settings.getModuleVisibility(companyId: widget.companyId);
-      final raw = (res['module_visibility'] as Map?)?.cast<String, dynamic>() ?? const {};
-      final rawDefault = (res['default_module_visibility'] as Map?)?.cast<String, dynamic>() ?? const {};
+      final res = await ApiClient.settings.getModuleVisibility(
+        companyId: widget.companyId,
+      );
+      final raw =
+          (res['module_visibility'] as Map?)?.cast<String, dynamic>() ??
+          const {};
+      final rawDefault =
+          (res['default_module_visibility'] as Map?)?.cast<String, dynamic>() ??
+          const {};
       final bootstrap = await ApiClient.auth.bootstrap();
       if (!mounted) return;
       setState(() {
@@ -134,7 +141,10 @@ class _ModuleVisibilityCardState extends State<_ModuleVisibilityCard> {
         _defaultVisibility = rawDefault.map(
           (role, modules) => MapEntry(
             role,
-            (modules as Map?)?.cast<String, dynamic>().map((k, v) => MapEntry(k, v == true)) ?? const {},
+            (modules as Map?)?.cast<String, dynamic>().map(
+                  (k, v) => MapEntry(k, v == true),
+                ) ??
+                const {},
           ),
         );
         _units = bootstrap.units;
@@ -144,7 +154,8 @@ class _ModuleVisibilityCardState extends State<_ModuleVisibilityCard> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = 'Não foi possível carregar a visualização de módulos.';
+        _error =
+            ''; // Local presentation sentinel; resolved in the current locale.
       });
     }
   }
@@ -179,8 +190,13 @@ class _ModuleVisibilityCardState extends State<_ModuleVisibilityCard> {
       if (!mounted) return;
       final bucketKey = _unitId != null ? '$_unitId' : '*';
       setState(() {
-        final roleConfig = Map<String, Map<String, bool>>.from(_visibility[_role] ?? const {});
-        roleConfig[bucketKey] = {...(roleConfig[bucketKey] ?? const {}), module: value};
+        final roleConfig = Map<String, Map<String, bool>>.from(
+          _visibility[_role] ?? const {},
+        );
+        roleConfig[bucketKey] = {
+          ...(roleConfig[bucketKey] ?? const {}),
+          module: value,
+        };
         _visibility = {..._visibility, _role: roleConfig};
         _saving = false;
       });
@@ -197,8 +213,13 @@ class _ModuleVisibilityCardState extends State<_ModuleVisibilityCard> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final authState = context.watch<AuthCubit>().state;
-    final role = authState is AuthAuthenticated ? authState.sessionContext.role : '';
-    final canEdit = role == 'master_admin' || role == 'general_admin' || role == 'registry_admin';
+    final role = authState is AuthAuthenticated
+        ? authState.sessionContext.role
+        : '';
+    final canEdit =
+        role == 'master_admin' ||
+        role == 'general_admin' ||
+        role == 'registry_admin';
     if (_loading) {
       return const Padding(
         padding: EdgeInsets.all(EpiSpacing.lg),
@@ -215,7 +236,9 @@ class _ModuleVisibilityCardState extends State<_ModuleVisibilityCard> {
           // aqui só empurraria a explicação para baixo da dobra.
           Text(
             l10n.moduleVisibilityDescription,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: EpiColors.textMuted),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: EpiColors.textMuted),
           ),
           const SizedBox(height: EpiSpacing.md),
           DropdownButtonFormField<String>(
@@ -226,13 +249,19 @@ class _ModuleVisibilityCardState extends State<_ModuleVisibilityCard> {
               isDense: true,
             ),
             items: _kModuleVisibilityRoles
-                .map((r) => DropdownMenuItem(value: r.$1, child: Text(r.$2)))
+                .map(
+                  (r) => DropdownMenuItem(
+                    value: r,
+                    child: Text(appRoleLabel(r, l10n)),
+                  ),
+                )
                 .toList(),
             onChanged: canEdit && !_saving
                 ? (v) => setState(() {
-                      _role = v ?? _role;
-                      if (!_kModuleVisibilityUnitScopedRoles.contains(_role)) _unitId = null;
-                    })
+                    _role = v ?? _role;
+                    if (!_kModuleVisibilityUnitScopedRoles.contains(_role))
+                      _unitId = null;
+                  })
                 : null,
           ),
           const SizedBox(height: EpiSpacing.sm),
@@ -260,25 +289,32 @@ class _ModuleVisibilityCardState extends State<_ModuleVisibilityCard> {
                     child: Text('${unit['name'] ?? ''}'),
                   ),
               ],
-              onChanged: canEdit && !_saving ? (v) => setState(() => _unitId = v) : null,
+              onChanged: canEdit && !_saving
+                  ? (v) => setState(() => _unitId = v)
+                  : null,
             ),
             const SizedBox(height: EpiSpacing.xs),
             Text(
               l10n.moduleVisibilityUnitHint,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: EpiColors.textMuted),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: EpiColors.textMuted),
             ),
           ],
           const SizedBox(height: EpiSpacing.sm),
           for (final module in _kModuleVisibilityModules)
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: Text(module.$2),
-              value: _isVisible(module.$1),
-              onChanged: canEdit && !_saving ? (v) => _toggle(module.$1, v) : null,
+              title: Text(appModuleLabel(module, l10n)),
+              value: _isVisible(module),
+              onChanged: canEdit && !_saving ? (v) => _toggle(module, v) : null,
             ),
           if (_error != null) ...[
             const SizedBox(height: EpiSpacing.sm),
-            Text(_error!, style: const TextStyle(color: EpiColors.danger, fontSize: 12)),
+            Text(
+              _error!.isEmpty ? l10n.moduleVisibilityLoadError : _error!,
+              style: const TextStyle(color: EpiColors.danger, fontSize: 12),
+            ),
           ],
         ],
       ),
@@ -292,15 +328,18 @@ class _ModuleVisibilityCardState extends State<_ModuleVisibilityCard> {
 /// selecionado — deixa explícito que a matriz de switches abaixo é uma
 /// PERSONALIZAÇÃO sobre esse padrão, não a definição do perfil.
 class _DefaultPermissionsPanel extends StatelessWidget {
-  const _DefaultPermissionsPanel({required this.modules, required this.moduleLabels});
+  const _DefaultPermissionsPanel({
+    required this.modules,
+    required this.moduleLabels,
+  });
 
   final Map<String, bool> modules;
-  final List<(String value, String label)> moduleLabels;
+  final List<String> moduleLabels;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final enabled = moduleLabels.where((m) => modules[m.$1] == true).toList();
+    final enabled = moduleLabels.where((m) => modules[m] == true).toList();
     return Container(
       padding: const EdgeInsets.all(EpiSpacing.md),
       decoration: BoxDecoration(
@@ -311,7 +350,10 @@ class _DefaultPermissionsPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(l10n.moduleVisibilityDefaultPanelTitle, style: Theme.of(context).textTheme.titleSmall),
+          Text(
+            l10n.moduleVisibilityDefaultPanelTitle,
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
           const SizedBox(height: EpiSpacing.xs),
           Wrap(
             spacing: 8,
@@ -319,17 +361,21 @@ class _DefaultPermissionsPanel extends StatelessWidget {
             children: enabled.isEmpty
                 ? [Chip(label: Text(l10n.moduleVisibilityNoDefaultModules))]
                 : enabled
-                    .map((m) => Chip(
+                      .map(
+                        (m) => Chip(
                           avatar: const Icon(Icons.check, size: 16),
-                          label: Text(m.$2),
+                          label: Text(appModuleLabel(m, l10n)),
                           backgroundColor: EpiColors.successSoft,
-                        ))
-                    .toList(),
+                        ),
+                      )
+                      .toList(),
           ),
           const SizedBox(height: EpiSpacing.xs),
           Text(
             l10n.moduleVisibilityDefaultPanelHint,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: EpiColors.textMuted),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: EpiColors.textMuted),
           ),
         ],
       ),

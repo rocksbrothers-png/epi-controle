@@ -1,0 +1,322 @@
+[
+  {
+    "locale": "pt-BR",
+    "forms_preserved": true,
+    "category_value": "glove_matrix",
+    "unit_id": 11,
+    "original_names_preserved": true,
+    "xss_executed": false,
+    "preview_loaded": true,
+    "mobile_overflow": false,
+    "page_errors": [],
+    "writes": [],
+    "read_requests": [
+      {
+        "action": "options",
+        "keys": [],
+        "document_id": null,
+        "version_id": null
+      },
+      {
+        "action": "documents",
+        "keys": [],
+        "document_id": null,
+        "version_id": null
+      },
+      {
+        "action": "approved-epis",
+        "keys": [
+          "cpf_last3",
+          "token"
+        ],
+        "document_id": null,
+        "version_id": null
+      },
+      {
+        "action": "documents",
+        "keys": [
+          "cpf_last3",
+          "token"
+        ],
+        "document_id": null,
+        "version_id": null
+      },
+      {
+        "action": "manifest",
+        "keys": [
+          "document_id",
+          "version_id"
+        ],
+        "document_id": 70,
+        "version_id": 7
+      },
+      {
+        "action": "page",
+        "keys": [
+          "document_id",
+          "page_index",
+          "part_index",
+          "version_id"
+        ],
+        "document_id": 70,
+        "version_id": 7
+      }
+    ]
+  },
+  {
+    "locale": "en-GB",
+    "forms_preserved": true,
+    "category_value": "glove_matrix",
+    "unit_id": 11,
+    "original_names_preserved": true,
+    "xss_executed": false,
+    "preview_loaded": true,
+    "mobile_overflow": false,
+    "page_errors": [],
+    "writes": [],
+    "read_requests": [
+      {
+        "action": "options",
+        "keys": [],
+        "document_id": null,
+        "version_id": null
+      },
+      {
+        "action": "documents",
+        "keys": [],
+        "document_id": null,
+        "version_id": null
+      },
+      {
+        "action": "approved-epis",
+        "keys": [
+          "cpf_last3",
+          "token"
+        ],
+        "document_id": null,
+        "version_id": null
+      },
+      {
+        "action": "documents",
+        "keys": [
+          "cpf_last3",
+          "token"
+        ],
+        "document_id": null,
+        "version_id": null
+      },
+      {
+        "action": "manifest",
+        "keys": [
+          "document_id",
+          "version_id"
+        ],
+        "document_id": 70,
+        "version_id": 7
+      },
+      {
+        "action": "page",
+        "keys": [
+          "document_id",
+          "page_index",
+          "part_index",
+          "version_id"
+        ],
+        "document_id": 70,
+        "version_id": 7
+      }
+    ]
+  },
+  {
+    "locale": "es-ES",
+    "forms_preserved": true,
+    "category_value": "glove_matrix",
+    "unit_id": 11,
+    "original_names_preserved": true,
+    "xss_executed": false,
+    "preview_loaded": true,
+    "mobile_overflow": false,
+    "page_errors": [],
+    "writes": [],
+    "read_requests": [
+      {
+        "action": "options",
+        "keys": [],
+        "document_id": null,
+        "version_id": null
+      },
+      {
+        "action": "documents",
+        "keys": [],
+        "document_id": null,
+        "version_id": null
+      },
+      {
+        "action": "approved-epis",
+        "keys": [
+          "cpf_last3",
+          "token"
+        ],
+        "document_id": null,
+        "version_id": null
+      },
+      {
+        "action": "documents",
+        "keys": [
+          "cpf_last3",
+          "token"
+        ],
+        "document_id": null,
+        "version_id": null
+      },
+      {
+        "action": "manifest",
+        "keys": [
+          "document_id",
+          "version_id"
+        ],
+        "document_id": 70,
+        "version_id": 7
+      },
+      {
+        "action": "page",
+        "keys": [
+          "document_id",
+          "page_index",
+          "part_index",
+          "version_id"
+        ],
+        "document_id": 70,
+        "version_id": 7
+      }
+    ]
+  },
+  {
+    "locale": "fr-FR",
+    "forms_preserved": true,
+    "category_value": "glove_matrix",
+    "unit_id": 11,
+    "original_names_preserved": true,
+    "xss_executed": false,
+    "preview_loaded": true,
+    "mobile_overflow": false,
+    "page_errors": [],
+    "writes": [],
+    "read_requests": [
+      {
+        "action": "options",
+        "keys": [],
+        "document_id": null,
+        "version_id": null
+      },
+      {
+        "action": "documents",
+        "keys": [],
+        "document_id": null,
+        "version_id": null
+      },
+      {
+        "action": "approved-epis",
+        "keys": [
+          "cpf_last3",
+          "token"
+        ],
+        "document_id": null,
+        "version_id": null
+      },
+      {
+        "action": "documents",
+        "keys": [
+          "cpf_last3",
+          "token"
+        ],
+        "document_id": null,
+        "version_id": null
+      },
+      {
+        "action": "manifest",
+        "keys": [
+          "document_id",
+          "version_id"
+        ],
+        "document_id": 70,
+        "version_id": 7
+      },
+      {
+        "action": "page",
+        "keys": [
+          "document_id",
+          "page_index",
+          "part_index",
+          "version_id"
+        ],
+        "document_id": 70,
+        "version_id": 7
+      }
+    ]
+  },
+  {
+    "locale": "nb-NO",
+    "forms_preserved": true,
+    "category_value": "glove_matrix",
+    "unit_id": 11,
+    "original_names_preserved": true,
+    "xss_executed": false,
+    "preview_loaded": true,
+    "mobile_overflow": false,
+    "page_errors": [],
+    "writes": [],
+    "read_requests": [
+      {
+        "action": "options",
+        "keys": [],
+        "document_id": null,
+        "version_id": null
+      },
+      {
+        "action": "documents",
+        "keys": [],
+        "document_id": null,
+        "version_id": null
+      },
+      {
+        "action": "approved-epis",
+        "keys": [
+          "cpf_last3",
+          "token"
+        ],
+        "document_id": null,
+        "version_id": null
+      },
+      {
+        "action": "documents",
+        "keys": [
+          "cpf_last3",
+          "token"
+        ],
+        "document_id": null,
+        "version_id": null
+      },
+      {
+        "action": "manifest",
+        "keys": [
+          "document_id",
+          "version_id"
+        ],
+        "document_id": 70,
+        "version_id": 7
+      },
+      {
+        "action": "page",
+        "keys": [
+          "document_id",
+          "page_index",
+          "part_index",
+          "version_id"
+        ],
+        "document_id": 70,
+        "version_id": 7
+      }
+    ]
+  }
+]

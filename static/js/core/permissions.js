@@ -143,21 +143,21 @@
   });
 
   const VIEW_EYEBROW = Object.freeze({
-    dashboard: 'Visão Geral',
+    get ['dashboard']() { return (globalThis.trEpi?.('ui.topbar.visao_geral_f7e888','Vis\u00e3o Geral',{}) ?? 'Vis\u00e3o Geral'); },
     empresas: 'Administração',
     comercial: 'Administração',
     usuarios: 'Administração',
-    unidades: 'Cadastro',
-    colaboradores: 'Cadastro',
-    'gestao-colaborador': 'Operação',
-    epis: 'Cadastro',
-    estoque: 'Operação',
-    entregas: 'Operação',
-    fichas: 'Operação',
-    compras: 'Compras',
-    configuracao: 'Configuração',
-    relatorios: 'Relatórios',
-    avaliacoes: 'Avaliações'
+    get ['unidades']() { return (globalThis.trEpi?.('outsourcedCompany.registrationMode','Cadastro',{}) ?? 'Cadastro'); },
+    get ['colaboradores']() { return (globalThis.trEpi?.('outsourcedCompany.registrationMode','Cadastro',{}) ?? 'Cadastro'); },
+    get ['gestao-colaborador']() { return (globalThis.trEpi?.('nav.groupOperation','Opera\u00e7\u00e3o',{}) ?? 'Opera\u00e7\u00e3o'); },
+    get ['epis']() { return (globalThis.trEpi?.('outsourcedCompany.registrationMode','Cadastro',{}) ?? 'Cadastro'); },
+    get ['estoque']() { return (globalThis.trEpi?.('nav.groupOperation','Opera\u00e7\u00e3o',{}) ?? 'Opera\u00e7\u00e3o'); },
+    get ['entregas']() { return (globalThis.trEpi?.('nav.groupOperation','Opera\u00e7\u00e3o',{}) ?? 'Opera\u00e7\u00e3o'); },
+    get ['fichas']() { return (globalThis.trEpi?.('nav.groupOperation','Opera\u00e7\u00e3o',{}) ?? 'Opera\u00e7\u00e3o'); },
+    get ['compras']() { return (globalThis.trEpi?.('settingsTabs.purchases','Compras',{}) ?? 'Compras'); },
+    get ['configuracao']() { return (globalThis.trEpi?.('ui.topbar.configuracao_8d60e1','Configura\u00e7\u00e3o',{}) ?? 'Configura\u00e7\u00e3o'); },
+    get ['relatorios']() { return (globalThis.trEpi?.('outsourcedCompany.reportsTab','Relat\u00f3rios',{}) ?? 'Relat\u00f3rios'); },
+    get ['avaliacoes']() { return (globalThis.trEpi?.('ppetest.evaluations','Avalia\u00e7\u00f5es',{}) ?? 'Avalia\u00e7\u00f5es'); }
   });
 
   globalThis.PURCHASE_PERMS = PURCHASE_PERMS;

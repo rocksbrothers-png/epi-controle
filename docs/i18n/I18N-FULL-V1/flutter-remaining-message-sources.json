@@ -1,0 +1,484 @@
+{
+  "base_corporate": "5b2546c953dba3a2167b613e1adf855d5088f3bf",
+  "base_saas": "5f18b94d609030e6539bdd4f58280f73d198a6b3",
+  "new_resources": 64,
+  "messages_per_regional_catalogue": 983,
+  "resources": {
+    "employeeShowActive": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/features/employees/employees_screen.dart"
+      ],
+      "placeholders": {}
+    },
+    "employeeShowArchived": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/features/employees/employees_screen.dart"
+      ],
+      "placeholders": {}
+    },
+    "employeeArchivedEmpty": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/features/employees/employees_screen.dart"
+      ],
+      "placeholders": {}
+    },
+    "employeeArchiveTitle": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/features/employees/employees_screen.dart"
+      ],
+      "placeholders": {}
+    },
+    "employeeRestoreTitle": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/features/employees/employees_screen.dart"
+      ],
+      "placeholders": {}
+    },
+    "employeeArchiveBody": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/features/employees/employees_screen.dart"
+      ],
+      "placeholders": {
+        "name": {
+          "type": "String"
+        }
+      }
+    },
+    "employeeRestoreBody": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/features/employees/employees_screen.dart"
+      ],
+      "placeholders": {
+        "name": {
+          "type": "String"
+        }
+      }
+    },
+    "epiShowActive": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/features/epis/epis_screen.dart"
+      ],
+      "placeholders": {}
+    },
+    "epiShowArchived": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/features/epis/epis_screen.dart"
+      ],
+      "placeholders": {}
+    },
+    "epiArchivedEmpty": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/features/epis/epis_screen.dart"
+      ],
+      "placeholders": {}
+    },
+    "epiArchiveTitle": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/features/epis/epis_screen.dart"
+      ],
+      "placeholders": {}
+    },
+    "epiRestoreTitle": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/features/epis/epis_screen.dart"
+      ],
+      "placeholders": {}
+    },
+    "epiArchiveBody": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/features/epis/epis_screen.dart"
+      ],
+      "placeholders": {
+        "name": {
+          "type": "String"
+        }
+      }
+    },
+    "epiRestoreBody": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/features/epis/epis_screen.dart"
+      ],
+      "placeholders": {
+        "name": {
+          "type": "String"
+        }
+      }
+    },
+    "unitArchivedTitle": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/features/units/units_screen.dart"
+      ],
+      "placeholders": {
+        "title": {
+          "type": "String"
+        }
+      }
+    },
+    "unitShowActive": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/features/units/units_screen.dart"
+      ],
+      "placeholders": {}
+    },
+    "unitShowArchived": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/features/units/units_screen.dart"
+      ],
+      "placeholders": {}
+    },
+    "unitArchivedEmpty": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/features/units/units_screen.dart"
+      ],
+      "placeholders": {}
+    },
+    "unitArchiveTitle": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/features/units/units_screen.dart"
+      ],
+      "placeholders": {}
+    },
+    "unitRestoreTitle": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/features/units/units_screen.dart"
+      ],
+      "placeholders": {}
+    },
+    "unitArchiveBody": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/features/units/units_screen.dart"
+      ],
+      "placeholders": {
+        "name": {
+          "type": "String"
+        }
+      }
+    },
+    "unitRestoreBody": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/features/units/units_screen.dart"
+      ],
+      "placeholders": {
+        "name": {
+          "type": "String"
+        }
+      }
+    },
+    "archivedOnDate": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/features/epis/epis_screen.dart",
+        "flutter/apps/epi_admin/lib/features/employees/employees_screen.dart"
+      ],
+      "placeholders": {
+        "date": {
+          "type": "String"
+        }
+      }
+    },
+    "retentionRemainingDays": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/features/epis/epis_screen.dart",
+        "flutter/apps/epi_admin/lib/features/employees/employees_screen.dart",
+        "flutter/apps/epi_admin/lib/features/units/units_screen.dart"
+      ],
+      "placeholders": {
+        "count": {
+          "type": "num"
+        },
+        "countLabel": {
+          "type": "String"
+        }
+      }
+    },
+    "retentionSatisfied": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/features/epis/epis_screen.dart",
+        "flutter/apps/epi_admin/lib/features/employees/employees_screen.dart",
+        "flutter/apps/epi_admin/lib/features/units/units_screen.dart"
+      ],
+      "placeholders": {}
+    },
+    "employeeDetailsSection": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/features/employees/employee_detail_screen.dart"
+      ],
+      "placeholders": {}
+    },
+    "epiDaysRemaining": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/features/epis/epi_detail_screen.dart"
+      ],
+      "placeholders": {}
+    },
+    "epiIdentificationSection": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/features/epis/epi_detail_screen.dart"
+      ],
+      "placeholders": {}
+    },
+    "recordsPendingCount": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/features/records/records_screen.dart"
+      ],
+      "placeholders": {
+        "count": {
+          "type": "num"
+        },
+        "countLabel": {
+          "type": "String"
+        }
+      }
+    },
+    "stockPpeCount": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/features/stock/stock_screen.dart"
+      ],
+      "placeholders": {
+        "count": {
+          "type": "num"
+        },
+        "countLabel": {
+          "type": "String"
+        }
+      }
+    },
+    "stockManufacturerExpiring": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/features/stock/stock_screen.dart"
+      ],
+      "placeholders": {}
+    },
+    "stockManufacturerExpired": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/features/stock/stock_screen.dart"
+      ],
+      "placeholders": {}
+    },
+    "stockManufacturerExpiredNote": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/features/stock/stock_screen.dart"
+      ],
+      "placeholders": {}
+    },
+    "stockManufacturerExpiringNote": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/features/stock/stock_screen.dart"
+      ],
+      "placeholders": {}
+    },
+    "stockManufacturerExpiringInNote": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/features/stock/stock_screen.dart"
+      ],
+      "placeholders": {
+        "days": {
+          "type": "String"
+        }
+      }
+    },
+    "moduleVisibilityLoadError": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/features/settings/module_visibility_screen.dart"
+      ],
+      "placeholders": {}
+    },
+    "moduleRequests": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/core/i18n/entity_labels.dart"
+      ],
+      "placeholders": {}
+    },
+    "moduleAdministration": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/core/i18n/entity_labels.dart"
+      ],
+      "placeholders": {}
+    },
+    "importRowError": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/features/legal_entities/paste_import_dialog.dart"
+      ],
+      "placeholders": {
+        "row": {
+          "type": "String"
+        },
+        "detail": {
+          "type": "String"
+        }
+      }
+    },
+    "responsibilityContracting": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/core/i18n/entity_labels.dart"
+      ],
+      "placeholders": {}
+    },
+    "responsibilityOutsourced": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/core/i18n/entity_labels.dart"
+      ],
+      "placeholders": {}
+    },
+    "responsibilityProvider": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/core/i18n/entity_labels.dart"
+      ],
+      "placeholders": {}
+    },
+    "responsibilityShared": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/core/i18n/entity_labels.dart"
+      ],
+      "placeholders": {}
+    },
+    "responsibilityContract": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/core/i18n/entity_labels.dart"
+      ],
+      "placeholders": {}
+    },
+    "responsibilityUndefined": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/core/i18n/entity_labels.dart"
+      ],
+      "placeholders": {}
+    },
+    "purchaseCreated": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/features/purchases/new_purchase_screen.dart"
+      ],
+      "placeholders": {}
+    },
+    "criticalStockTitle": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/core/notifications/notification_overlay.dart"
+      ],
+      "placeholders": {}
+    },
+    "criticalStockBody": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/core/notifications/notification_overlay.dart"
+      ],
+      "placeholders": {
+        "count": {
+          "type": "num"
+        },
+        "countLabel": {
+          "type": "String"
+        }
+      }
+    },
+    "companyNewTitle": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/core/widgets/create_company_dialog.dart"
+      ],
+      "placeholders": {}
+    },
+    "companyCnpjLength": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/core/widgets/create_company_dialog.dart"
+      ],
+      "placeholders": {}
+    },
+    "companyUserLimit": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/core/widgets/create_company_dialog.dart"
+      ],
+      "placeholders": {}
+    },
+    "companyMinimumUsers": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/core/widgets/create_company_dialog.dart"
+      ],
+      "placeholders": {
+        "count": {
+          "type": "int"
+        }
+      }
+    },
+    "companyOwnerOptional": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/core/widgets/create_company_dialog.dart"
+      ],
+      "placeholders": {
+        "role": {
+          "type": "String"
+        }
+      }
+    },
+    "companyOwnerInviteHint": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/core/widgets/create_company_dialog.dart"
+      ],
+      "placeholders": {
+        "role": {
+          "type": "String"
+        }
+      }
+    },
+    "companyOwnerName": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/core/widgets/create_company_dialog.dart"
+      ],
+      "placeholders": {}
+    },
+    "companyOwnerEmail": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/core/widgets/create_company_dialog.dart"
+      ],
+      "placeholders": {}
+    },
+    "companyPlanIndividual": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/core/widgets/create_company_dialog.dart"
+      ],
+      "placeholders": {}
+    },
+    "companyPlanStart": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/core/widgets/create_company_dialog.dart"
+      ],
+      "placeholders": {}
+    },
+    "companyPlanBusiness": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/core/widgets/create_company_dialog.dart"
+      ],
+      "placeholders": {}
+    },
+    "companyPlanCorporate": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/core/widgets/create_company_dialog.dart"
+      ],
+      "placeholders": {}
+    },
+    "formValidNumber": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/core/widgets/create_company_dialog.dart"
+      ],
+      "placeholders": {}
+    },
+    "formValidEmail": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/core/widgets/create_company_dialog.dart"
+      ],
+      "placeholders": {}
+    },
+    "moduleEmployeeRegistration": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/core/i18n/entity_labels.dart"
+      ],
+      "placeholders": {}
+    },
+    "unitArchivedOnDate": {
+      "bindings": [
+        "flutter/apps/epi_admin/lib/features/units/units_screen.dart"
+      ],
+      "placeholders": {
+        "date": {
+          "type": "String"
+        }
+      }
+    }
+  }
+}

@@ -44,14 +44,14 @@
   </div>
 
   <div id="login-totp-row" style="display:none;">
-    <label for="login-totp">Código de autenticação (2FA)</label>
+    <label for="login-totp" data-i18n="ui.login.codigo_de_autenticacao_2fa_a735b3">Código de autenticação (2FA)</label>
     <div class="login-input-field">
-      <input id="login-totp" name="totp_code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="Código do app autenticador" />
+      <input id="login-totp" name="totp_code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="Código do app autenticador"  data-i18n-placeholder="ui.login.codigo_do_app_autenticador_8433b2"/>
     </div>
   </div>
 
   <div id="login-message" class="form-feedback" aria-live="polite"></div>
-  <noscript><div class="form-feedback error">Ative o JavaScript do navegador para realizar o login.</div></noscript>
+  <noscript><div class="form-feedback error" data-i18n="ui.login.ative_o_javascript_do_navegador_para_realizar_o_login_cbb928">Ative o JavaScript do navegador para realizar o login.</div></noscript>
 
   <div class="login-actions">
     <button type="submit" class="btn btn-primary" data-i18n="login.button">Entrar</button>

@@ -112,11 +112,11 @@ def test_buyer_actions_are_permission_based_and_preserve_legacy_tools():
     workflow_section = source[source.index("function renderPrStatusActions"):source.index("async function executePurchaseWorkflowAction")]
 
     assert "const canQuote = isBuyer || hasPermission('purchase_orders:create') || hasPermission('purchase_orders:upload')" in workflow_section
-    assert "addAction({ action: 'mark_quoted', to: 'quoted', label: 'Marcar como Cotada'" in workflow_section
-    assert "addAction({ action: 'buyer_resubmit', label: 'Reenviar ao Aprovador'" in workflow_section
-    assert "addAction({ action: 'buyer_return_to_requester', label: 'Retornar ao Requisitante'" in workflow_section
-    assert "addAction({ action: 'send_to_approver', to: 'pending_approval', label: 'Enviar ao Aprovador'" in workflow_section
-    assert "addAction({ action: 'generate_po', label: 'Gerar PO'" in workflow_section
+    assert re.search(r"addAction\(\{ action: 'mark_quoted', to: 'quoted', label: \(tr\('[^']+', 'Marcar como Cotada'", workflow_section)
+    assert re.search(r"addAction\(\{ action: 'buyer_resubmit', label: \(tr\('[^']+', 'Reenviar ao Aprovador'", workflow_section)
+    assert re.search(r"addAction\(\{ action: 'buyer_return_to_requester', label: \(tr\('[^']+', 'Retornar ao Requisitante'", workflow_section)
+    assert re.search(r"addAction\(\{ action: 'send_to_approver', to: 'pending_approval', label: \(tr\('[^']+', 'Enviar ao Aprovador'", workflow_section)
+    assert re.search(r"addAction\(\{ action: 'generate_po', label: \(tr\('[^']+', 'Gerar PO'", workflow_section)
     assert "actionKeys" in workflow_section
     # generate_po is handled directly in executePurchaseWorkflowAction (not legacy)
     handler_section = source[source.index("async function executePurchaseWorkflowAction"):]

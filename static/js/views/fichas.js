@@ -66,7 +66,7 @@
         ? `<div class="action-group">
             <select id="ficha-channel-${item.id}" name="ficha_channel_${item.id}" data-ficha-channel="${item.id}" autocomplete="off">
               <option value="whatsapp">WhatsApp</option>
-              <option value="email">E-mail</option>
+              <option value="email" data-i18n="employee.email">E-mail</option>
             </select>
             <button class="ghost" type="button" data-ficha-finalize="${item.id}">${tr('records.finalizePeriod', 'Finalizar período')}</button>
           </div>`

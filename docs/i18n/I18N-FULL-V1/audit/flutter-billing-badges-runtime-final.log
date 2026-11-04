@@ -1,0 +1,8 @@
+00:00 +0: loading /workspace/i18n-full-v1/audit/flutter_billing_badges_independent_test.dart
+00:00 +0: (setUpAll)
+00:02 +0: money rounding and BRL identity, calendar prefix without timezone shift
+00:05 +1: invoice pending filter survives EN FR switch and receipt URL stays opaque
+00:09 +2: cancellation dialog follows locale and has zero POST until explicit confirm
+00:11 +3: both typed badge families keep status colors and update all five locales
+00:12 +4: (tearDownAll)
+00:12 +4: All tests passed!

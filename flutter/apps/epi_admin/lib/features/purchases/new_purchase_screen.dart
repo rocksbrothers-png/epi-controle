@@ -6,11 +6,7 @@ import 'package:epi_admin/core/i18n/generated/app_localizations.dart';
 import '../../core/bloc/purchases_cubit.dart';
 
 class NewPurchaseScreen extends StatefulWidget {
-  const NewPurchaseScreen({
-    super.key,
-    required this.epis,
-    required this.units,
-  });
+  const NewPurchaseScreen({super.key, required this.epis, required this.units});
 
   final List<Epi> epis;
   final List<Map<String, dynamic>> units;
@@ -35,10 +31,12 @@ class _NewPurchaseScreenState extends State<NewPurchaseScreen> {
   }
 
   List<DropdownMenuItem<int>> get _unitItems => widget.units
-      .map((u) => DropdownMenuItem<int>(
-            value: u['id'] as int?,
-            child: Text(u['name'] as String? ?? ''),
-          ))
+      .map(
+        (u) => DropdownMenuItem<int>(
+          value: u['id'] as int?,
+          child: Text(u['name'] as String? ?? ''),
+        ),
+      )
       .where((item) => item.value != null)
       .toList();
 
@@ -47,125 +45,131 @@ class _NewPurchaseScreenState extends State<NewPurchaseScreen> {
     final l10n = AppLocalizations.of(context);
     return BlocProvider(
       create: (_) => PurchasesCubit(),
-      child: Builder(builder: (ctx) {
-        return Scaffold(
-          appBar: AppBar(title: Text(l10n.purchasesNew)),
-          body: BlocListener<PurchasesCubit, PurchasesState>(
-            listenWhen: (p, c) =>
-                p.successMessage != c.successMessage || p.error != c.error,
-            listener: (ctx, state) {
-              if (state.successMessage != null) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(state.successMessage!),
-                    backgroundColor: EpiColors.success,
-                  ),
-                );
-                Navigator.pop(context, true);
-              }
-              if (state.error != null) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(state.error!),
-                    backgroundColor: EpiColors.danger,
-                  ),
-                );
-              }
-            },
-            child: Form(
-              key: _formKey,
-              child: ListView(
-                padding: const EdgeInsets.all(EpiSpacing.lg),
-                children: [
-                  TextFormField(
-                    controller: _titleController,
-                    decoration: InputDecoration(
-                      labelText: l10n.purchaseTitleLabel,
-                      border: const OutlineInputBorder(),
+      child: Builder(
+        builder: (ctx) {
+          return Scaffold(
+            appBar: AppBar(title: Text(l10n.purchasesNew)),
+            body: BlocListener<PurchasesCubit, PurchasesState>(
+              listenWhen: (p, c) =>
+                  p.successMessage != c.successMessage || p.error != c.error,
+              listener: (ctx, state) {
+                if (state.successMessage != null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Builder(
+                        builder: (messageContext) => Text(
+                          AppLocalizations.of(messageContext).purchaseCreated,
+                        ),
+                      ),
+                      backgroundColor: EpiColors.success,
                     ),
-                    validator: (v) =>
-                        (v?.trim().isEmpty ?? true) ? l10n.required : null,
-                  ),
-                  const SizedBox(height: EpiSpacing.lg),
-                  if (_unitItems.isNotEmpty)
-                    DropdownButtonFormField<int>(
+                  );
+                  Navigator.pop(context, true);
+                }
+                if (state.error != null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(state.error!),
+                      backgroundColor: EpiColors.danger,
+                    ),
+                  );
+                }
+              },
+              child: Form(
+                key: _formKey,
+                child: ListView(
+                  padding: const EdgeInsets.all(EpiSpacing.lg),
+                  children: [
+                    TextFormField(
+                      controller: _titleController,
                       decoration: InputDecoration(
-                        labelText: l10n.employeeUnitLabel,
+                        labelText: l10n.purchaseTitleLabel,
                         border: const OutlineInputBorder(),
                       ),
-                      value: _selectedUnitId,
-                      items: _unitItems,
-                      onChanged: (v) => setState(() => _selectedUnitId = v),
                       validator: (v) =>
-                          v == null ? l10n.purchaseSelectUnit : null,
+                          (v?.trim().isEmpty ?? true) ? l10n.required : null,
                     ),
-                  const SizedBox(height: EpiSpacing.lg),
-                  TextFormField(
-                    controller: _notesController,
-                    decoration: InputDecoration(
-                      labelText: l10n.reportsRequestNotes,
-                      border: const OutlineInputBorder(),
-                    ),
-                    maxLines: 2,
-                  ),
-                  const SizedBox(height: EpiSpacing.xl),
-                  Row(
-                    children: [
-                      Text(
-                        l10n.purchaseItemsTitle,
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const Spacer(),
-                      TextButton.icon(
-                        onPressed: () => _addItem(context),
-                        icon: const Icon(Icons.add_rounded),
-                        label: Text(l10n.purchaseAddEpi),
-                      ),
-                    ],
-                  ),
-                  const Divider(),
-                  if (_items.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                          vertical: EpiSpacing.lg),
-                      child: Center(
-                        child: Text(
-                          l10n.purchaseNoItems,
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyMedium
-                              ?.copyWith(color: EpiColors.textMuted),
+                    const SizedBox(height: EpiSpacing.lg),
+                    if (_unitItems.isNotEmpty)
+                      DropdownButtonFormField<int>(
+                        decoration: InputDecoration(
+                          labelText: l10n.employeeUnitLabel,
+                          border: const OutlineInputBorder(),
                         ),
+                        value: _selectedUnitId,
+                        items: _unitItems,
+                        onChanged: (v) => setState(() => _selectedUnitId = v),
+                        validator: (v) =>
+                            v == null ? l10n.purchaseSelectUnit : null,
                       ),
-                    )
-                  else
-                    ..._items.asMap().entries.map(
-                          (e) => _ItemRow(
-                            item: e.value,
-                            onRemove: () =>
-                                setState(() => _items.removeAt(e.key)),
-                            onQtyChanged: (qty) =>
-                                setState(() => _items[e.key].quantity = qty),
+                    const SizedBox(height: EpiSpacing.lg),
+                    TextFormField(
+                      controller: _notesController,
+                      decoration: InputDecoration(
+                        labelText: l10n.reportsRequestNotes,
+                        border: const OutlineInputBorder(),
+                      ),
+                      maxLines: 2,
+                    ),
+                    const SizedBox(height: EpiSpacing.xl),
+                    Row(
+                      children: [
+                        Text(
+                          l10n.purchaseItemsTitle,
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const Spacer(),
+                        TextButton.icon(
+                          onPressed: () => _addItem(context),
+                          icon: const Icon(Icons.add_rounded),
+                          label: Text(l10n.purchaseAddEpi),
+                        ),
+                      ],
+                    ),
+                    const Divider(),
+                    if (_items.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: EpiSpacing.lg,
+                        ),
+                        child: Center(
+                          child: Text(
+                            l10n.purchaseNoItems,
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(color: EpiColors.textMuted),
                           ),
                         ),
-                  const SizedBox(height: EpiSpacing.xl2),
-                  BlocBuilder<PurchasesCubit, PurchasesState>(
-                    builder: (ctx, state) => EpiButton(
-                      label: l10n.purchaseCreate,
-                      onPressed:
-                          state.isSubmitting ? null : () => _submit(ctx),
-                      fullWidth: true,
-                      size: EpiButtonSize.lg,
-                      loading: state.isSubmitting,
+                      )
+                    else
+                      ..._items.asMap().entries.map(
+                        (e) => _ItemRow(
+                          item: e.value,
+                          onRemove: () =>
+                              setState(() => _items.removeAt(e.key)),
+                          onQtyChanged: (qty) =>
+                              setState(() => _items[e.key].quantity = qty),
+                        ),
+                      ),
+                    const SizedBox(height: EpiSpacing.xl2),
+                    BlocBuilder<PurchasesCubit, PurchasesState>(
+                      builder: (ctx, state) => EpiButton(
+                        label: l10n.purchaseCreate,
+                        onPressed: state.isSubmitting
+                            ? null
+                            : () => _submit(ctx),
+                        fullWidth: true,
+                        size: EpiButtonSize.lg,
+                        loading: state.isSubmitting,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: EpiSpacing.xl2),
-                ],
+                    const SizedBox(height: EpiSpacing.xl2),
+                  ],
+                ),
               ),
             ),
-          ),
-        );
-      }),
+          );
+        },
+      ),
     );
   }
 
@@ -174,8 +178,7 @@ class _NewPurchaseScreenState extends State<NewPurchaseScreen> {
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-        borderRadius:
-            BorderRadius.vertical(top: Radius.circular(EpiRadius.lg)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(EpiRadius.lg)),
       ),
       builder: (_) => _AddItemSheet(epis: widget.epis),
     );
@@ -187,22 +190,25 @@ class _NewPurchaseScreenState extends State<NewPurchaseScreen> {
     if (_items.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-            content: Text(AppLocalizations.of(context).purchaseAddAtLeastOne)),
+          content: Text(AppLocalizations.of(context).purchaseAddAtLeastOne),
+        ),
       );
       return;
     }
     ctx.read<PurchasesCubit>().createRequest(
-          unitId: _selectedUnitId!,
-          items: _items
-              .map((i) => PurchaseRequestItem(
-                    epiId: i.epiId,
-                    epiName: i.epiName,
-                    quantity: i.quantity,
-                  ))
-              .toList(),
-          title: _titleController.text.trim(),
-          notes: _notesController.text.trim(),
-        );
+      unitId: _selectedUnitId!,
+      items: _items
+          .map(
+            (i) => PurchaseRequestItem(
+              epiId: i.epiId,
+              epiName: i.epiName,
+              quantity: i.quantity,
+            ),
+          )
+          .toList(),
+      title: _titleController.text.trim(),
+      notes: _notesController.text.trim(),
+    );
   }
 }
 
@@ -233,8 +239,11 @@ class _ItemRow extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-              child: Text(item.epiName,
-                  style: Theme.of(context).textTheme.bodyMedium)),
+            child: Text(
+              item.epiName,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ),
           SizedBox(
             width: 80,
             child: TextFormField(
@@ -243,8 +252,10 @@ class _ItemRow extends StatelessWidget {
               textAlign: TextAlign.center,
               decoration: const InputDecoration(
                 isDense: true,
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 8,
+                ),
                 border: OutlineInputBorder(),
               ),
               onChanged: (v) {
@@ -254,8 +265,10 @@ class _ItemRow extends StatelessWidget {
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.delete_outline_rounded,
-                color: EpiColors.danger),
+            icon: const Icon(
+              Icons.delete_outline_rounded,
+              color: EpiColors.danger,
+            ),
             onPressed: onRemove,
           ),
         ],
@@ -287,9 +300,7 @@ class _AddItemSheetState extends State<_AddItemSheet> {
   List<Epi> get _filtered {
     if (_query.isEmpty) return widget.epis;
     final q = _query.toLowerCase();
-    return widget.epis
-        .where((e) => e.name.toLowerCase().contains(q))
-        .toList();
+    return widget.epis.where((e) => e.name.toLowerCase().contains(q)).toList();
   }
 
   @override
@@ -306,8 +317,10 @@ class _AddItemSheetState extends State<_AddItemSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(l10n.purchaseAddEpi,
-              style: Theme.of(context).textTheme.titleLarge),
+          Text(
+            l10n.purchaseAddEpi,
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
           const SizedBox(height: EpiSpacing.lg),
           TextField(
             controller: _searchController,
@@ -365,13 +378,13 @@ class _AddItemSheetState extends State<_AddItemSheet> {
             onPressed: _selected == null
                 ? null
                 : () => Navigator.pop(
-                      context,
-                      _ItemDraft(
-                        epiId: _selected!.id,
-                        epiName: _selected!.name,
-                        quantity: _qty,
-                      ),
+                    context,
+                    _ItemDraft(
+                      epiId: _selected!.id,
+                      epiName: _selected!.name,
+                      quantity: _qty,
                     ),
+                  ),
             fullWidth: true,
           ),
           const SizedBox(height: EpiSpacing.lg),

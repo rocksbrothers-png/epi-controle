@@ -149,11 +149,11 @@
     if (selected.name && selected.unit_id) {
       unitField.value = String(selected.unit_id);
       unitField.disabled = true;
-      if (hint) {hint.textContent = tr('epi.lockedByJoinventureHint', 'Unidade travada pela Joint Venture ativa: {name}.').replace('{name}', selected.name);}
+      if (hint) {hint.textContent = (globalThis.EpiI18n?.textFor?.(hint,'epi.lockedByJoinventureHint','Unidade travada pela Joint Venture ativa: {name}.', { name: selected.name }) ?? tr('epi.lockedByJoinventureHint', 'Unidade travada pela Joint Venture ativa: {name}.', { name: selected.name }));}
     } else {
       unitField.disabled = isOperationalProfile();
       if (!unitField.value && !isOperationalProfile() && canUseEpiAllUnitsScope()) {unitField.value = EPI_ALL_UNITS_VALUE;}
-      if (hint) {hint.textContent = tr('epi.noActiveJoinventureHint', 'Sem Joint Venture ou Unidade Única ativa: você pode usar "Todas as Unidades" para aprovar o EPI em nível de empresa.');}
+      if (hint) {hint.textContent = (globalThis.EpiI18n?.textFor?.(hint,'epi.noActiveJoinventureHint','Sem Joint Venture ou Unidade Única ativa: você pode usar "Todas as Unidades" para aprovar o EPI em nível de empresa.') ?? tr('epi.noActiveJoinventureHint', 'Sem Joint Venture ou Unidade Única ativa: você pode usar "Todas as Unidades" para aprovar o EPI em nível de empresa.'));}
     }
   }
 

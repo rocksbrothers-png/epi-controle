@@ -12,10 +12,10 @@
 
   // Valores técnicos estáveis (inglês) — condição vinculante do ADR-0002:
   // o rótulo em português vive só aqui, nunca é gravado na coluna.
-  var KIND_LABELS = {
-    outsourced: 'Terceirizada',
-    service_provider: 'Prestadora de Serviço',
-    other_contracted: 'Outro',
+  const KIND_LABELS = {
+    get ['outsourced']() { return (globalThis.trEpi?.('outsourcedCompany.kindOutsourced','Terceirizada',{}) ?? 'Terceirizada'); },
+    get ['service_provider']() { return (globalThis.trEpi?.('outsourcedCompany.kindServiceProvider','Prestadora de Servi\u00e7o',{}) ?? 'Prestadora de Servi\u00e7o'); },
+    get ['other_contracted']() { return (globalThis.trEpi?.('outsourcedCompany.kindOther','Outro',{}) ?? 'Outro'); },
   };
 
   function companyKindLabel(value) {

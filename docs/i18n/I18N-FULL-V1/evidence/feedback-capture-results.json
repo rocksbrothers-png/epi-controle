@@ -1,0 +1,22 @@
+{
+  "source": "Real widgets with synthetic intercepted reads and locally loaded fonts",
+  "baseline": "c1faf3a3e58c05b2656a70ea67495d1ea451923a feedback widget; imports and class names adapted for harness",
+  "sameFixture": true,
+  "writes": 0,
+  "captures": [
+    {
+      "file": "feedback-before-fr-FR-mobile.png",
+      "baselineWidget": true,
+      "locale": "fr_FR",
+      "viewport": "390x844",
+      "errors": []
+    },
+    {
+      "file": "feedback-after-fr-FR-mobile.png",
+      "baselineWidget": false,
+      "locale": "fr_FR",
+      "viewport": "390x844",
+      "errors": []
+    }
+  ]
+}

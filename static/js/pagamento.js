@@ -23,70 +23,20 @@ const API = {
   status: '/api/payments/status',
 };
 
-const I18N = {
-  pt: {
-    plan_unavailable: 'Plano indisponível no momento. Tente novamente mais tarde ou fale com o suporte.',
-    login_required: 'Faça login para assinar. Abra o checkout pelo painel administrativo (sessão autenticada).',
-    pix_instructions: 'Escaneie o QR Code ou copie o código Pix abaixo.',
-    boleto_opened: 'Boleto gerado. Abrindo em nova aba…',
-    processing: 'Processando…',
-    approved: 'Pagamento aprovado!',
-    pending: 'Pagamento pendente de confirmação.',
-    contact_sales: 'Plano sob consulta. Fale com nosso time comercial.',
-    talk_sales: 'Falar com Comercial',
-    subscribe_now: 'Assinar Agora',
-    finish_payment: 'Finalizar Pagamento',
-    per_month: '/mês', per_year: '/ano', monthly: 'Mensal', annual: 'Anual',
-    opt_monthly_title: 'Assinatura Mensal (Renovação Automática)',
-    opt_monthly_desc: 'Cobrança automática todos os meses. Cancele quando quiser pelo painel administrativo. Não há fidelidade.',
-    opt_annual_title: 'Assinatura Anual (Renovação Automática)',
-    opt_annual_desc: 'Economia em relação ao plano mensal. Renovação automática uma vez por ano. Cancele a qualquer momento antes da próxima renovação.',
-    opt_pix_title: 'PIX',
-    opt_pix_desc: 'Pagamento via PIX. A renovação não é automática. Um novo PIX será gerado na próxima cobrança.',
-    opt_boleto_title: 'Boleto Bancário',
-    opt_boleto_desc: 'Pagamento por boleto. A renovação não é automática. Um novo boleto será enviado na próxima cobrança.',
-    save_badge: 'Economize', method_card: 'Cartão', method_pix: 'PIX', method_boleto: 'Boleto',
-    manual_renew: 'Renovação manual', users_up_to: 'Até {n} usuários',
-    benefit_support: 'Suporte e atualizações inclusos', benefit_cancel: 'Cancele quando quiser, sem fidelidade',
-  },
-  en: {
-    plan_unavailable: 'Plan unavailable right now. Try again later or contact support.',
-    login_required: 'Sign in to subscribe. Open the checkout from the admin panel (authenticated session).',
-    pix_instructions: 'Scan the QR Code or copy the Pix code below.',
-    boleto_opened: 'Boleto generated. Opening in a new tab…',
-    processing: 'Processing…',
-    approved: 'Payment approved!',
-    pending: 'Payment pending confirmation.',
-    contact_sales: 'Custom plan. Talk to our sales team.',
-    talk_sales: 'Talk to Sales',
-    subscribe_now: 'Subscribe Now',
-    finish_payment: 'Complete Payment',
-    per_month: '/mo', per_year: '/yr', monthly: 'Monthly', annual: 'Annual',
-    opt_monthly_title: 'Monthly Subscription (Auto-renewal)',
-    opt_monthly_desc: 'Charged automatically every month. Cancel anytime from the admin panel. No lock-in.',
-    opt_annual_title: 'Annual Subscription (Auto-renewal)',
-    opt_annual_desc: 'Save compared to monthly. Auto-renews once a year. Cancel anytime before the next renewal.',
-    opt_pix_title: 'PIX',
-    opt_pix_desc: 'Pay via PIX. Renewal is not automatic. A new PIX is generated for the next cycle.',
-    opt_boleto_title: 'Bank Slip (Boleto)',
-    opt_boleto_desc: 'Pay via boleto. Renewal is not automatic. A new boleto is issued for the next cycle.',
-    save_badge: 'Save', method_card: 'Card', method_pix: 'PIX', method_boleto: 'Boleto',
-    manual_renew: 'Manual renewal', users_up_to: 'Up to {n} users',
-    benefit_support: 'Support and updates included', benefit_cancel: 'Cancel anytime, no lock-in',
-  },
-};
+
 
 const params = new URLSearchParams(window.location.search);
 const ctx = {
   plan: (params.get('plan') || '').trim(),
   cycle: (params.get('cycle') || 'monthly').trim().toLowerCase() === 'annual' ? 'annual' : 'monthly',
-  lang: (params.get('lang') || 'pt').trim().toLowerCase().slice(0, 2),
+  lang: globalThis.EpiI18n.SUPPORTED.find(code => code.toLowerCase() === (params.get('lang') || '').trim().toLowerCase())
+    || ({pt:'pt-BR',en:'en-GB',es:'es-ES',fr:'fr-FR',nb:'nb-NO',no:'nb-NO'})[(params.get('lang') || 'pt').trim().toLowerCase().split('-')[0]] || 'pt-BR',
 };
-const t = (key) => (I18N[ctx.lang] || I18N.pt)[key] || (I18N.pt[key] || key);
+const t = (key, vars) => globalThis.EpiI18n.t('checkout.' + key, vars);
 
 const $ = (id) => document.getElementById(id);
 const money = (value, currency = 'BRL') =>
-  new Intl.NumberFormat(ctx.lang === 'en' ? 'en-US' : 'pt-BR', { style: 'currency', currency }).format(value || 0);
+  new Intl.NumberFormat(ctx.lang, { style: 'currency', currency }).format(value || 0);
 
 let mpPublicKey = '';
 // plans[cycle] = item do catálogo do plano escolhido naquele ciclo.
@@ -157,7 +107,7 @@ function addMonths(date, months) {
 }
 
 function fmtDate(date) {
-  return new Intl.DateTimeFormat(ctx.lang === 'en' ? 'en-US' : 'pt-BR', { dateStyle: 'medium' }).format(date);
+  return new Intl.DateTimeFormat(ctx.lang, { dateStyle: 'medium' }).format(date);
 }
 
 function planLabel() {
@@ -168,7 +118,7 @@ function planLabel() {
 function benefitsFor() {
   const p = plans.monthly || plans.annual;
   const list = [];
-  if (p && p.max_users) list.push(t('users_up_to').replace('{n}', p.max_users));
+  if (p && p.max_users) list.push(t('users_up_to', {n:p.max_users, count:Number(p.max_users)}));
   list.push(t('benefit_support'));
   list.push(t('benefit_cancel'));
   return list;
@@ -253,7 +203,8 @@ function renderSummary() {
   const benefits = benefitsFor();
   $('s-benefits').innerHTML = benefits.map((b) => `<li>${b}</li>`).join('');
   $('s-total').textContent = money(selected.amount, currency);
-  $('payBtn').textContent = selected.recurring ? t('subscribe_now') : t('finish_payment');
+  const labelKey = selected.recurring ? 'subscribe_now' : 'finish_payment';
+  $('payBtn').textContent = globalThis.EpiI18n.textFor($('payBtn'), 'checkout.' + labelKey, t(labelKey));
 }
 
 function selectOption(id) {
@@ -312,7 +263,7 @@ function startStatusPolling(paymentId, resourceType) {
     if (status) $('status-line').textContent = `Status: ${status}`;
     if (['approved', 'authorized', 'cancelled', 'rejected'].includes(status)) {
       clearInterval(statusTimer);
-      if (['approved', 'authorized'].includes(status)) $('status-line').textContent = t('approved');
+      if (['approved', 'authorized'].includes(status)) $('status-line').textContent = globalThis.EpiI18n.textFor($('status-line'), 'checkout.approved', t('approved'));
     }
   }, 5000);
 }
@@ -321,7 +272,7 @@ async function mountCardBrick() {
   const container = $('cardPaymentBrick_container');
   container.innerHTML = '';
   if (!mpPublicKey || !window.MercadoPago || !selected) { showResult(t('plan_unavailable')); return; }
-  const mp = new window.MercadoPago(mpPublicKey, { locale: ctx.lang === 'en' ? 'en-US' : 'pt-BR' });
+  const mp = new window.MercadoPago(mpPublicKey, { locale: ctx.lang === 'pt-BR' ? 'pt-BR' : ctx.lang === 'es-ES' ? 'es-AR' : 'en-US' });
   const bricks = mp.bricks();
   if (cardBrickController) { await cardBrickController.unmount(); cardBrickController = null; }
   cardBrickController = await bricks.create('cardPayment', 'cardPaymentBrick_container', {
@@ -330,14 +281,14 @@ async function mountCardBrick() {
       onReady: () => {},
       onError: (error) => showResult(error),
       onSubmit: async (cardFormData) => {
-        $('status-line').textContent = t('processing');
+        $('status-line').textContent = globalThis.EpiI18n.textFor($('status-line'), 'checkout.processing', t('processing'));
         const data = await postJson(API.subscriptions, {
           ...basePayload(),
           payer_email: $('payer_email').value.trim() || (cardFormData.payer && cardFormData.payer.email),
           card_token: cardFormData.token,
         });
         showResult(data.subscription || data);
-        $('status-line').textContent = t('pending');
+        $('status-line').textContent = globalThis.EpiI18n.textFor($('status-line'), 'checkout.pending', t('pending'));
         if (data.subscription && data.subscription.subscription_id) {
           startStatusPolling(data.subscription.subscription_id, 'preapproval');
         }
@@ -347,7 +298,7 @@ async function mountCardBrick() {
 }
 
 async function payPix() {
-  $('status-line').textContent = t('processing');
+  $('status-line').textContent = globalThis.EpiI18n.textFor($('status-line'), 'checkout.processing', t('processing'));
   const data = await postJson(API.pix, basePayload());
   showResult(data.payment || data);
   showPixQr(data.payment || {});
@@ -355,11 +306,11 @@ async function payPix() {
 }
 
 async function payBoleto() {
-  $('status-line').textContent = t('processing');
+  $('status-line').textContent = globalThis.EpiI18n.textFor($('status-line'), 'checkout.processing', t('processing'));
   const data = await postJson(API.boleto, basePayload());
   showResult(data.payment || data);
   if (data.payment && data.payment.ticket_url) {
-    $('status-line').textContent = t('boleto_opened');
+    $('status-line').textContent = globalThis.EpiI18n.textFor($('status-line'), 'checkout.boleto_opened', t('boleto_opened'));
     window.open(data.payment.ticket_url, '_blank');
   }
   if (data.payment && data.payment.payment_id) startStatusPolling(data.payment.payment_id, 'payment');
@@ -371,7 +322,7 @@ async function onPay() {
     if (selected.method === 'pix') await payPix();
     else if (selected.method === 'boleto') await payBoleto();
     // Cartão é submetido pelo Brick (onSubmit); o botão apenas reforça a ação.
-    else $('status-line').textContent = t('processing');
+    else $('status-line').textContent = globalThis.EpiI18n.textFor($('status-line'), 'checkout.processing', t('processing'));
   } catch (err) {
     showResult(String(err));
   }
@@ -387,7 +338,7 @@ function renderContactOnly() {
   $('methods-card').hidden = true;
   $('card-fields').hidden = true;
   $('summary-body').innerHTML = `<p>${t('contact_sales')}</p>`;
-  $('payBtn').textContent = t('talk_sales');
+  $('payBtn').textContent = globalThis.EpiI18n.textFor($('payBtn'), 'checkout.talk_sales', t('talk_sales'));
   $('payBtn').onclick = () => { window.location.href = (window.WEB_BASE_URL || '') + '/#contato'; };
 }
 
@@ -399,6 +350,15 @@ function pickFromCatalog(catalog) {
 }
 
 async function init() {
+  ctx.lang = await globalThis.EpiI18n.setLang(ctx.lang, {persist:false});
+  if (globalThis.EpiI18n.loadError) {
+    const notice = document.createElement('p');
+    notice.setAttribute('role', 'alert');
+    notice.className = 'result';
+    notice.textContent = globalThis.trEpi('i18n.languageLoadFailed','Não foi possível carregar o idioma. Tente novamente.');
+    document.querySelector('.checkout').prepend(notice);
+    if (!Object.keys(globalThis.EpiI18n.translations).length) return;
+  }
   $('plan-name').textContent = ctx.plan || '—';
   const [config, monthlyResp, annualResp] = await Promise.all([
     getJson(API.config),
@@ -423,5 +383,20 @@ async function init() {
   $('payBtn').addEventListener('click', onPay);
   selectOption(preferred.id);
 }
+
+// Atualização apenas visual: conservar a seleção, a chave de idempotência e
+// os dados do cartão mantidos pelo componente do provedor.
+window.addEventListener('epi:langchange', () => {
+  ctx.lang = globalThis.EpiI18n.lang;
+  const any = plans.monthly || plans.annual;
+  if (!any) return;
+  if (any.contact_only) {renderContactOnly();return;}
+  if (!options.length) {renderUnavailable();return;}
+  const selectedId = selected?.id;
+  options = buildOptions();
+  selected = options.find(option => option.id === selectedId) || null;
+  renderOptions();
+  renderSummary();
+});
 
 init().catch((e) => showResult(String(e)));

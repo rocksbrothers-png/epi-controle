@@ -1,0 +1,1927 @@
+{
+  "baseline": "9add739e13d58d9fcd9d9cdce90db22b9c573192",
+  "isolated_apis": true,
+  "failures": 26,
+  "results": [
+    {
+      "locale": "pt-BR",
+      "checks": [
+        {
+          "name": "registered_label",
+          "passed": true,
+          "actual": "API REST/JSON genérica (v1)",
+          "expected": "API REST/JSON genérica (v1)"
+        },
+        {
+          "name": "unknown_label_opaque",
+          "passed": true,
+          "actual": "Loja original <img src=x onerror=window.__xss=1>",
+          "expected": "Loja original <img src=x onerror=window.__xss=1>"
+        },
+        {
+          "name": "nested_error",
+          "passed": true,
+          "actual": "Teste da integração falhou: Loja respondeu HTTP 429 em /catalog.",
+          "expected": "Teste da integração falhou: Loja respondeu HTTP 429 em /catalog."
+        },
+        {
+          "name": "live_nested_error",
+          "passed": false,
+          "actual": "Teste da integração falhou: Loja respondeu HTTP 429 em /catalog.",
+          "expected": "Échec du test de connexion : La boutique a renvoyé HTTP 429 sur /catalog."
+        },
+        {
+          "name": "live_registered_label",
+          "passed": false,
+          "actual": "API REST/JSON genérica (v1)",
+          "expected": "API REST/JSON générique (v1)"
+        },
+        {
+          "name": "selected_key_preserved",
+          "passed": true,
+          "actual": "http_json_v1",
+          "expected": "http_json_v1"
+        },
+        {
+          "name": "active_preserved",
+          "passed": true,
+          "actual": "1",
+          "expected": "1"
+        },
+        {
+          "name": "draft_preserved",
+          "passed": true,
+          "actual": "{\"base_url\":\"https://fixture.invalid\",\"note\":\"Observação original\"}",
+          "expected": "{\"base_url\":\"https://fixture.invalid\",\"note\":\"Observação original\"}"
+        },
+        {
+          "name": "locale_has_no_business_requests",
+          "passed": true,
+          "actual": 3,
+          "expected": 3
+        },
+        {
+          "name": "test_contract",
+          "passed": true,
+          "actual": {
+            "path": "/api/authorized-suppliers/41/integration/test",
+            "method": "POST",
+            "body": {
+              "actor_user_id": 7
+            },
+            "language": "pt-BR",
+            "authenticated": true
+          },
+          "expected": {
+            "path": "/api/authorized-suppliers/41/integration/test",
+            "method": "POST",
+            "body": {
+              "actor_user_id": 7
+            },
+            "language": "pt-BR",
+            "authenticated": true
+          }
+        },
+        {
+          "name": "save_contract",
+          "passed": true,
+          "actual": {
+            "path": "/api/authorized-suppliers/41/integration",
+            "method": "POST",
+            "body": {
+              "actor_user_id": 7,
+              "connector_key": "http_json_v1",
+              "active": true,
+              "config": {
+                "base_url": "https://fixture.invalid",
+                "note": "Observação original"
+              }
+            },
+            "language": "fr-FR",
+            "authenticated": true
+          },
+          "expected": {
+            "path": "/api/authorized-suppliers/41/integration",
+            "method": "POST",
+            "body": {
+              "actor_user_id": 7,
+              "connector_key": "http_json_v1",
+              "active": true,
+              "config": {
+                "base_url": "https://fixture.invalid",
+                "note": "Observação original"
+              }
+            },
+            "language": "fr-FR",
+            "authenticated": true
+          }
+        },
+        {
+          "name": "opaque_cause_preserved",
+          "passed": true,
+          "actual": true,
+          "expected": true
+        },
+        {
+          "name": "opaque_cause_translated_wrapper",
+          "passed": false,
+          "actual": "Teste da integração falhou: Diagnóstico externo original <img src=x onerror=window.__xss=1>",
+          "expected": "Échec du test de connexion : Diagnóstico externo original <img src=x onerror=window.__xss=1>"
+        },
+        {
+          "name": "opaque_cause_live_wrapper",
+          "passed": true,
+          "actual": "Teste da integração falhou: Diagnóstico externo original <img src=x onerror=window.__xss=1>",
+          "expected": "Teste da integração falhou: Diagnóstico externo original <img src=x onerror=window.__xss=1>"
+        },
+        {
+          "name": "unknown_cause_live_and_inert",
+          "passed": true,
+          "actual": 0,
+          "expected": 0
+        },
+        {
+          "name": "no_markup_executed",
+          "passed": true,
+          "actual": 0,
+          "expected": 0
+        },
+        {
+          "name": "no_repeat_submission",
+          "passed": true,
+          "actual": 4,
+          "expected": 4
+        },
+        {
+          "name": "no_horizontal_overflow",
+          "passed": true,
+          "actual": true,
+          "expected": true
+        },
+        {
+          "name": "no_javascript_errors",
+          "passed": true,
+          "actual": [],
+          "expected": []
+        },
+        {
+          "name": "invalid_json_has_no_request",
+          "passed": true,
+          "actual": 4,
+          "expected": 4
+        },
+        {
+          "name": "invalid_json_draft_preserved",
+          "passed": true,
+          "actual": "{invalid",
+          "expected": "{invalid"
+        },
+        {
+          "name": "explicit_save_count_''",
+          "passed": true,
+          "actual": 5,
+          "expected": 5
+        },
+        {
+          "name": "saved_config_''",
+          "passed": true,
+          "actual": {
+            "actor_user_id": 7,
+            "connector_key": "http_json_v1",
+            "active": true
+          },
+          "expected": {
+            "actor_user_id": 7,
+            "connector_key": "http_json_v1",
+            "active": true
+          }
+        },
+        {
+          "name": "explicit_save_count_'{}'",
+          "passed": true,
+          "actual": 6,
+          "expected": 6
+        },
+        {
+          "name": "saved_config_'{}'",
+          "passed": true,
+          "actual": {
+            "actor_user_id": 7,
+            "connector_key": "http_json_v1",
+            "active": true,
+            "config": {}
+          },
+          "expected": {
+            "actor_user_id": 7,
+            "connector_key": "http_json_v1",
+            "active": true,
+            "config": {}
+          }
+        },
+        {
+          "name": "custom_option_opaque_{'key': 'http_json_v1', 'label': 'Custom original'}",
+          "passed": true,
+          "actual": "Custom original",
+          "expected": "Custom original"
+        },
+        {
+          "name": "custom_option_live_opaque_{'key': 'http_json_v1', 'label': 'Custom original'}",
+          "passed": true,
+          "actual": "Custom original",
+          "expected": "Custom original"
+        },
+        {
+          "name": "custom_option_opaque_{'key': 'http_json_v1', 'label': 'API REST/JSON genérica (v1) '}",
+          "passed": true,
+          "actual": "API REST/JSON genérica (v1) ",
+          "expected": "API REST/JSON genérica (v1) "
+        },
+        {
+          "name": "custom_option_live_opaque_{'key': 'http_json_v1', 'label': 'API REST/JSON genérica (v1) '}",
+          "passed": true,
+          "actual": "API REST/JSON genérica (v1) ",
+          "expected": "API REST/JSON genérica (v1) "
+        },
+        {
+          "name": "custom_option_opaque_{'key': 'custom', 'label': 'API REST/JSON genérica (v1)'}",
+          "passed": true,
+          "actual": "API REST/JSON genérica (v1)",
+          "expected": "API REST/JSON genérica (v1)"
+        },
+        {
+          "name": "custom_option_live_opaque_{'key': 'custom', 'label': 'API REST/JSON genérica (v1)'}",
+          "passed": true,
+          "actual": "API REST/JSON genérica (v1)",
+          "expected": "API REST/JSON genérica (v1)"
+        },
+        {
+          "name": "custom_option_opaque_{'key': '__proto__', 'label': 'API REST/JSON genérica (v1)'}",
+          "passed": true,
+          "actual": "API REST/JSON genérica (v1)",
+          "expected": "API REST/JSON genérica (v1)"
+        },
+        {
+          "name": "custom_option_live_opaque_{'key': '__proto__', 'label': 'API REST/JSON genérica (v1)'}",
+          "passed": true,
+          "actual": "API REST/JSON genérica (v1)",
+          "expected": "API REST/JSON genérica (v1)"
+        }
+      ],
+      "calls": [
+        {
+          "path": "/api/supplier-connectors",
+          "method": "GET",
+          "body": null,
+          "language": "pt-BR",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration",
+          "method": "GET",
+          "body": null,
+          "language": "pt-BR",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration/test",
+          "method": "POST",
+          "body": {
+            "actor_user_id": 7
+          },
+          "language": "pt-BR",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration",
+          "method": "POST",
+          "body": {
+            "actor_user_id": 7,
+            "connector_key": "http_json_v1",
+            "active": true,
+            "config": {
+              "base_url": "https://fixture.invalid",
+              "note": "Observação original"
+            }
+          },
+          "language": "fr-FR",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration",
+          "method": "POST",
+          "body": {
+            "actor_user_id": 7,
+            "connector_key": "http_json_v1",
+            "active": true
+          },
+          "language": "pt-BR",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration",
+          "method": "POST",
+          "body": {
+            "actor_user_id": 7,
+            "connector_key": "http_json_v1",
+            "active": true,
+            "config": {}
+          },
+          "language": "pt-BR",
+          "authenticated": true
+        },
+        {
+          "path": "/api/supplier-connectors",
+          "method": "GET",
+          "body": null,
+          "language": "pt-BR",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration",
+          "method": "GET",
+          "body": null,
+          "language": "pt-BR",
+          "authenticated": true
+        },
+        {
+          "path": "/api/supplier-connectors",
+          "method": "GET",
+          "body": null,
+          "language": "pt-BR",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration",
+          "method": "GET",
+          "body": null,
+          "language": "pt-BR",
+          "authenticated": true
+        },
+        {
+          "path": "/api/supplier-connectors",
+          "method": "GET",
+          "body": null,
+          "language": "pt-BR",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration",
+          "method": "GET",
+          "body": null,
+          "language": "pt-BR",
+          "authenticated": true
+        },
+        {
+          "path": "/api/supplier-connectors",
+          "method": "GET",
+          "body": null,
+          "language": "pt-BR",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration",
+          "method": "GET",
+          "body": null,
+          "language": "pt-BR",
+          "authenticated": true
+        }
+      ]
+    },
+    {
+      "locale": "en-GB",
+      "checks": [
+        {
+          "name": "registered_label",
+          "passed": false,
+          "actual": "API REST/JSON genérica (v1)",
+          "expected": "Generic REST/JSON API (v1)"
+        },
+        {
+          "name": "unknown_label_opaque",
+          "passed": true,
+          "actual": "Loja original <img src=x onerror=window.__xss=1>",
+          "expected": "Loja original <img src=x onerror=window.__xss=1>"
+        },
+        {
+          "name": "nested_error",
+          "passed": false,
+          "actual": "Teste da integração falhou: Loja respondeu HTTP 429 em /catalog.",
+          "expected": "Integration test failed: Store returned HTTP 429 at /catalog."
+        },
+        {
+          "name": "live_nested_error",
+          "passed": false,
+          "actual": "Teste da integração falhou: Loja respondeu HTTP 429 em /catalog.",
+          "expected": "Échec du test de connexion : La boutique a renvoyé HTTP 429 sur /catalog."
+        },
+        {
+          "name": "live_registered_label",
+          "passed": false,
+          "actual": "API REST/JSON genérica (v1)",
+          "expected": "API REST/JSON générique (v1)"
+        },
+        {
+          "name": "selected_key_preserved",
+          "passed": true,
+          "actual": "http_json_v1",
+          "expected": "http_json_v1"
+        },
+        {
+          "name": "active_preserved",
+          "passed": true,
+          "actual": "1",
+          "expected": "1"
+        },
+        {
+          "name": "draft_preserved",
+          "passed": true,
+          "actual": "{\"base_url\":\"https://fixture.invalid\",\"note\":\"Observação original\"}",
+          "expected": "{\"base_url\":\"https://fixture.invalid\",\"note\":\"Observação original\"}"
+        },
+        {
+          "name": "locale_has_no_business_requests",
+          "passed": true,
+          "actual": 3,
+          "expected": 3
+        },
+        {
+          "name": "test_contract",
+          "passed": true,
+          "actual": {
+            "path": "/api/authorized-suppliers/41/integration/test",
+            "method": "POST",
+            "body": {
+              "actor_user_id": 7
+            },
+            "language": "en-GB",
+            "authenticated": true
+          },
+          "expected": {
+            "path": "/api/authorized-suppliers/41/integration/test",
+            "method": "POST",
+            "body": {
+              "actor_user_id": 7
+            },
+            "language": "en-GB",
+            "authenticated": true
+          }
+        },
+        {
+          "name": "save_contract",
+          "passed": true,
+          "actual": {
+            "path": "/api/authorized-suppliers/41/integration",
+            "method": "POST",
+            "body": {
+              "actor_user_id": 7,
+              "connector_key": "http_json_v1",
+              "active": true,
+              "config": {
+                "base_url": "https://fixture.invalid",
+                "note": "Observação original"
+              }
+            },
+            "language": "fr-FR",
+            "authenticated": true
+          },
+          "expected": {
+            "path": "/api/authorized-suppliers/41/integration",
+            "method": "POST",
+            "body": {
+              "actor_user_id": 7,
+              "connector_key": "http_json_v1",
+              "active": true,
+              "config": {
+                "base_url": "https://fixture.invalid",
+                "note": "Observação original"
+              }
+            },
+            "language": "fr-FR",
+            "authenticated": true
+          }
+        },
+        {
+          "name": "opaque_cause_preserved",
+          "passed": true,
+          "actual": true,
+          "expected": true
+        },
+        {
+          "name": "opaque_cause_translated_wrapper",
+          "passed": false,
+          "actual": "Teste da integração falhou: Diagnóstico externo original <img src=x onerror=window.__xss=1>",
+          "expected": "Échec du test de connexion : Diagnóstico externo original <img src=x onerror=window.__xss=1>"
+        },
+        {
+          "name": "opaque_cause_live_wrapper",
+          "passed": false,
+          "actual": "Teste da integração falhou: Diagnóstico externo original <img src=x onerror=window.__xss=1>",
+          "expected": "Integration test failed: Diagnóstico externo original <img src=x onerror=window.__xss=1>"
+        },
+        {
+          "name": "unknown_cause_live_and_inert",
+          "passed": true,
+          "actual": 0,
+          "expected": 0
+        },
+        {
+          "name": "no_markup_executed",
+          "passed": true,
+          "actual": 0,
+          "expected": 0
+        },
+        {
+          "name": "no_repeat_submission",
+          "passed": true,
+          "actual": 4,
+          "expected": 4
+        },
+        {
+          "name": "no_horizontal_overflow",
+          "passed": true,
+          "actual": true,
+          "expected": true
+        },
+        {
+          "name": "no_javascript_errors",
+          "passed": true,
+          "actual": [],
+          "expected": []
+        },
+        {
+          "name": "invalid_json_has_no_request",
+          "passed": true,
+          "actual": 4,
+          "expected": 4
+        },
+        {
+          "name": "invalid_json_draft_preserved",
+          "passed": true,
+          "actual": "{invalid",
+          "expected": "{invalid"
+        },
+        {
+          "name": "explicit_save_count_''",
+          "passed": true,
+          "actual": 5,
+          "expected": 5
+        },
+        {
+          "name": "saved_config_''",
+          "passed": true,
+          "actual": {
+            "actor_user_id": 7,
+            "connector_key": "http_json_v1",
+            "active": true
+          },
+          "expected": {
+            "actor_user_id": 7,
+            "connector_key": "http_json_v1",
+            "active": true
+          }
+        },
+        {
+          "name": "explicit_save_count_'{}'",
+          "passed": true,
+          "actual": 6,
+          "expected": 6
+        },
+        {
+          "name": "saved_config_'{}'",
+          "passed": true,
+          "actual": {
+            "actor_user_id": 7,
+            "connector_key": "http_json_v1",
+            "active": true,
+            "config": {}
+          },
+          "expected": {
+            "actor_user_id": 7,
+            "connector_key": "http_json_v1",
+            "active": true,
+            "config": {}
+          }
+        },
+        {
+          "name": "custom_option_opaque_{'key': 'http_json_v1', 'label': 'Custom original'}",
+          "passed": true,
+          "actual": "Custom original",
+          "expected": "Custom original"
+        },
+        {
+          "name": "custom_option_live_opaque_{'key': 'http_json_v1', 'label': 'Custom original'}",
+          "passed": true,
+          "actual": "Custom original",
+          "expected": "Custom original"
+        },
+        {
+          "name": "custom_option_opaque_{'key': 'http_json_v1', 'label': 'API REST/JSON genérica (v1) '}",
+          "passed": true,
+          "actual": "API REST/JSON genérica (v1) ",
+          "expected": "API REST/JSON genérica (v1) "
+        },
+        {
+          "name": "custom_option_live_opaque_{'key': 'http_json_v1', 'label': 'API REST/JSON genérica (v1) '}",
+          "passed": true,
+          "actual": "API REST/JSON genérica (v1) ",
+          "expected": "API REST/JSON genérica (v1) "
+        },
+        {
+          "name": "custom_option_opaque_{'key': 'custom', 'label': 'API REST/JSON genérica (v1)'}",
+          "passed": true,
+          "actual": "API REST/JSON genérica (v1)",
+          "expected": "API REST/JSON genérica (v1)"
+        },
+        {
+          "name": "custom_option_live_opaque_{'key': 'custom', 'label': 'API REST/JSON genérica (v1)'}",
+          "passed": true,
+          "actual": "API REST/JSON genérica (v1)",
+          "expected": "API REST/JSON genérica (v1)"
+        },
+        {
+          "name": "custom_option_opaque_{'key': '__proto__', 'label': 'API REST/JSON genérica (v1)'}",
+          "passed": true,
+          "actual": "API REST/JSON genérica (v1)",
+          "expected": "API REST/JSON genérica (v1)"
+        },
+        {
+          "name": "custom_option_live_opaque_{'key': '__proto__', 'label': 'API REST/JSON genérica (v1)'}",
+          "passed": true,
+          "actual": "API REST/JSON genérica (v1)",
+          "expected": "API REST/JSON genérica (v1)"
+        }
+      ],
+      "calls": [
+        {
+          "path": "/api/supplier-connectors",
+          "method": "GET",
+          "body": null,
+          "language": "en-GB",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration",
+          "method": "GET",
+          "body": null,
+          "language": "en-GB",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration/test",
+          "method": "POST",
+          "body": {
+            "actor_user_id": 7
+          },
+          "language": "en-GB",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration",
+          "method": "POST",
+          "body": {
+            "actor_user_id": 7,
+            "connector_key": "http_json_v1",
+            "active": true,
+            "config": {
+              "base_url": "https://fixture.invalid",
+              "note": "Observação original"
+            }
+          },
+          "language": "fr-FR",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration",
+          "method": "POST",
+          "body": {
+            "actor_user_id": 7,
+            "connector_key": "http_json_v1",
+            "active": true
+          },
+          "language": "en-GB",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration",
+          "method": "POST",
+          "body": {
+            "actor_user_id": 7,
+            "connector_key": "http_json_v1",
+            "active": true,
+            "config": {}
+          },
+          "language": "en-GB",
+          "authenticated": true
+        },
+        {
+          "path": "/api/supplier-connectors",
+          "method": "GET",
+          "body": null,
+          "language": "en-GB",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration",
+          "method": "GET",
+          "body": null,
+          "language": "en-GB",
+          "authenticated": true
+        },
+        {
+          "path": "/api/supplier-connectors",
+          "method": "GET",
+          "body": null,
+          "language": "en-GB",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration",
+          "method": "GET",
+          "body": null,
+          "language": "en-GB",
+          "authenticated": true
+        },
+        {
+          "path": "/api/supplier-connectors",
+          "method": "GET",
+          "body": null,
+          "language": "en-GB",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration",
+          "method": "GET",
+          "body": null,
+          "language": "en-GB",
+          "authenticated": true
+        },
+        {
+          "path": "/api/supplier-connectors",
+          "method": "GET",
+          "body": null,
+          "language": "en-GB",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration",
+          "method": "GET",
+          "body": null,
+          "language": "en-GB",
+          "authenticated": true
+        }
+      ]
+    },
+    {
+      "locale": "es-ES",
+      "checks": [
+        {
+          "name": "registered_label",
+          "passed": true,
+          "actual": "API REST/JSON genérica (v1)",
+          "expected": "API REST/JSON genérica (v1)"
+        },
+        {
+          "name": "unknown_label_opaque",
+          "passed": true,
+          "actual": "Loja original <img src=x onerror=window.__xss=1>",
+          "expected": "Loja original <img src=x onerror=window.__xss=1>"
+        },
+        {
+          "name": "nested_error",
+          "passed": false,
+          "actual": "Teste da integração falhou: Loja respondeu HTTP 429 em /catalog.",
+          "expected": "Falló la prueba de integración: La tienda respondió HTTP 429 en /catalog."
+        },
+        {
+          "name": "live_nested_error",
+          "passed": false,
+          "actual": "Teste da integração falhou: Loja respondeu HTTP 429 em /catalog.",
+          "expected": "Échec du test de connexion : La boutique a renvoyé HTTP 429 sur /catalog."
+        },
+        {
+          "name": "live_registered_label",
+          "passed": false,
+          "actual": "API REST/JSON genérica (v1)",
+          "expected": "API REST/JSON générique (v1)"
+        },
+        {
+          "name": "selected_key_preserved",
+          "passed": true,
+          "actual": "http_json_v1",
+          "expected": "http_json_v1"
+        },
+        {
+          "name": "active_preserved",
+          "passed": true,
+          "actual": "1",
+          "expected": "1"
+        },
+        {
+          "name": "draft_preserved",
+          "passed": true,
+          "actual": "{\"base_url\":\"https://fixture.invalid\",\"note\":\"Observação original\"}",
+          "expected": "{\"base_url\":\"https://fixture.invalid\",\"note\":\"Observação original\"}"
+        },
+        {
+          "name": "locale_has_no_business_requests",
+          "passed": true,
+          "actual": 3,
+          "expected": 3
+        },
+        {
+          "name": "test_contract",
+          "passed": true,
+          "actual": {
+            "path": "/api/authorized-suppliers/41/integration/test",
+            "method": "POST",
+            "body": {
+              "actor_user_id": 7
+            },
+            "language": "es-ES",
+            "authenticated": true
+          },
+          "expected": {
+            "path": "/api/authorized-suppliers/41/integration/test",
+            "method": "POST",
+            "body": {
+              "actor_user_id": 7
+            },
+            "language": "es-ES",
+            "authenticated": true
+          }
+        },
+        {
+          "name": "save_contract",
+          "passed": true,
+          "actual": {
+            "path": "/api/authorized-suppliers/41/integration",
+            "method": "POST",
+            "body": {
+              "actor_user_id": 7,
+              "connector_key": "http_json_v1",
+              "active": true,
+              "config": {
+                "base_url": "https://fixture.invalid",
+                "note": "Observação original"
+              }
+            },
+            "language": "fr-FR",
+            "authenticated": true
+          },
+          "expected": {
+            "path": "/api/authorized-suppliers/41/integration",
+            "method": "POST",
+            "body": {
+              "actor_user_id": 7,
+              "connector_key": "http_json_v1",
+              "active": true,
+              "config": {
+                "base_url": "https://fixture.invalid",
+                "note": "Observação original"
+              }
+            },
+            "language": "fr-FR",
+            "authenticated": true
+          }
+        },
+        {
+          "name": "opaque_cause_preserved",
+          "passed": true,
+          "actual": true,
+          "expected": true
+        },
+        {
+          "name": "opaque_cause_translated_wrapper",
+          "passed": false,
+          "actual": "Teste da integração falhou: Diagnóstico externo original <img src=x onerror=window.__xss=1>",
+          "expected": "Échec du test de connexion : Diagnóstico externo original <img src=x onerror=window.__xss=1>"
+        },
+        {
+          "name": "opaque_cause_live_wrapper",
+          "passed": false,
+          "actual": "Teste da integração falhou: Diagnóstico externo original <img src=x onerror=window.__xss=1>",
+          "expected": "Falló la prueba de integración: Diagnóstico externo original <img src=x onerror=window.__xss=1>"
+        },
+        {
+          "name": "unknown_cause_live_and_inert",
+          "passed": true,
+          "actual": 0,
+          "expected": 0
+        },
+        {
+          "name": "no_markup_executed",
+          "passed": true,
+          "actual": 0,
+          "expected": 0
+        },
+        {
+          "name": "no_repeat_submission",
+          "passed": true,
+          "actual": 4,
+          "expected": 4
+        },
+        {
+          "name": "no_horizontal_overflow",
+          "passed": true,
+          "actual": true,
+          "expected": true
+        },
+        {
+          "name": "no_javascript_errors",
+          "passed": true,
+          "actual": [],
+          "expected": []
+        },
+        {
+          "name": "invalid_json_has_no_request",
+          "passed": true,
+          "actual": 4,
+          "expected": 4
+        },
+        {
+          "name": "invalid_json_draft_preserved",
+          "passed": true,
+          "actual": "{invalid",
+          "expected": "{invalid"
+        },
+        {
+          "name": "explicit_save_count_''",
+          "passed": true,
+          "actual": 5,
+          "expected": 5
+        },
+        {
+          "name": "saved_config_''",
+          "passed": true,
+          "actual": {
+            "actor_user_id": 7,
+            "connector_key": "http_json_v1",
+            "active": true
+          },
+          "expected": {
+            "actor_user_id": 7,
+            "connector_key": "http_json_v1",
+            "active": true
+          }
+        },
+        {
+          "name": "explicit_save_count_'{}'",
+          "passed": true,
+          "actual": 6,
+          "expected": 6
+        },
+        {
+          "name": "saved_config_'{}'",
+          "passed": true,
+          "actual": {
+            "actor_user_id": 7,
+            "connector_key": "http_json_v1",
+            "active": true,
+            "config": {}
+          },
+          "expected": {
+            "actor_user_id": 7,
+            "connector_key": "http_json_v1",
+            "active": true,
+            "config": {}
+          }
+        },
+        {
+          "name": "custom_option_opaque_{'key': 'http_json_v1', 'label': 'Custom original'}",
+          "passed": true,
+          "actual": "Custom original",
+          "expected": "Custom original"
+        },
+        {
+          "name": "custom_option_live_opaque_{'key': 'http_json_v1', 'label': 'Custom original'}",
+          "passed": true,
+          "actual": "Custom original",
+          "expected": "Custom original"
+        },
+        {
+          "name": "custom_option_opaque_{'key': 'http_json_v1', 'label': 'API REST/JSON genérica (v1) '}",
+          "passed": true,
+          "actual": "API REST/JSON genérica (v1) ",
+          "expected": "API REST/JSON genérica (v1) "
+        },
+        {
+          "name": "custom_option_live_opaque_{'key': 'http_json_v1', 'label': 'API REST/JSON genérica (v1) '}",
+          "passed": true,
+          "actual": "API REST/JSON genérica (v1) ",
+          "expected": "API REST/JSON genérica (v1) "
+        },
+        {
+          "name": "custom_option_opaque_{'key': 'custom', 'label': 'API REST/JSON genérica (v1)'}",
+          "passed": true,
+          "actual": "API REST/JSON genérica (v1)",
+          "expected": "API REST/JSON genérica (v1)"
+        },
+        {
+          "name": "custom_option_live_opaque_{'key': 'custom', 'label': 'API REST/JSON genérica (v1)'}",
+          "passed": true,
+          "actual": "API REST/JSON genérica (v1)",
+          "expected": "API REST/JSON genérica (v1)"
+        },
+        {
+          "name": "custom_option_opaque_{'key': '__proto__', 'label': 'API REST/JSON genérica (v1)'}",
+          "passed": true,
+          "actual": "API REST/JSON genérica (v1)",
+          "expected": "API REST/JSON genérica (v1)"
+        },
+        {
+          "name": "custom_option_live_opaque_{'key': '__proto__', 'label': 'API REST/JSON genérica (v1)'}",
+          "passed": true,
+          "actual": "API REST/JSON genérica (v1)",
+          "expected": "API REST/JSON genérica (v1)"
+        }
+      ],
+      "calls": [
+        {
+          "path": "/api/supplier-connectors",
+          "method": "GET",
+          "body": null,
+          "language": "es-ES",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration",
+          "method": "GET",
+          "body": null,
+          "language": "es-ES",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration/test",
+          "method": "POST",
+          "body": {
+            "actor_user_id": 7
+          },
+          "language": "es-ES",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration",
+          "method": "POST",
+          "body": {
+            "actor_user_id": 7,
+            "connector_key": "http_json_v1",
+            "active": true,
+            "config": {
+              "base_url": "https://fixture.invalid",
+              "note": "Observação original"
+            }
+          },
+          "language": "fr-FR",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration",
+          "method": "POST",
+          "body": {
+            "actor_user_id": 7,
+            "connector_key": "http_json_v1",
+            "active": true
+          },
+          "language": "es-ES",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration",
+          "method": "POST",
+          "body": {
+            "actor_user_id": 7,
+            "connector_key": "http_json_v1",
+            "active": true,
+            "config": {}
+          },
+          "language": "es-ES",
+          "authenticated": true
+        },
+        {
+          "path": "/api/supplier-connectors",
+          "method": "GET",
+          "body": null,
+          "language": "es-ES",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration",
+          "method": "GET",
+          "body": null,
+          "language": "es-ES",
+          "authenticated": true
+        },
+        {
+          "path": "/api/supplier-connectors",
+          "method": "GET",
+          "body": null,
+          "language": "es-ES",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration",
+          "method": "GET",
+          "body": null,
+          "language": "es-ES",
+          "authenticated": true
+        },
+        {
+          "path": "/api/supplier-connectors",
+          "method": "GET",
+          "body": null,
+          "language": "es-ES",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration",
+          "method": "GET",
+          "body": null,
+          "language": "es-ES",
+          "authenticated": true
+        },
+        {
+          "path": "/api/supplier-connectors",
+          "method": "GET",
+          "body": null,
+          "language": "es-ES",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration",
+          "method": "GET",
+          "body": null,
+          "language": "es-ES",
+          "authenticated": true
+        }
+      ]
+    },
+    {
+      "locale": "fr-FR",
+      "checks": [
+        {
+          "name": "registered_label",
+          "passed": false,
+          "actual": "API REST/JSON genérica (v1)",
+          "expected": "API REST/JSON générique (v1)"
+        },
+        {
+          "name": "unknown_label_opaque",
+          "passed": true,
+          "actual": "Loja original <img src=x onerror=window.__xss=1>",
+          "expected": "Loja original <img src=x onerror=window.__xss=1>"
+        },
+        {
+          "name": "nested_error",
+          "passed": false,
+          "actual": "Teste da integração falhou: Loja respondeu HTTP 429 em /catalog.",
+          "expected": "Échec du test de connexion : La boutique a renvoyé HTTP 429 sur /catalog."
+        },
+        {
+          "name": "live_nested_error",
+          "passed": false,
+          "actual": "Teste da integração falhou: Loja respondeu HTTP 429 em /catalog.",
+          "expected": "Integration test failed: Store returned HTTP 429 at /catalog."
+        },
+        {
+          "name": "live_registered_label",
+          "passed": false,
+          "actual": "API REST/JSON genérica (v1)",
+          "expected": "Generic REST/JSON API (v1)"
+        },
+        {
+          "name": "selected_key_preserved",
+          "passed": true,
+          "actual": "http_json_v1",
+          "expected": "http_json_v1"
+        },
+        {
+          "name": "active_preserved",
+          "passed": true,
+          "actual": "1",
+          "expected": "1"
+        },
+        {
+          "name": "draft_preserved",
+          "passed": true,
+          "actual": "{\"base_url\":\"https://fixture.invalid\",\"note\":\"Observação original\"}",
+          "expected": "{\"base_url\":\"https://fixture.invalid\",\"note\":\"Observação original\"}"
+        },
+        {
+          "name": "locale_has_no_business_requests",
+          "passed": true,
+          "actual": 3,
+          "expected": 3
+        },
+        {
+          "name": "test_contract",
+          "passed": true,
+          "actual": {
+            "path": "/api/authorized-suppliers/41/integration/test",
+            "method": "POST",
+            "body": {
+              "actor_user_id": 7
+            },
+            "language": "fr-FR",
+            "authenticated": true
+          },
+          "expected": {
+            "path": "/api/authorized-suppliers/41/integration/test",
+            "method": "POST",
+            "body": {
+              "actor_user_id": 7
+            },
+            "language": "fr-FR",
+            "authenticated": true
+          }
+        },
+        {
+          "name": "save_contract",
+          "passed": true,
+          "actual": {
+            "path": "/api/authorized-suppliers/41/integration",
+            "method": "POST",
+            "body": {
+              "actor_user_id": 7,
+              "connector_key": "http_json_v1",
+              "active": true,
+              "config": {
+                "base_url": "https://fixture.invalid",
+                "note": "Observação original"
+              }
+            },
+            "language": "en-GB",
+            "authenticated": true
+          },
+          "expected": {
+            "path": "/api/authorized-suppliers/41/integration",
+            "method": "POST",
+            "body": {
+              "actor_user_id": 7,
+              "connector_key": "http_json_v1",
+              "active": true,
+              "config": {
+                "base_url": "https://fixture.invalid",
+                "note": "Observação original"
+              }
+            },
+            "language": "en-GB",
+            "authenticated": true
+          }
+        },
+        {
+          "name": "opaque_cause_preserved",
+          "passed": true,
+          "actual": true,
+          "expected": true
+        },
+        {
+          "name": "opaque_cause_translated_wrapper",
+          "passed": false,
+          "actual": "Teste da integração falhou: Diagnóstico externo original <img src=x onerror=window.__xss=1>",
+          "expected": "Integration test failed: Diagnóstico externo original <img src=x onerror=window.__xss=1>"
+        },
+        {
+          "name": "opaque_cause_live_wrapper",
+          "passed": false,
+          "actual": "Teste da integração falhou: Diagnóstico externo original <img src=x onerror=window.__xss=1>",
+          "expected": "Échec du test de connexion : Diagnóstico externo original <img src=x onerror=window.__xss=1>"
+        },
+        {
+          "name": "unknown_cause_live_and_inert",
+          "passed": true,
+          "actual": 0,
+          "expected": 0
+        },
+        {
+          "name": "no_markup_executed",
+          "passed": true,
+          "actual": 0,
+          "expected": 0
+        },
+        {
+          "name": "no_repeat_submission",
+          "passed": true,
+          "actual": 4,
+          "expected": 4
+        },
+        {
+          "name": "no_horizontal_overflow",
+          "passed": true,
+          "actual": true,
+          "expected": true
+        },
+        {
+          "name": "no_javascript_errors",
+          "passed": true,
+          "actual": [],
+          "expected": []
+        },
+        {
+          "name": "invalid_json_has_no_request",
+          "passed": true,
+          "actual": 4,
+          "expected": 4
+        },
+        {
+          "name": "invalid_json_draft_preserved",
+          "passed": true,
+          "actual": "{invalid",
+          "expected": "{invalid"
+        },
+        {
+          "name": "explicit_save_count_''",
+          "passed": true,
+          "actual": 5,
+          "expected": 5
+        },
+        {
+          "name": "saved_config_''",
+          "passed": true,
+          "actual": {
+            "actor_user_id": 7,
+            "connector_key": "http_json_v1",
+            "active": true
+          },
+          "expected": {
+            "actor_user_id": 7,
+            "connector_key": "http_json_v1",
+            "active": true
+          }
+        },
+        {
+          "name": "explicit_save_count_'{}'",
+          "passed": true,
+          "actual": 6,
+          "expected": 6
+        },
+        {
+          "name": "saved_config_'{}'",
+          "passed": true,
+          "actual": {
+            "actor_user_id": 7,
+            "connector_key": "http_json_v1",
+            "active": true,
+            "config": {}
+          },
+          "expected": {
+            "actor_user_id": 7,
+            "connector_key": "http_json_v1",
+            "active": true,
+            "config": {}
+          }
+        },
+        {
+          "name": "custom_option_opaque_{'key': 'http_json_v1', 'label': 'Custom original'}",
+          "passed": true,
+          "actual": "Custom original",
+          "expected": "Custom original"
+        },
+        {
+          "name": "custom_option_live_opaque_{'key': 'http_json_v1', 'label': 'Custom original'}",
+          "passed": true,
+          "actual": "Custom original",
+          "expected": "Custom original"
+        },
+        {
+          "name": "custom_option_opaque_{'key': 'http_json_v1', 'label': 'API REST/JSON genérica (v1) '}",
+          "passed": true,
+          "actual": "API REST/JSON genérica (v1) ",
+          "expected": "API REST/JSON genérica (v1) "
+        },
+        {
+          "name": "custom_option_live_opaque_{'key': 'http_json_v1', 'label': 'API REST/JSON genérica (v1) '}",
+          "passed": true,
+          "actual": "API REST/JSON genérica (v1) ",
+          "expected": "API REST/JSON genérica (v1) "
+        },
+        {
+          "name": "custom_option_opaque_{'key': 'custom', 'label': 'API REST/JSON genérica (v1)'}",
+          "passed": true,
+          "actual": "API REST/JSON genérica (v1)",
+          "expected": "API REST/JSON genérica (v1)"
+        },
+        {
+          "name": "custom_option_live_opaque_{'key': 'custom', 'label': 'API REST/JSON genérica (v1)'}",
+          "passed": true,
+          "actual": "API REST/JSON genérica (v1)",
+          "expected": "API REST/JSON genérica (v1)"
+        },
+        {
+          "name": "custom_option_opaque_{'key': '__proto__', 'label': 'API REST/JSON genérica (v1)'}",
+          "passed": true,
+          "actual": "API REST/JSON genérica (v1)",
+          "expected": "API REST/JSON genérica (v1)"
+        },
+        {
+          "name": "custom_option_live_opaque_{'key': '__proto__', 'label': 'API REST/JSON genérica (v1)'}",
+          "passed": true,
+          "actual": "API REST/JSON genérica (v1)",
+          "expected": "API REST/JSON genérica (v1)"
+        }
+      ],
+      "calls": [
+        {
+          "path": "/api/supplier-connectors",
+          "method": "GET",
+          "body": null,
+          "language": "fr-FR",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration",
+          "method": "GET",
+          "body": null,
+          "language": "fr-FR",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration/test",
+          "method": "POST",
+          "body": {
+            "actor_user_id": 7
+          },
+          "language": "fr-FR",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration",
+          "method": "POST",
+          "body": {
+            "actor_user_id": 7,
+            "connector_key": "http_json_v1",
+            "active": true,
+            "config": {
+              "base_url": "https://fixture.invalid",
+              "note": "Observação original"
+            }
+          },
+          "language": "en-GB",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration",
+          "method": "POST",
+          "body": {
+            "actor_user_id": 7,
+            "connector_key": "http_json_v1",
+            "active": true
+          },
+          "language": "fr-FR",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration",
+          "method": "POST",
+          "body": {
+            "actor_user_id": 7,
+            "connector_key": "http_json_v1",
+            "active": true,
+            "config": {}
+          },
+          "language": "fr-FR",
+          "authenticated": true
+        },
+        {
+          "path": "/api/supplier-connectors",
+          "method": "GET",
+          "body": null,
+          "language": "fr-FR",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration",
+          "method": "GET",
+          "body": null,
+          "language": "fr-FR",
+          "authenticated": true
+        },
+        {
+          "path": "/api/supplier-connectors",
+          "method": "GET",
+          "body": null,
+          "language": "fr-FR",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration",
+          "method": "GET",
+          "body": null,
+          "language": "fr-FR",
+          "authenticated": true
+        },
+        {
+          "path": "/api/supplier-connectors",
+          "method": "GET",
+          "body": null,
+          "language": "fr-FR",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration",
+          "method": "GET",
+          "body": null,
+          "language": "fr-FR",
+          "authenticated": true
+        },
+        {
+          "path": "/api/supplier-connectors",
+          "method": "GET",
+          "body": null,
+          "language": "fr-FR",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration",
+          "method": "GET",
+          "body": null,
+          "language": "fr-FR",
+          "authenticated": true
+        }
+      ]
+    },
+    {
+      "locale": "nb-NO",
+      "checks": [
+        {
+          "name": "registered_label",
+          "passed": false,
+          "actual": "API REST/JSON genérica (v1)",
+          "expected": "Generisk REST/JSON-API (v1)"
+        },
+        {
+          "name": "unknown_label_opaque",
+          "passed": true,
+          "actual": "Loja original <img src=x onerror=window.__xss=1>",
+          "expected": "Loja original <img src=x onerror=window.__xss=1>"
+        },
+        {
+          "name": "nested_error",
+          "passed": false,
+          "actual": "Teste da integração falhou: Loja respondeu HTTP 429 em /catalog.",
+          "expected": "Integrasjonstesten mislyktes: Butikken svarte med HTTP 429 på /catalog."
+        },
+        {
+          "name": "live_nested_error",
+          "passed": false,
+          "actual": "Teste da integração falhou: Loja respondeu HTTP 429 em /catalog.",
+          "expected": "Échec du test de connexion : La boutique a renvoyé HTTP 429 sur /catalog."
+        },
+        {
+          "name": "live_registered_label",
+          "passed": false,
+          "actual": "API REST/JSON genérica (v1)",
+          "expected": "API REST/JSON générique (v1)"
+        },
+        {
+          "name": "selected_key_preserved",
+          "passed": true,
+          "actual": "http_json_v1",
+          "expected": "http_json_v1"
+        },
+        {
+          "name": "active_preserved",
+          "passed": true,
+          "actual": "1",
+          "expected": "1"
+        },
+        {
+          "name": "draft_preserved",
+          "passed": true,
+          "actual": "{\"base_url\":\"https://fixture.invalid\",\"note\":\"Observação original\"}",
+          "expected": "{\"base_url\":\"https://fixture.invalid\",\"note\":\"Observação original\"}"
+        },
+        {
+          "name": "locale_has_no_business_requests",
+          "passed": true,
+          "actual": 3,
+          "expected": 3
+        },
+        {
+          "name": "test_contract",
+          "passed": true,
+          "actual": {
+            "path": "/api/authorized-suppliers/41/integration/test",
+            "method": "POST",
+            "body": {
+              "actor_user_id": 7
+            },
+            "language": "nb-NO",
+            "authenticated": true
+          },
+          "expected": {
+            "path": "/api/authorized-suppliers/41/integration/test",
+            "method": "POST",
+            "body": {
+              "actor_user_id": 7
+            },
+            "language": "nb-NO",
+            "authenticated": true
+          }
+        },
+        {
+          "name": "save_contract",
+          "passed": true,
+          "actual": {
+            "path": "/api/authorized-suppliers/41/integration",
+            "method": "POST",
+            "body": {
+              "actor_user_id": 7,
+              "connector_key": "http_json_v1",
+              "active": true,
+              "config": {
+                "base_url": "https://fixture.invalid",
+                "note": "Observação original"
+              }
+            },
+            "language": "fr-FR",
+            "authenticated": true
+          },
+          "expected": {
+            "path": "/api/authorized-suppliers/41/integration",
+            "method": "POST",
+            "body": {
+              "actor_user_id": 7,
+              "connector_key": "http_json_v1",
+              "active": true,
+              "config": {
+                "base_url": "https://fixture.invalid",
+                "note": "Observação original"
+              }
+            },
+            "language": "fr-FR",
+            "authenticated": true
+          }
+        },
+        {
+          "name": "opaque_cause_preserved",
+          "passed": true,
+          "actual": true,
+          "expected": true
+        },
+        {
+          "name": "opaque_cause_translated_wrapper",
+          "passed": false,
+          "actual": "Teste da integração falhou: Diagnóstico externo original <img src=x onerror=window.__xss=1>",
+          "expected": "Échec du test de connexion : Diagnóstico externo original <img src=x onerror=window.__xss=1>"
+        },
+        {
+          "name": "opaque_cause_live_wrapper",
+          "passed": false,
+          "actual": "Teste da integração falhou: Diagnóstico externo original <img src=x onerror=window.__xss=1>",
+          "expected": "Integrasjonstesten mislyktes: Diagnóstico externo original <img src=x onerror=window.__xss=1>"
+        },
+        {
+          "name": "unknown_cause_live_and_inert",
+          "passed": true,
+          "actual": 0,
+          "expected": 0
+        },
+        {
+          "name": "no_markup_executed",
+          "passed": true,
+          "actual": 0,
+          "expected": 0
+        },
+        {
+          "name": "no_repeat_submission",
+          "passed": true,
+          "actual": 4,
+          "expected": 4
+        },
+        {
+          "name": "no_horizontal_overflow",
+          "passed": true,
+          "actual": true,
+          "expected": true
+        },
+        {
+          "name": "no_javascript_errors",
+          "passed": true,
+          "actual": [],
+          "expected": []
+        },
+        {
+          "name": "invalid_json_has_no_request",
+          "passed": true,
+          "actual": 4,
+          "expected": 4
+        },
+        {
+          "name": "invalid_json_draft_preserved",
+          "passed": true,
+          "actual": "{invalid",
+          "expected": "{invalid"
+        },
+        {
+          "name": "explicit_save_count_''",
+          "passed": true,
+          "actual": 5,
+          "expected": 5
+        },
+        {
+          "name": "saved_config_''",
+          "passed": true,
+          "actual": {
+            "actor_user_id": 7,
+            "connector_key": "http_json_v1",
+            "active": true
+          },
+          "expected": {
+            "actor_user_id": 7,
+            "connector_key": "http_json_v1",
+            "active": true
+          }
+        },
+        {
+          "name": "explicit_save_count_'{}'",
+          "passed": true,
+          "actual": 6,
+          "expected": 6
+        },
+        {
+          "name": "saved_config_'{}'",
+          "passed": true,
+          "actual": {
+            "actor_user_id": 7,
+            "connector_key": "http_json_v1",
+            "active": true,
+            "config": {}
+          },
+          "expected": {
+            "actor_user_id": 7,
+            "connector_key": "http_json_v1",
+            "active": true,
+            "config": {}
+          }
+        },
+        {
+          "name": "custom_option_opaque_{'key': 'http_json_v1', 'label': 'Custom original'}",
+          "passed": true,
+          "actual": "Custom original",
+          "expected": "Custom original"
+        },
+        {
+          "name": "custom_option_live_opaque_{'key': 'http_json_v1', 'label': 'Custom original'}",
+          "passed": true,
+          "actual": "Custom original",
+          "expected": "Custom original"
+        },
+        {
+          "name": "custom_option_opaque_{'key': 'http_json_v1', 'label': 'API REST/JSON genérica (v1) '}",
+          "passed": true,
+          "actual": "API REST/JSON genérica (v1) ",
+          "expected": "API REST/JSON genérica (v1) "
+        },
+        {
+          "name": "custom_option_live_opaque_{'key': 'http_json_v1', 'label': 'API REST/JSON genérica (v1) '}",
+          "passed": true,
+          "actual": "API REST/JSON genérica (v1) ",
+          "expected": "API REST/JSON genérica (v1) "
+        },
+        {
+          "name": "custom_option_opaque_{'key': 'custom', 'label': 'API REST/JSON genérica (v1)'}",
+          "passed": true,
+          "actual": "API REST/JSON genérica (v1)",
+          "expected": "API REST/JSON genérica (v1)"
+        },
+        {
+          "name": "custom_option_live_opaque_{'key': 'custom', 'label': 'API REST/JSON genérica (v1)'}",
+          "passed": true,
+          "actual": "API REST/JSON genérica (v1)",
+          "expected": "API REST/JSON genérica (v1)"
+        },
+        {
+          "name": "custom_option_opaque_{'key': '__proto__', 'label': 'API REST/JSON genérica (v1)'}",
+          "passed": true,
+          "actual": "API REST/JSON genérica (v1)",
+          "expected": "API REST/JSON genérica (v1)"
+        },
+        {
+          "name": "custom_option_live_opaque_{'key': '__proto__', 'label': 'API REST/JSON genérica (v1)'}",
+          "passed": true,
+          "actual": "API REST/JSON genérica (v1)",
+          "expected": "API REST/JSON genérica (v1)"
+        }
+      ],
+      "calls": [
+        {
+          "path": "/api/supplier-connectors",
+          "method": "GET",
+          "body": null,
+          "language": "nb-NO",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration",
+          "method": "GET",
+          "body": null,
+          "language": "nb-NO",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration/test",
+          "method": "POST",
+          "body": {
+            "actor_user_id": 7
+          },
+          "language": "nb-NO",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration",
+          "method": "POST",
+          "body": {
+            "actor_user_id": 7,
+            "connector_key": "http_json_v1",
+            "active": true,
+            "config": {
+              "base_url": "https://fixture.invalid",
+              "note": "Observação original"
+            }
+          },
+          "language": "fr-FR",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration",
+          "method": "POST",
+          "body": {
+            "actor_user_id": 7,
+            "connector_key": "http_json_v1",
+            "active": true
+          },
+          "language": "nb-NO",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration",
+          "method": "POST",
+          "body": {
+            "actor_user_id": 7,
+            "connector_key": "http_json_v1",
+            "active": true,
+            "config": {}
+          },
+          "language": "nb-NO",
+          "authenticated": true
+        },
+        {
+          "path": "/api/supplier-connectors",
+          "method": "GET",
+          "body": null,
+          "language": "nb-NO",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration",
+          "method": "GET",
+          "body": null,
+          "language": "nb-NO",
+          "authenticated": true
+        },
+        {
+          "path": "/api/supplier-connectors",
+          "method": "GET",
+          "body": null,
+          "language": "nb-NO",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration",
+          "method": "GET",
+          "body": null,
+          "language": "nb-NO",
+          "authenticated": true
+        },
+        {
+          "path": "/api/supplier-connectors",
+          "method": "GET",
+          "body": null,
+          "language": "nb-NO",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration",
+          "method": "GET",
+          "body": null,
+          "language": "nb-NO",
+          "authenticated": true
+        },
+        {
+          "path": "/api/supplier-connectors",
+          "method": "GET",
+          "body": null,
+          "language": "nb-NO",
+          "authenticated": true
+        },
+        {
+          "path": "/api/authorized-suppliers/41/integration",
+          "method": "GET",
+          "body": null,
+          "language": "nb-NO",
+          "authenticated": true
+        }
+      ]
+    }
+  ]
+}

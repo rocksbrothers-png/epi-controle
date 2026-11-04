@@ -21,7 +21,7 @@ def test_a_appbar_oferece_saida_da_sessao():
     shell = SHELL.read_text(encoding='utf-8')
     assert 'Icons.logout_rounded' in shell, \
         'sem o botão, só limpando os dados do app dá para encerrar a sessão'
-    assert "tooltip: 'Sair'" in shell
+    assert 'tooltip: l10n.passwordChangeLogout' in shell
 
 
 def test_o_botao_realmente_encerra_a_sessao():

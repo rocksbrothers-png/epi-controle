@@ -1,0 +1,28 @@
+{
+  "scope_baseline": "454bee68",
+  "incorporated_checkpoint_corporate": "c1faf3a3",
+  "incorporated_checkpoint_saas": "272697a9",
+  "independent_execution": "Corporate only, local fixture",
+  "new_contract_defects_confirmed": 0,
+  "critical_source_evidence": "flutter-billing-static-results.json",
+  "runtime_evidence": "flutter-billing-badges-runtime-results.json",
+  "final_execution_log": "flutter-billing-badges-runtime-final.log",
+  "independent_tests_total": 4,
+  "billing_test_groups": [
+    "money/calendar five locales",
+    "pending filter/receipt URL",
+    "dialog/cancel/snackbar locale"
+  ],
+  "cancel_requires_confirmation": true,
+  "reason_payload": "",
+  "receipt_URL_unchanged": true,
+  "no_shared_DB_or_payment_actions": true,
+  "linguistic_recommendations": "FLUTTER_LINGUISTIC_REVIEW_PARTIAL.json",
+  "limits": [
+    "No full-product approval",
+    "Specific backend errors remain opaque",
+    "Initial formatter harness lacked Intl date initialization; corrected without product changes"
+  ],
+  "linguistic_corrections_source_verified": true,
+  "runtime_stage": "Historical independent runtime before the nine wording corrections; no SDK rerun for this report update."
+}

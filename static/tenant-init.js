@@ -50,7 +50,7 @@
     };
     for (const [id, val] of Object.entries(ph)) {
       const el = document.getElementById(id);
-      if (el && val) el.setAttribute('placeholder', val);
+      if (el && val) {el.setAttribute('placeholder', val);}
     }
 
     const labelMap = {
@@ -61,28 +61,28 @@
     };
     for (const [id, text] of Object.entries(labelMap)) {
       const input = document.getElementById(id);
-      if (!input) continue;
+      if (!input) {continue;}
       const label = document.querySelector(`label[for="${id}"]`);
-      if (label && !label.querySelector('input') && text) label.textContent = text;
+      if (label && !label.querySelector('input') && text) {label.textContent = text;}
     }
 
     const loginBtn = document.querySelector('#login-form button[type="submit"]');
-    if (loginBtn) loginBtn.textContent = t('login.button');
+    if (loginBtn) {loginBtn.textContent = t('login.button');}
 
     const forgotBtn = document.getElementById('forgot-password-btn');
-    if (forgotBtn) forgotBtn.textContent = t('login.forgotPassword');
+    if (forgotBtn) {forgotBtn.textContent = t('login.forgotPassword');}
 
     const recoverBtn = document.getElementById('recovery-submit');
-    if (recoverBtn) recoverBtn.textContent = t('login.button');
+    if (recoverBtn) {recoverBtn.textContent = t('login.recovery.submit');}
 
     const h2 = document.querySelector('#login-form h2');
-    if (h2) h2.textContent = t('login.title');
+    if (h2) {h2.textContent = t('login.title');}
   }
 
   /* ── Tenant & Branding ───────────────────────────────────────────────────── */
 
   function applyBranding(branding, tenantName) {
-    if (!branding) return;
+    if (!branding) {return;}
     const root = document.documentElement;
 
     if (branding.primary_color && /^#[0-9A-Fa-f]{3,6}$/.test(branding.primary_color)) {
@@ -105,11 +105,12 @@
       }
     }
 
-    if (tenantName) document.title = `${tenantName} — EPI Controle`;
+    if (tenantName) {document.title = `${tenantName} — EPI Controle`;}
 
     if (branding.institutional_message) {
       const msgEl = document.getElementById('login-institutional-msg');
       if (msgEl) {
+        I18N?.clearBinding?.(msgEl);
         msgEl.textContent = branding.institutional_message;
         msgEl.style.display = 'block';
       }
@@ -130,13 +131,13 @@
       if (res.ok) {
         const data = await res.json();
         if (data && data.ok) {
-          try { localStorage.setItem(LS_TENANT_KEY, JSON.stringify(data)); } catch {}
+          try { localStorage.setItem(LS_TENANT_KEY, JSON.stringify(data)); } catch { /* O tenant pode ser resolvido novamente sem o cache local. */ }
           window.__epiTenant = data;
           return data;
         }
         return null; // host genérico sem tenant (caso normal)
       }
-    } catch {}
+    } catch { /* O tenant pode ser resolvido novamente sem o cache local. */ }
 
     try {
       const cached = localStorage.getItem(LS_TENANT_KEY);
@@ -145,7 +146,7 @@
         window.__epiTenant = data;
         return data;
       }
-    } catch {}
+    } catch { /* O tenant pode ser resolvido novamente sem o cache local. */ }
 
     return null;
   }
@@ -157,8 +158,8 @@
   function closeDropdown(widget) {
     const menu = widget.querySelector('.epi-lang-menu');
     const trigger = widget.querySelector('.epi-lang-trigger');
-    if (menu) menu.classList.remove('is-open');
-    if (trigger) trigger.setAttribute('aria-expanded', 'false');
+    if (menu) {menu.classList.remove('is-open');}
+    if (trigger) {trigger.setAttribute('aria-expanded', 'false');}
     if (_outsideHandler) {
       document.removeEventListener('click', _outsideHandler);
       _outsideHandler = null;
@@ -168,15 +169,15 @@
   function openDropdown(widget) {
     const menu = widget.querySelector('.epi-lang-menu');
     const trigger = widget.querySelector('.epi-lang-trigger');
-    if (menu) menu.classList.add('is-open');
-    if (trigger) trigger.setAttribute('aria-expanded', 'true');
-    _outsideHandler = (e) => { if (!widget.contains(e.target)) closeDropdown(widget); };
+    if (menu) {menu.classList.add('is-open');}
+    if (trigger) {trigger.setAttribute('aria-expanded', 'true');}
+    _outsideHandler = (e) => { if (!widget.contains(e.target)) {closeDropdown(widget);} };
     setTimeout(() => document.addEventListener('click', _outsideHandler), 0);
   }
 
   function renderLanguageSelector(activeLang) {
     const existing = document.getElementById('epi-lang-widget');
-    if (existing) existing.remove();
+    if (existing) {existing.remove();}
 
     const active = langByCode(activeLang);
 
@@ -193,7 +194,7 @@
     trigger.innerHTML =
       `<span class="epi-lang-flag">${FLAGS[active.code] || ''}</span>` +
       `<span class="epi-lang-iso">${active.iso}</span>` +
-      `<svg class="epi-lang-caret" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>`;
+      '<svg class="epi-lang-caret" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>';
 
     const menu = document.createElement('div');
     menu.className = 'epi-lang-menu';
@@ -215,10 +216,9 @@
       opt.addEventListener('click', async (e) => {
         e.stopPropagation();
         closeDropdown(widget);
-        if (lang.code === (I18N && I18N.lang)) return;
-        if (I18N) await I18N.setLang(lang.code);
+        if (I18N) {await I18N.setLang(lang.code);}
         applyTranslationsToLogin();
-        renderLanguageSelector(lang.code);
+        renderLanguageSelector(I18N?.lang || lang.code);
       });
 
       menu.appendChild(opt);
@@ -227,7 +227,7 @@
     trigger.addEventListener('click', (e) => {
       e.stopPropagation();
       const isOpen = trigger.getAttribute('aria-expanded') === 'true';
-      if (isOpen) closeDropdown(widget); else openDropdown(widget);
+      if (isOpen) {closeDropdown(widget);} else {openDropdown(widget);}
     });
 
     widget.appendChild(trigger);
@@ -239,7 +239,7 @@
 
   function injectInstitutionalMsgPlaceholder() {
     const loginPanel = document.querySelector('.login-panel > div');
-    if (!loginPanel || document.getElementById('login-institutional-msg')) return;
+    if (!loginPanel || document.getElementById('login-institutional-msg')) {return;}
     const msg = document.createElement('p');
     msg.id = 'login-institutional-msg';
     msg.style.cssText = 'display:none;font-size:13px;color:var(--muted);margin:8px 0 0;line-height:1.4;';
@@ -254,9 +254,25 @@
     })[c]);
   }
 
+  function renderLanguageError() {
+    document.getElementById('epi-language-error')?.remove?.();
+    const notice = document.createElement('div');
+    notice.id = 'epi-language-error';
+    notice.className = 'epi-toast-container';
+    notice.setAttribute('role', 'alert');
+    const text = document.createElement('div');
+    text.className = 'toast';
+    text.setAttribute('data-i18n', 'i18n.languageLoadFailed');
+    text.textContent = window.trEpi('i18n.languageLoadFailed', 'Não foi possível carregar o idioma. O idioma anterior foi preservado. Tente novamente.');
+    notice.appendChild(text);
+    document.body.appendChild(notice);
+    setTimeout(() => notice.remove?.(), 8000);
+  }
+
   /* ── Init ────────────────────────────────────────────────────────────────── */
 
   async function init() {
+    window.addEventListener('epi:localeerror', renderLanguageError);
     injectInstitutionalMsgPlaceholder();
 
     const tenantData = await resolveTenant();
@@ -266,7 +282,7 @@
     let activeLang = 'pt-BR';
     if (I18N) {
       activeLang = I18N.resolveInitialLang(tenantDefault);
-      await I18N.setLang(activeLang, { persist: false });
+      activeLang = await I18N.setLang(activeLang, { persist: false, initial: true });
     }
 
     if (tenantData?.branding) {
@@ -274,11 +290,13 @@
     }
 
     applyTranslationsToLogin();
-    renderLanguageSelector(activeLang);
+    renderLanguageSelector(I18N?.lang || activeLang);
 
     // Re-traduz a tela de login sempre que o idioma mudar (inclui mudanças vindas do app)
     window.addEventListener('epi:langchange', () => {
       applyTranslationsToLogin();
+      renderLanguageSelector(I18N?.lang || activeLang);
+      if (!I18N?.loadError) { document.getElementById('epi-language-error')?.remove?.(); }
     });
   }
 

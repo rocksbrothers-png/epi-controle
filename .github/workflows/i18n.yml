@@ -1,0 +1,51 @@
+name: I18N Runtime
+on:
+  workflow_call:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: i18n-runtime-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  runtime:
+    name: Five-language engine and browser checkpoints
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      APP_ENV: test
+      DATABASE_URL: ''
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Isolated verification dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends poppler-utils libseccomp2 libgl1 fonts-dejavu-core
+          pip install -r requirements.txt -r ci/requirements-i18n.txt
+          python -m playwright install --with-deps chromium
+          npm ci --ignore-scripts
+      - name: Catalogue, runtime, PDF and additive alert contracts
+        run: |
+          pytest tests/test_i18n_engine_runtime.py tests/test_i18n_files_integrity.py tests/test_i18n_pdf_runtime.py tests/test_i18n_document_runtime.py tests/test_i18n_alert_metadata.py -q
+          node static/js/test/app-js-boundary.js
+      - name: Synthetic browser checkpoints in all five languages
+        run: |
+          python scripts/i18n/check_alerts_browser.py --output "$RUNNER_TEMP/i18n-evidence/alerts"
+          python scripts/i18n/check_supplier_portal_browser.py --output "$RUNNER_TEMP/i18n-evidence/supplier"
+          python scripts/i18n/check_library_browser.py --output "$RUNNER_TEMP/i18n-evidence/library"
+          python scripts/i18n/check_connectors_browser.py --output "$RUNNER_TEMP/i18n-evidence/connectors"
+          python scripts/i18n/check_supplier_portal_csp_sri.py --output "$RUNNER_TEMP/i18n-evidence/portal-csp-sri"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: i18n-browser-evidence
+          path: ${{ runner.temp }}/i18n-evidence/
+          retention-days: 14

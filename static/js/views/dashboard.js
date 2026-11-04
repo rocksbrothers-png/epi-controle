@@ -317,10 +317,10 @@
   function _kpiGroupHtml(title, cards) {
     const visible = cards.filter(Boolean);
     if (!visible.length) { return ''; }
-    return `<section class="kpi-group">`
+    return '<section class="kpi-group">'
       + `<h4 class="kpi-group-title">${title}</h4>`
       + `<div class="dashboard-kpi-grid">${visible.map(_kpiCardHtml).join('')}</div>`
-      + `</section>`;
+      + '</section>';
   }
 
   // Painel executivo consolidado (auditoria Dashboard §1/§2): fonte única de KPIs
@@ -473,11 +473,11 @@
     ]);
     phase3Cards(refs.phase3GestaoSummary, [
       { label: 'Vínculos ativos', value: scoped(state.employees || []).length },
-      { label: 'Movimentações', value: scoped(state.employeeMovements || []).length },
-      { label: 'Unidades', value: scopedUnitsList().length }
+      { label: (globalThis.trEpi?.('tabs.movements','Movimenta\u00e7\u00f5es',{}) ?? 'Movimenta\u00e7\u00f5es'), value: scoped(state.employeeMovements || []).length },
+      { label: (globalThis.trEpi?.('dashboard.units','Unidades',{}) ?? 'Unidades'), value: scopedUnitsList().length }
     ]);
     phase3Cards(refs.phase3EpisSummary, [
-      { label: 'Catálogo', value: scopedKeepingCompanyWide(state.epis || []).length },
+      { label: (globalThis.trEpi?.('ui.app.catalogo_dc7aba','Cat\u00e1logo',{}) ?? 'Cat\u00e1logo'), value: scopedKeepingCompanyWide(state.epis || []).length },
       { label: 'Com foto', value: scopedKeepingCompanyWide(state.epis || []).filter((item) => String(item.epi_photo_data || '').trim()).length },
       { label: tr('epi.caExpiry', 'Validade do CA'), value: scopedKeepingCompanyWide(state.epis || []).filter((item) => String(item.ca_expiry || '').trim()).length }
     ]);
@@ -566,17 +566,28 @@
     const refs = getRefs();
     renderCriticalStockBanner();
     if (!refs.alertsList) { return; }
-    const items = (getState().alerts || []).filter((item) => matchesQuery([item.title, item.description, item.type]));
-    refs.alertsList.innerHTML = items.map((item) => {
+    const presentation = globalThis.__EPI_ALERT_PRESENTATION__;
+    const items = (getState().alerts || []).map(item => ({item, labels:presentation?.describe(item)}))
+      .filter(({item, labels}) => matchesQuery([labels ? presentation.text(labels.title) : item.title,
+        labels ? presentation.text(labels.description) : item.description, labels ? presentation.sizeText(labels.sizes) : '', item.type]));
+    refs.alertsList.innerHTML = items.map(({item, labels}) => {
       const action = _alertAction(item);
+      const labelKey = {physical_unknown:'dashboard.alertRegularizeValidity',ca:'dashboard.alertViewEpis',stock:'dashboard.alertViewStock',manufacturer:'dashboard.alertViewStock'}[item.category];
+      const actionLabel = action && labelKey && globalThis.EpiI18n?.bindText
+        ? globalThis.EpiI18n.bindText(labelKey,{},action.label) : esc(action?.label || '');
+      const ariaKey = item.epi_name ? 'dashboard.alertRegularizeValidityFor' : 'dashboard.alertRegularizeValidity';
+      const ariaVars = {epi:item.epi_name || ''};
+      const ariaFallback = (action?.label || '') + (item.epi_name ? ': ' + item.epi_name : '');
+      const ariaLabel = globalThis.trEpi?.(ariaKey,ariaFallback,ariaVars) || ariaFallback;
       const pending = action?.pending
-        ? ` data-pending-validity data-company-id="${esc(item.company_id || '')}" data-unit-id="${esc(item.unit_id || '')}" data-epi-id="${esc(item.epi_id || '')}" data-epi-name="${esc(item.epi_name || '')}" aria-label="${esc(action.label + (item.epi_name ? ': ' + item.epi_name : ''))}"`
+        ? ` data-pending-validity data-company-id="${esc(item.company_id || '')}" data-unit-id="${esc(item.unit_id || '')}" data-epi-id="${esc(item.epi_id || '')}" data-epi-name="${esc(item.epi_name || '')}" aria-label="${esc(ariaLabel)}" data-i18n-aria-label="${ariaKey}" data-i18n-vars="${esc(JSON.stringify(ariaVars))}"`
         : '';
       const btn = action
-        ? `<button type="button" class="alert-action" data-view="${esc(action.view)}" data-input="${esc(action.input)}" data-value="${esc(action.value || '')}"${pending}>${esc(action.label)}</button>`
+        ? `<button type="button" class="alert-action" data-view="${esc(action.view)}" data-input="${esc(action.input)}" data-value="${esc(action.value || '')}"${pending}>${actionLabel}</button>`
         : '';
-      // SECURITY-OUTPUT-XSS-V2: título/descrição montados no servidor com nome de EPI, empresa e unidade.
-      return `<div class="alert-item ${esc(item.type)}"><div class="alert-item-body"><strong>${esc(item.title)}</strong><div>${esc(item.description)}</div></div>${btn}</div>`;
+      const title = labels ? presentation.markup(labels.title) : esc(item.title);
+      const description = labels ? presentation.markup(labels.description) + presentation.sizeMarkup(labels.sizes) : esc(item.description);
+      return `<div class="alert-item ${esc(item.type)}"><div class="alert-item-body"><strong>${title}</strong><div>${description}</div></div>${btn}</div>`;
     }).join('')
       || `<div class="summary-item">${tr('dashboard.noAlertsFilter', 'Sem alertas para o filtro atual.')}</div>`;
     _bindAlertActions(refs.alertsList);

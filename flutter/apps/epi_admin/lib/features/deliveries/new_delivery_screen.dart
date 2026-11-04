@@ -1,3 +1,4 @@
+import 'package:epi_admin/core/i18n/localized_epi_badge.dart';
 import 'dart:convert';
 
 import 'package:epi_api/epi_api.dart';
@@ -354,7 +355,7 @@ class _EpiStepState extends State<_EpiStep> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         if (status != null) ...[
-                          EpiStockBadge(status: status),
+                          LocalizedEpiStockBadge(status: status),
                           const SizedBox(width: EpiSpacing.xs),
                         ],
                         const Icon(Icons.chevron_right_rounded),

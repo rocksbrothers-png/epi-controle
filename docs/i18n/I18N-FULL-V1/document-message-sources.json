@@ -1,0 +1,172 @@
+[
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 565,
+    "key": "documents.rfq.subject"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 646,
+    "key": "documents.po.title"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 662,
+    "key": "documents.po.total"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 567,
+    "key": "documents.greeting"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 569,
+    "key": "documents.rfq.intro"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 647,
+    "key": "documents.greeting"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 648,
+    "key": "documents.po.intro"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 579,
+    "key": "documents.rfq.item"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 584,
+    "key": "documents.rfq.size"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 591,
+    "key": "documents.rfq.instructions"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 592,
+    "key": "documents.closing"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 592,
+    "key": "documents.department"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 594,
+    "key": "documents.rfq.title"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 595,
+    "key": "documents.rfq.subtitle"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 656,
+    "key": "documents.po.item"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 665,
+    "key": "documents.po.delivery"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 666,
+    "key": "documents.po.instructions"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 667,
+    "key": "documents.closing"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 667,
+    "key": "documents.department"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 670,
+    "key": "documents.po.supplier"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 708,
+    "key": "documents.po.partner"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 588,
+    "key": "documents.rfq.deadline"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 590,
+    "key": "documents.notes"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 598,
+    "key": "documents.rfq.filename"
+  },
+  {
+    "path": "modules/purchases/quotes_service.py",
+    "line": 672,
+    "key": "documents.po.filename"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 387,
+    "key": "documents.portal.quoteSubject"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 388,
+    "key": "documents.portal.quoteAction"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 391,
+    "key": "documents.portal.orderSubject"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 392,
+    "key": "documents.portal.orderAction"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 394,
+    "key": "documents.greeting"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 398,
+    "key": "documents.portal.private"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 399,
+    "key": "documents.department"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 397,
+    "key": "documents.portal.expiry"
+  },
+  {
+    "path": "modules/purchases/supplier_portal_service.py",
+    "line": 399,
+    "key": "documents.closing"
+  }
+]

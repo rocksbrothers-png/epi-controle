@@ -1,0 +1,25 @@
+{
+  "baseline": "c1faf3a3",
+  "independent_execution": "Corporate only",
+  "view_inverse_replacement_byte_parity": 7,
+  "catalog_status_states": 10,
+  "unit_stock_states": 4,
+  "locales": 5,
+  "themes": 2,
+  "runtime_comparisons": 140,
+  "status_and_decoration_unchanged": true,
+  "typed_stock_vs_catalog_separation": true,
+  "null_guards_unchanged": true,
+  "new_contract_defects_confirmed": 0,
+  "static_evidence": "flutter-badges-static-results.json",
+  "runtime_evidence": "flutter-billing-badges-runtime-results.json",
+  "capture": "flutter-badges-original-pt-vs-localized-fr.png",
+  "limits": [
+    "Only isolated wrapper runtime; full view linkage proved structurally",
+    "Employees full-view proof supplied by implementer",
+    "No global mobile-layout or full-product approval"
+  ],
+  "linguistic_corrections_source_verified": true,
+  "runtime_stage": "Historical independent runtime before the nine wording corrections; no SDK rerun for this report update.",
+  "capture_stage": "Historical pre-wording-correction capture; French Expirant is not final current wording."
+}

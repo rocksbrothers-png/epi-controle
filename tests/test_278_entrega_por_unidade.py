@@ -144,15 +144,18 @@ def test_o_passo_de_epi_exibe_o_badge_da_unidade():
     tela = _sem_comentarios(TELA.read_text(encoding='utf-8'))
     assert 'epiUnitBadgeStatus(epi)' in tela, \
         'o passo de EPI parou de ler a classificação por Unidade'
-    assert 'EpiStockBadge(status: status)' in tela, \
+    assert 'LocalizedEpiStockBadge(status: status)' in tela, \
         'o badge de estoque da Unidade sumiu do passo de EPI'
 
 
 def test_o_badge_da_entrega_so_aparece_com_classificacao():
     """`null` é ausência de contexto, não estado saudável: sem badge."""
     tela = _normalizado(TELA.read_text(encoding='utf-8'))
-    assert 'if (status != null) ...[ EpiStockBadge(status: status),' in tela, \
+    assert 'if (status != null) ...[ LocalizedEpiStockBadge(status: status),' in tela, \
         'o badge perdeu a guarda de `null` — sem classificação, sem badge'
+    badge = (APP / 'core/i18n/localized_epi_badge.dart').read_text(encoding='utf-8')
+    assert 'final EpiStockStatus status;' in badge
+    assert 'return EpiStockBadge(status: status, label: label);' in badge
 
 
 def test_o_passo_de_epi_nao_traduz_stock_status_por_conta_propria():
@@ -180,7 +183,7 @@ def test_as_tres_superficies_usam_o_mesmo_contrato_de_badge():
     for arquivo in (TELA, ESTOQUE, ESTOQUE_CONFIG):
         corpo = _sem_comentarios(arquivo.read_text(encoding='utf-8'))
         assert 'epiUnitBadgeStatus(epi)' in corpo, f'{arquivo.name} sem o helper'
-        assert 'EpiStockBadge(status: status)' in corpo, f'{arquivo.name} sem o badge'
+        assert 'LocalizedEpiStockBadge(status: status)' in corpo, f'{arquivo.name} sem o badge'
 
 
 def test_a_entrega_e_de_uma_unidade_etiquetada():

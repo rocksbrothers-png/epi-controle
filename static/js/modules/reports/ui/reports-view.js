@@ -55,7 +55,7 @@
     const previousUnit = String(unitField.value || '');
     unitField.innerHTML = `${lockByOperationalProfile ? '' : `<option value="">${tr('employee.filterAllUnits', 'Todas')}</option>`}${units.map(formatUnitOption).join('')}`;
     if (!units.length) {
-      unitField.innerHTML = '<option value="">Sem unidade operacional ativa</option>';
+      unitField.innerHTML = '<option value="" data-i18n="employee.noActiveOperationalUnit">Sem unidade operacional ativa</option>';
       unitField.value = '';
     } else if (lockByOperationalProfile) {
       unitField.value = String(units[0].id);
@@ -155,9 +155,9 @@
       <td><code>${String(item.html_sha256 || '').slice(0, 12)}...</code></td>
       <td>
         <div class="action-group">
-          <button class="ghost" data-archive-view="${item.id}">Visualizar</button>
-          <button class="ghost" data-archive-print="${item.id}">Imprimir</button>
-          <button class="ghost" data-archive-export="${item.id}">Exportar</button>
+          <button class="ghost" data-archive-view="${item.id}" data-i18n="ui.compras.visualizar_1acb4b">Visualizar</button>
+          <button class="ghost" data-archive-print="${item.id}" data-i18n="records.print">Imprimir</button>
+          <button class="ghost" data-archive-export="${item.id}" data-i18n="export">Exportar</button>
         </div>
       </td>
     </tr>

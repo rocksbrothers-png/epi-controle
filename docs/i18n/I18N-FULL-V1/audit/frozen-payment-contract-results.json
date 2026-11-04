@@ -1,0 +1,36 @@
+{
+  "rows": [
+    {
+      "repo": "corporate",
+      "base": "227276ac",
+      "head": "3693b04f",
+      "preserved_functions": [
+        "postJson",
+        "basePayload",
+        "selectOption",
+        "getJson",
+        "showResult",
+        "newIntentKey",
+        "getAuthToken"
+      ],
+      "backend_payment_and_auth_files": "UNCHANGED",
+      "contract": "Bearer session + stable per-intent nonce"
+    },
+    {
+      "repo": "saas",
+      "base": "78bb15b",
+      "head": "a96107c",
+      "preserved_functions": [
+        "postJson",
+        "basePayload",
+        "selectOption",
+        "getJson",
+        "showResult"
+      ],
+      "backend_payment_and_auth_files": "UNCHANGED",
+      "contract": "public capability checkout_token"
+    }
+  ],
+  "shared_module_byte_parity": "PASS",
+  "limits": "Static frozen-commit equality; no real payment requests or authentication bypass testing."
+}

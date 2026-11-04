@@ -1,0 +1,436 @@
+[
+  {
+    "key": "billingActive",
+    "pt_BR": "Ativa",
+    "consumers": [
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/subscription_screen.dart",
+        "line": 56
+      }
+    ]
+  },
+  {
+    "key": "billingPending",
+    "pt_BR": "Pendente",
+    "consumers": [
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/subscription_screen.dart",
+        "line": 58
+      }
+    ]
+  },
+  {
+    "key": "billingPaused",
+    "pt_BR": "Pausada",
+    "consumers": [
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/subscription_screen.dart",
+        "line": 60
+      }
+    ]
+  },
+  {
+    "key": "billingCancelled",
+    "pt_BR": "Cancelada",
+    "consumers": [
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/subscription_screen.dart",
+        "line": 63
+      }
+    ]
+  },
+  {
+    "key": "billingExpired",
+    "pt_BR": "Expirada",
+    "consumers": [
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/subscription_screen.dart",
+        "line": 65
+      }
+    ]
+  },
+  {
+    "key": "billingAnnual",
+    "pt_BR": "Anual",
+    "consumers": [
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/subscription_screen.dart",
+        "line": 86
+      }
+    ]
+  },
+  {
+    "key": "billingMonthly",
+    "pt_BR": "Mensal",
+    "consumers": [
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/subscription_screen.dart",
+        "line": 86
+      }
+    ]
+  },
+  {
+    "key": "billingRecurringCard",
+    "pt_BR": "Cartão (recorrente)",
+    "consumers": [
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/subscription_screen.dart",
+        "line": 91
+      }
+    ]
+  },
+  {
+    "key": "billingCard",
+    "pt_BR": "Cartão",
+    "consumers": [
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/invoices_screen.dart",
+        "line": 91
+      }
+    ]
+  },
+  {
+    "key": "billingBoleto",
+    "pt_BR": "Boleto",
+    "consumers": [
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/subscription_screen.dart",
+        "line": 95
+      },
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/invoices_screen.dart",
+        "line": 95
+      }
+    ]
+  },
+  {
+    "key": "billingConfirmTitle",
+    "pt_BR": "Tem certeza?",
+    "consumers": [
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/subscription_screen.dart",
+        "line": 107
+      }
+    ]
+  },
+  {
+    "key": "billingConfirmBody",
+    "pt_BR": "Seu acesso continuará disponível até o final do período já pago.\nNenhuma nova cobrança será realizada.",
+    "consumers": [
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/subscription_screen.dart",
+        "line": 109
+      }
+    ]
+  },
+  {
+    "key": "billingConfirmCancel",
+    "pt_BR": "Confirmar Cancelamento",
+    "consumers": [
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/subscription_screen.dart",
+        "line": 119
+      }
+    ]
+  },
+  {
+    "key": "billingCancelledNotice",
+    "pt_BR": "Assinatura cancelada.",
+    "consumers": [
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/subscription_screen.dart",
+        "line": 134
+      }
+    ]
+  },
+  {
+    "key": "billingCancelFailed",
+    "pt_BR": "Não foi possível cancelar: {detail}",
+    "consumers": [
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/subscription_screen.dart",
+        "line": 143
+      }
+    ]
+  },
+  {
+    "key": "billingAmount",
+    "pt_BR": "Valor",
+    "consumers": [
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/subscription_screen.dart",
+        "line": 219
+      }
+    ]
+  },
+  {
+    "key": "billingCycle",
+    "pt_BR": "Periodicidade",
+    "consumers": [
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/subscription_screen.dart",
+        "line": 222
+      }
+    ]
+  },
+  {
+    "key": "billingMethod",
+    "pt_BR": "Forma de pagamento",
+    "consumers": [
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/subscription_screen.dart",
+        "line": 225
+      }
+    ]
+  },
+  {
+    "key": "billingStarted",
+    "pt_BR": "Data da contratação",
+    "consumers": [
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/subscription_screen.dart",
+        "line": 228
+      }
+    ]
+  },
+  {
+    "key": "billingNextPayment",
+    "pt_BR": "Próxima cobrança",
+    "consumers": [
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/subscription_screen.dart",
+        "line": 231
+      }
+    ]
+  },
+  {
+    "key": "billingLastPayment",
+    "pt_BR": "Última cobrança",
+    "consumers": [
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/subscription_screen.dart",
+        "line": 236
+      }
+    ]
+  },
+  {
+    "key": "billingCancelDate",
+    "pt_BR": "Cancelada em",
+    "consumers": [
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/subscription_screen.dart",
+        "line": 240
+      }
+    ]
+  },
+  {
+    "key": "billingManualRenewal",
+    "pt_BR": "Renovação manual",
+    "consumers": [
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/subscription_screen.dart",
+        "line": 234
+      }
+    ]
+  },
+  {
+    "key": "billingMpSubscriptionId",
+    "pt_BR": "ID da assinatura (MP)",
+    "consumers": [
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/subscription_screen.dart",
+        "line": 244
+      }
+    ]
+  },
+  {
+    "key": "billingMpStatus",
+    "pt_BR": "Status Mercado Pago",
+    "consumers": [
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/subscription_screen.dart",
+        "line": 247
+      }
+    ]
+  },
+  {
+    "key": "billingTenant",
+    "pt_BR": "Tenant",
+    "consumers": [
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/subscription_screen.dart",
+        "line": 253
+      }
+    ]
+  },
+  {
+    "key": "billingCancelAction",
+    "pt_BR": "Cancelar assinatura",
+    "consumers": [
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/subscription_screen.dart",
+        "line": 258
+      }
+    ]
+  },
+  {
+    "key": "billingCancelledBody",
+    "pt_BR": "Assinatura cancelada. O acesso permanece ativo até o final do período já pago; nenhuma nova cobrança será realizada.",
+    "consumers": [
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/subscription_screen.dart",
+        "line": 272
+      }
+    ]
+  },
+  {
+    "key": "billingEmptyTitle",
+    "pt_BR": "Nenhuma assinatura ativa",
+    "consumers": [
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/subscription_screen.dart",
+        "line": 363
+      }
+    ]
+  },
+  {
+    "key": "billingEmptyBody",
+    "pt_BR": "Quando uma assinatura for contratada, os detalhes aparecerão aqui.",
+    "consumers": [
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/subscription_screen.dart",
+        "line": 368
+      }
+    ]
+  },
+  {
+    "key": "billingLoadFailed",
+    "pt_BR": "Não foi possível carregar a assinatura.",
+    "consumers": [
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/subscription_screen.dart",
+        "line": 398
+      }
+    ]
+  },
+  {
+    "key": "billingInvoicePaid",
+    "pt_BR": "Pago",
+    "consumers": [
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/invoices_screen.dart",
+        "line": 24
+      },
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/invoices_screen.dart",
+        "line": 55
+      }
+    ]
+  },
+  {
+    "key": "billingInvoicePending",
+    "pt_BR": "Pendente",
+    "consumers": [
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/invoices_screen.dart",
+        "line": 25
+      },
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/invoices_screen.dart",
+        "line": 57
+      }
+    ]
+  },
+  {
+    "key": "billingInvoiceCancelled",
+    "pt_BR": "Cancelado",
+    "consumers": [
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/invoices_screen.dart",
+        "line": 26
+      },
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/invoices_screen.dart",
+        "line": 60
+      }
+    ]
+  },
+  {
+    "key": "billingInvoiceRefunded",
+    "pt_BR": "Reembolsado",
+    "consumers": [
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/invoices_screen.dart",
+        "line": 27
+      },
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/invoices_screen.dart",
+        "line": 62
+      }
+    ]
+  },
+  {
+    "key": "billingInvoiceFailed",
+    "pt_BR": "Falhou",
+    "consumers": [
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/invoices_screen.dart",
+        "line": 28
+      },
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/invoices_screen.dart",
+        "line": 64
+      }
+    ]
+  },
+  {
+    "key": "billingOpenReceipt",
+    "pt_BR": "Abrir recibo",
+    "consumers": [
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/invoices_screen.dart",
+        "line": 280
+      }
+    ]
+  },
+  {
+    "key": "billingReceiptOpenFailed",
+    "pt_BR": "Não foi possível abrir o recibo.",
+    "consumers": [
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/invoices_screen.dart",
+        "line": 110
+      }
+    ]
+  },
+  {
+    "key": "billingHistoryLoadFailed",
+    "pt_BR": "Não foi possível carregar o histórico.",
+    "consumers": [
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/invoices_screen.dart",
+        "line": 149
+      }
+    ]
+  },
+  {
+    "key": "billingInvoicesEmptyTitle",
+    "pt_BR": "Nenhuma cobrança encontrada",
+    "consumers": [
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/invoices_screen.dart",
+        "line": 158
+      }
+    ]
+  },
+  {
+    "key": "billingInvoicesEmptyBody",
+    "pt_BR": "As cobranças da sua assinatura aparecerão aqui.",
+    "consumers": [
+      {
+        "file": "flutter/apps/epi_admin/lib/features/subscription/invoices_screen.dart",
+        "line": 159
+      }
+    ]
+  }
+]

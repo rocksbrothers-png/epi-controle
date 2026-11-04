@@ -225,19 +225,29 @@ def ppe_tests_view(f):
     assert writes == [], f'abrir a tela não pode gravar: {writes}'
 
 
+def _api_key(template):
+    return 'apiErrors.messages.m_' + __import__('hashlib').sha256(template.encode()).hexdigest()[:12]
+
+
 BACKEND_ERRORS = [
-    # (texto pt-BR exato do backend, chave do catálogo ou None se preservado por contrato)
-    ('A requisição precisa ter pelo menos um item.', 'apiErrors.messages.m_' + __import__('hashlib').sha256(
-        'A requisição precisa ter pelo menos um item.'.encode()).hexdigest()[:12]),
-    ('Linha 3 da cotação: assinatura do arquivo inválida.', 'apiErrors.messages.m_' + __import__('hashlib').sha256(
-        'Linha {line} da cotação: assinatura do arquivo inválida.'.encode()).hexdigest()[:12]),
+    # (template pt-BR do backend, valores das variáveis) — um por lote/camada.
+    ('A requisição precisa ter pelo menos um item.', {}),                        # Compras
+    ('Linha {line} da cotação: assinatura do arquivo inválida.', {'line': '3'}),  # Compras (prefixo expandido)
+    ('Limite de {userlimit} usuário(s) atingido para esta empresa.', {'userlimit': '25'}),  # companies
+    ('CPF inválido. Tentativas restantes: {remaining}.', {'remaining': '2'}),     # portal
+    ('Somente Administrador Master pode promover o motor de regras.', {}),        # settings (via core)
+    ('Perfil sem permissão para esta ação.', {}),                                 # core/auth
+    ('Corpo da requisição excede o limite permitido.', {}),                       # app.py (413)
 ]
 
 
 def backend_error_presentation(f):
-    """Erro 400 de Compras pelo api() real: só a apresentação muda; status, code e payload ficam."""
+    """Erros 400 de vários módulos pelo api() real: só a apresentação muda; status, code e payload ficam."""
     cat = catalog(f.locale)
-    for source, key in BACKEND_ERRORS:
+    for template, values in BACKEND_ERRORS:
+        source, key = template, _api_key(template)
+        for name, value in values.items():
+            source = source.replace('{' + name + '}', value)
         body = {'error': source, 'code': 'X_PROBE', 'validation': {'line': 3}}
         def reply(route, _body=body):
             route.fulfill(status=400, json=_body)
@@ -247,7 +257,9 @@ def backend_error_presentation(f):
         f.page.unroute('**/api/__i18n_probe')
         assert got and got['status'] == 400 and got['code'] == 'X_PROBE', got
         assert got['payload'] == body, ('payload alterado', got['payload'])
-        expected = leaf(cat, key).replace('{line}', '3')
+        expected = leaf(cat, key)
+        for name, value in values.items():
+            expected = expected.replace('{' + name + '}', value)
         assert got['message'] == expected, (f.locale, got['message'], expected)
     # Preservada por contrato (comparação textual em handleDeliveryQrScan): continua idêntica.
     kept = 'QR não encontrado com correspondência exata no estoque da unidade.'

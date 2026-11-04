@@ -48,6 +48,16 @@ FRONTEND_TEXT_LOGIC = [
     {'endpoint': '/api/employee-access', 'needle': 'novo link',
      'where': 'static/js/views/employee-portal.js: msg.includes("novo link")'},
 ]
+# Mensagens cobertas por um template mais geral que mantém o detalhe externo opaco
+# (a frase inteira casa no motor; o texto vindo de fora não é reescrito).
+COVERED_BY = {
+    'Falha de comunicação com a loja em {path}: {exc}': 'apiErrors.messages.connectorNetworkFailure',
+}
+# Camada compartilhada fora de modules/: entra no inventário como pseudo-módulo.
+SHARED = {'core': 'core', 'epi_backend': 'epi_backend', 'app': 'app.py'}
+# Mensagens que só existem na inicialização/migração do servidor (não viram resposta de API):
+# não são traduzidas — ficam em pt-BR nos logs, com o motivo registrado.
+INFRA_FILES = {'core/bootstrap.py', 'core/schema.py', 'core/database.py', 'epi_backend/db.py', 'epi_backend/config.py'}
 # O gate confere que toda comparação textual sobre mensagem no frontend está nesta lista.
 FRONTEND_TEXT_LOGIC_NEEDLES = {f['needle'] for f in FRONTEND_TEXT_LOGIC}
 
@@ -193,7 +203,14 @@ class Collector(ast.NodeVisitor):
                     self.add(node, text, names, f'causa de {name}', w['status'], w['payload'])
                 self.generic_visit(node)
                 return
-            text, names = template_of(exc.args[0])
+            # A mensagem é o primeiro argumento com texto em português: exceções como
+            # EmployeePortalAccessDenied('LINK_BLOCKED', '<mensagem>') trazem o código antes.
+            text, names = None, []
+            for arg in exc.args:
+                text, names = template_of(arg)
+                if text and PT.search(text):
+                    break
+                text, names = None, []
             status = STATUS_BY_EXCEPTION.get(name)
             payload = "{'error': <mensagem>}" if status in (400, 403) else 'tratado pela rota'
             self.add(node, text, names, f'raise {name}', status or 'depende da rota', payload)
@@ -357,6 +374,19 @@ class CallGraph:
         return sorted(found)
 
 
+def shared_files():
+    for target in SHARED.values():
+        path = ROOT / target
+        yield from (sorted(path.rglob('*.py')) if path.is_dir() else [path])
+
+
+def module_files(module):
+    if module in SHARED:
+        path = ROOT / SHARED[module]
+        return sorted(path.rglob('*.py')) if path.is_dir() else [path]
+    return sorted((ROOT / 'modules' / module).glob('*.py'))
+
+
 def python_tests_citing(text, tests_src):
     fixed = max(re.split(r'\{\w+\}', text), key=len).strip()
     if len(fixed) < 14:
@@ -375,13 +405,12 @@ def main():
              and re.search(r'error|invalid|failed|denied|notfound|required|mismatch|unavailable|forbidden', k, re.IGNORECASE)}
     tests_src = {p.name: p.read_text(encoding='utf-8', errors='ignore') for p in (ROOT / 'tests').glob('test_*.py')}
     graph = CallGraph()
-    every_source = sorted((ROOT / 'modules').rglob('*.py'))
+    every_source = sorted((ROOT / 'modules').rglob('*.py')) + sorted(shared_files())
     forwarders = find_forwarders(every_source)
     domains = LiteralDomains(every_source)
     rows, shapes_seen = [], {}
     for module in args.modules:
-        mdir = ROOT / 'modules' / module
-        for path in sorted(mdir.glob('*.py')):
+        for path in module_files(module):
             src = path.read_text(encoding='utf-8')
             c = Collector(path, src, forwarders)
             c.visit(ast.parse(src))
@@ -412,6 +441,10 @@ def main():
                 # "preservar" mesmo que alguém crie um template para ela (o gate então reprova).
                 if logic:
                     decision, reason, key = 'preservar', 'comparação textual no frontend decide comportamento', None
+                elif item['file'] in INFRA_FILES:
+                    decision, reason, key = 'preservar', 'infraestrutura: inicialização/migração do servidor, não chega ao cliente', None
+                elif text in COVERED_BY:
+                    decision, reason, key = 'já coberto', 'template mais geral; detalhe externo opaco', COVERED_BY[text]
                 elif shape(text) in existing:
                     decision, reason, key = 'já coberto', 'template existente', existing[shape(text)]
                 elif shape(text) in other:

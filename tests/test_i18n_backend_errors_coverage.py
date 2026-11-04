@@ -29,7 +29,12 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 LOCALES = ['pt-BR', 'en-GB', 'es-ES', 'fr-FR', 'nb-NO']
 # Módulos cujos lotes foram concluídos (cresce a cada lote).
-DONE = ['purchases', 'ppe_tests', 'stock', 'data_migration', 'employees', 'units', 'ficha', 'users']
+DONE = ['purchases', 'ppe_tests', 'stock', 'data_migration', 'employees', 'units', 'ficha', 'users',
+        'deliveries', 'outsourced_companies', 'portal', 'payments', 'epis', 'tenant', 'settings', 'auth',
+        'legal_entities', 'feedback', 'companies', 'commercial', 'company_settings', 'devolutions',
+        'safety_library', 'reports', 'i18n',
+        # Camada compartilhada (fora de modules/): autenticação, arquivamento, HTTP, compras comuns.
+        'core', 'epi_backend', 'app']
 
 
 def _inventory():
@@ -104,7 +109,9 @@ def test_instancia_real_resolve_para_a_chave_e_preserva_payload(module, tmp_path
         sample = re.sub(r'\{(\w+)\}', lambda m: f'X{m.group(1)}7', r['template'])
         if r['decision'] != 'preservar':
             cases.append({'source': sample, 'key': r['catalog_entry']})
-        elif r['decision'] == 'preservar':
+        elif r['frontend_text_logic']:
+            # Só as preservadas por contrato (comparação textual no frontend) precisam
+            # continuar sem template. As de infraestrutura nunca chegam ao cliente.
             preserved.append(sample)
     script = r'''
 const fs=require('fs'),path=require('path'),vm=require('vm');
@@ -171,3 +178,54 @@ def test_scanner_de_comparacao_pega_o_padrao():
     assert COMPARISON.findall("if (loweredMessage.includes('não encontrado')) {") == ['não encontrado']
     assert COMPARISON.findall("msg.toLowerCase().includes('bloqueado')") == ['bloqueado']
     assert COMPARISON.findall("if (error?.message?.startsWith('Prazo')) {") == ['Prazo']
+
+@pytest.mark.parametrize('module', DONE)
+def test_traducao_nao_dispara_comparacao_textual_do_frontend(module, tmp_path_factory):
+    """Uma tradução não pode conter o termo que o frontend procura no texto do erro
+    daquele endpoint (ex.: es-ES "bloqueado" num erro de /api/employee-access faria o
+    portal travar o formulário sem o link estar bloqueado)."""
+    inv, rows = _rows(module, tmp_path_factory.mktemp('inv'))
+    cats = _catalogs()
+    achados = []
+    for r in rows:
+        if r['decision'] == 'preservar':
+            continue
+        # Na camada compartilhada, uma função sem rota mapeada (ex.: o despacho de app.py)
+        # pode responder a qualquer endpoint: todas as regras valem.
+        qualquer_rota = module in inv.SHARED and not r['endpoints']
+        for rule in inv.FRONTEND_TEXT_LOGIC:
+            if not qualquer_rota and not any(rule['endpoint'] in e for e in r['endpoints']):
+                continue
+            for loc in LOCALES:
+                try:
+                    value = _leaf(cats[loc], r['catalog_entry'])
+                except (KeyError, TypeError):
+                    continue
+                if rule['needle'] in value.lower():
+                    achados.append(f"{loc} {r['catalog_entry']} contém {rule['needle']!r} ({rule['endpoint']})")
+    assert not achados, 'tradução dispararia ramo do frontend:\n' + '\n'.join(achados)
+
+
+# Módulos sem nenhuma mensagem em português (conferido pelo inventário).
+SEM_MENSAGENS = {'alerts', 'dashboard'}
+
+
+def test_todo_modulo_do_backend_esta_no_gate():
+    """Um módulo novo (ou a camada compartilhada) não pode ficar fora do gate em silêncio."""
+    inv = _inventory()
+    pacotes = {p.name for p in (ROOT / 'modules').iterdir() if p.is_dir() and any(p.glob('*.py'))}
+    esperados = pacotes | set(inv.SHARED)
+    assert esperados - set(DONE) - SEM_MENSAGENS == set()
+    assert set(DONE) - esperados == set()
+
+
+@pytest.mark.parametrize('module', sorted(SEM_MENSAGENS))
+def test_modulos_sem_mensagens_continuam_sem_mensagens(module, tmp_path):
+    _, rows = _rows(module, tmp_path)
+    assert rows == [], [r['template'] for r in rows]
+
+
+def test_mensagens_de_infraestrutura_nao_chegam_ao_cliente():
+    """As preservadas por 'infraestrutura' só podem vir dos arquivos de inicialização/migração."""
+    inv = _inventory()
+    assert inv.INFRA_FILES <= {str(p.relative_to(ROOT)) for p in inv.shared_files()}

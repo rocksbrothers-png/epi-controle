@@ -994,3 +994,49 @@ Riscos residuais (não tratados aqui):
 - Seis funções antes `async` de bloco agora são globais (mesmo padrão da §15); nada as sonda e as guardas de
   permissão são as mesmas.
 - O teste de navegador não clica em "Tornar principal" nem envia imagem (ambos cobertos pelo teste de runtime).
+
+## 17. UBX-V5 — fatia do logotipo (2026-11-03): `companyLogoSrc`/`companyLogoMarkup` → `shared/`
+
+Fatia prevista na §15.1 ("vão para `shared/` numa fatia própria"). Escolhida porque a próxima fatia do índice
+(Comercial, com `formatCompanyCurrency`, `updateTopbarCompanyBadge` e `renderMyCompanyDomains`) continua bloqueada
+pela I18N-FULL-V1: conferido hunk a hunk sobre a ponta `d6d79b3f` do `codex/i18n-full-v1`, o PR altera
+`formatCompanyCurrency` (1 hunk), `updateTopbarCompanyBadge` (1), `renderMyCompanyDomains` (1) e o Comercial
+(hunks nas linhas 4880, 5067, 5181 e 5258 da base: `formatCurrency(..., lang)` e `data-i18n` no filtro). As duas
+funções do logotipo não têm nenhum hunk daquele PR, e o `_scripts.html` só é tocado lá em outras linhas (40 e 73).
+
+### 17.1 O que saiu do `app.js`
+
+| Destino | Conteúdo |
+|---|---|
+| `modules/shared/ui/company-logo.js` (48) | `companyLogoSrc` e `companyLogoMarkup`, corpos idênticos (inclusive a regra da SECURITY-LOGO-XSS-V1 e o escape do atributo). Publicadas em `globalThis` e em `__EPI_SHARED_COMPANY_LOGO__` (congelado); carga idempotente. |
+
+`DEFAULT_COMPANY_LOGO` era a `const` de bloco do `app.js`; o módulo lê `globalThis.DEFAULT_COMPANY_LOGO`, publicado
+por `js/core/constants.js` (carregado antes) com valor idêntico — o teste compara os dois valores. O `app.js`
+continua com a sua `const` (usada por outras funções). Consumidores, todos pelo nome global e na hora da chamada:
+`app.js` (marca da plataforma, prévias de logotipo, topo, cartões do Comercial), `companies-view.js`,
+`my-company-view.js` e `js/views/fichas.js`. O módulo carrega depois de `constants.js` e antes de todos eles.
+
+### 17.2 Métricas
+
+| Métrica | Antes (`main` 5c6d13fd) | Depois |
+|---|---|---|
+| Linhas do `app.js` | 16.979 | 16.965 |
+| Bytes do `app.js` | 891.481 | 890.573 |
+| Declarações de nível superior | 727 | 725 |
+| Endpoints no `app.js` | 104 | 104 |
+| Ciclos entre scripts | 0 | 0 |
+| Módulos UBX (`static/js/modules/**/*.js`) | 45 | 46 |
+
+### 17.3 Equivalência
+
+- Fixture literal: `static/js/test/fixtures/app-before-ubx-v5-company-logo.js.txt` (cópia do `app.js` da `main`
+  5c6d13fd).
+- `security-logo-xss-runtime.js` roda os testes da SECURITY-LOGO-XSS-V1 sobre as duas implementações e compara
+  original × módulo em 1.000+ combinações (valores legítimos, maliciosos, tipos não-string, nomes com aspas e
+  `&<>`, classes com aspas, argumentos omitidos): 0 divergências. Também fixa o contrato publicado, a carga
+  idempotente, o valor de `DEFAULT_COMPANY_LOGO` e a ordem de carga.
+- Sabotagens no módulo: 10/10 detectadas (regex, escape de `"`/`'`, padrão, rótulo, âncora `$`, publicação,
+  classe padrão, congelamento).
+- Chromium nos 5 idiomas: `security_logo_xss.py` 40/40, `ubx_companies.py` 20/20, `ubx_my_company.py` 10/10.
+- Os dígitos de paridade da F4/F5B (`tests/test_343_f4_*`, `tests/test_343_f5b_*`) foram atualizados porque o
+  `app.js` faz parte do contrato pareado; o mesmo commit existe no SaaS.

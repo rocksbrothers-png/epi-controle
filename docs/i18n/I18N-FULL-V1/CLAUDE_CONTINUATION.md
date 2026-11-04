@@ -32,3 +32,22 @@ pytest e 666 JS, sem nenhum teste pulado.
 | A5 | P2 | O ramo 503 da reimpressão depende do fallback do gateway (texto do frontend) ficar sem template | Teste que fixa: nenhum template casa `Servidor temporariamente indisponível…` |
 | A6 | P2 | `my-company-view.js:156` usa `innerHTML` com `error.message` (anterior, módulo UBX) | Não alterado (escopo UBX); continua registrado |
 | A7 | P3 | es-ES “EPI” em 3 chaves; nb “Obligatorisk felt”; fr “non valide” | Corrigidos para EPP / “Påkrevd felt” / “invalide” |
+
+## 19. Auditoria final (PRs #1080 / #454) e decisões pendentes
+
+Feita por um agente separado, só leitura, em worktrees próprios. **Nenhum P0/P1.**
+
+| Sev. | Achado | Tratamento |
+|---|---|---|
+| P2 | O PR **altera o backend** em relação à `main`. As mudanças vêm da base da Codex, não desta continuação: `modules/i18n/presentation.py`, alerts (`presentation`), compras e portal do fornecedor (e-mails/PDF/anexo no idioma de `Accept-Language`/`?lang`, link do portal com `?lang=`, scripts com SRI), `safety_library` (`name_i18n_key`), `core/pdf.py` (`/WinAnsiEncoding` e fim do duplo escape) e `requirements.txt` (+Babel). São campos aditivos, sem mudança de status, códigos ou textos de erro, e sem mudança de tenant ou autorização. A descrição dos PRs dizia “sem backend” | Descrição dos PRs corrigida |
+| P3 | `Translator.t` falha fechado com `DocumentLocaleUnavailable` quando falta chave | É intencional e testado (`test_partial_document_catalogue_does_not_send_portuguese_or_raw_key`): não envia documento com idioma misturado ou chave crua. Mantido |
+| P3 | O e-mail ao fornecedor sai no idioma de quem envia, não no do fornecedor | Decisão de produto, registrada |
+| P3 | O comentário de `_apiTemplates` (`i18n.js`) cita só `apiErrors`, mas o código também casa chaves de UI com nome de erro | Comportamento seguro: valores opacos, ≥8 caracteres fixos, casamento ancorado. Comentário registrado para correção futura |
+| P3 | `createApiError` também lê `payload.error.code`/`validation.code` | Só no cliente; registrado |
+| P3 | `pagamento.js` (SaaS) interpola `max_users` sem escape (anterior); `my-company-view.js:156` (UBX) | Fora do escopo; registrados |
+
+Fases desta etapa:
+- Valores dinâmicos: `DYNAMIC_STATUS_VALUES.md`.
+- 4º aviso F2: `F2_SESSION_MESSAGES_ANALYSIS.md`.
+- Integração com a UBX: `UBX_INTEGRATION_PLAN.md`.
+- Segurança do 503: PRs separados #1081 / #455.

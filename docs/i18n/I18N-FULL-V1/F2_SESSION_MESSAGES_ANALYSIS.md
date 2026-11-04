@@ -106,3 +106,29 @@ Na carga seguinte, `consumePendingSessionMessage` (~2697) lê a chave, **apaga a
 
 Opção A, como mudança aditiva e reversível, **somente após nova autorização**. Até lá, os quatro
 avisos permanecem em pt-BR e o contrato F2 fica intacto.
+
+
+## Quarto aviso — “Não foi possível concluir o login. Faça login novamente.” (não traduzido)
+
+**Onde:** `static/app.js`, no `catch` do fluxo de login, quando `sessaoEstabelecidaNestaTentativa` é verdadeiro.
+O `saveSession` já gravou usuário, permissões e token, e o bootstrap pós-login falhou. Antes desse ponto (TOTP, credencial) não há
+terminação: há `clearSession()` e a mensagem fica no formulário, sem recarga.
+
+**Contrato atual:**
+- A mensagem é gravada por `terminateSession('<texto>')` (teardown completo, aviso de uso único em `sessionStorage`, recarga).
+- `consumePendingSessionMessage` lê o aviso, apaga a chave e o exibe **como veio**: ele não está no mapa de exibição.
+- **Não** está em `MENSAGENS_DE_ENCERRAMENTO` (`tests/test_343_f2_teardown_logout.py`), e nenhum teste fixa esse texto.
+
+**Para traduzir sem mexer em autenticação, encerramento, isolamento ou no F2:**
+1. Acrescentar a entrada ao mapa fechado `avisosCanonicos` em `consumePendingSessionMessage` (só exibição) e criar
+   `login.messages.loginIncomplete` nos 5 catálogos, com o pt-BR idêntico ao texto gravado.
+2. Testes:
+   - o literal continua em `terminateSession('…')`;
+   - em pt-BR o texto exibido é idêntico;
+   - nos outros idiomas há tradução própria, sem placeholders;
+   - a troca de idioma não grava storage nem dispara evento (cenário Chromium `f2_session_notice`).
+3. Decisão a tomar: hoje `test_mapa_cobre_exatamente_os_avisos_do_contrato_f2` exige mapa == `MENSAGENS_DE_ENCERRAMENTO`. Há duas saídas:
+   - (a) incluir o 4º aviso em `MENSAGENS_DE_ENCERRAMENTO`. Isso amplia o contrato F2 com mais um caso, que passaria a ser fixado também
+     pelo teste de mecanismo único, e exige autorização por tocar o teste de contrato;
+   - (b) manter o contrato F2 como está e declarar o 4º aviso numa lista própria do teste de i18n.
+   A recomendação é (a), porque fixa um aviso que hoje não tem teste.

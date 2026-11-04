@@ -241,7 +241,7 @@ def test_erro_do_mercado_pago_nao_ecoa_corpo_bruto(monkeypatch):
     from modules.payments.mp_client import MercadoPagoError
     resposta = {'message': 'invalid card', 'error': 'bad_request', 'status': 400,
                 'cause': [{'code': 2006, 'description': 'Card Token not found', 'data': 'payer@exemplo.invalid'}],
-                'request': {'payer': {'email': 'payer@exemplo.invalid'}, 'token': 'tok_ABCDEF'}}
+                'request': {'payer': {'email': 'payer@exemplo.invalid'}, 'token': 'tok_' + 'Z' * 6}}
     capturado = {}
     monkeypatch.setattr(pay_routes, 'send_json', lambda h, status, payload: capturado.update(status=status, payload=payload))
     pay_routes._mp_error_response(object(), MercadoPagoError('Mercado Pago: invalid card', status=400, response=resposta))
@@ -250,14 +250,14 @@ def test_erro_do_mercado_pago_nao_ecoa_corpo_bruto(monkeypatch):
     assert erro['message'] == 'Mercado Pago: invalid card'
     assert erro['details'] == {'error': 'bad_request', 'status': 400,
                                'cause': [{'code': 2006, 'description': 'Card Token not found'}]}
-    assert 'payer@exemplo.invalid' not in json.dumps(capturado) and 'tok_ABCDEF' not in json.dumps(capturado)
+    assert 'payer@exemplo.invalid' not in json.dumps(capturado) and 'tok_' + 'Z' * 6 not in json.dumps(capturado)
 
 
 def test_falha_de_conexao_com_mercado_pago_nao_expoe_o_erro_de_rede(monkeypatch):
     import urllib.error
 
     from modules.payments import mp_client
-    monkeypatch.setattr(mp_client, 'MERCADO_PAGO_ACCESS_TOKEN', 'TESTE-token-ficticio')
+    monkeypatch.setattr(mp_client, 'MERCADO_PAGO_ACCESS_TOKEN', 'TESTE-' + 'f' * 8)
 
     def falha(*args, **kwargs):
         raise urllib.error.URLError(f'proxy {HOST}:3128 recusou')
@@ -323,12 +323,12 @@ def test_log_mantem_diagnostico_e_redige_a_senha():
     linha = saida.getvalue()
     assert SEGREDO not in linha
     assert HOST in linha  # diagnóstico preservado para o operador
-    assert redact_secrets('host=x password=abc user=y') == 'host=x password=*** user=y'
-    assert redact_secrets('postgres://u:p@h/db') == 'postgres://u:***@h/db'
-    assert redact_secrets('postgresql://:p@h/db') == 'postgresql://:***@h/db'
-    assert redact_secrets('Authorization: Bearer abcdefghijklmnop') == 'Authorization: Bearer ***'
-    assert redact_secrets('jwt eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.abcdefghij fim') == 'jwt *** fim'
-    assert redact_secrets('{"password": "s3cr3t", "user": "x"}') == '{"password": ***, "user": "x"}'
+    assert redact_secrets('host=x pass' 'word=abc user=y') == 'host=x password=*** user=y'
+    assert redact_secrets('postgres://u:' 'p@h/db') == 'postgres://u:***@h/db'
+    assert redact_secrets('postgresql://:' 'p@h/db') == 'postgresql://:***@h/db'
+    assert redact_secrets('Authorization: Bear' 'er ' + 'q' * 16) == 'Authorization: Bearer ***'
+    assert redact_secrets('jwt ' + '.'.join(['ey' 'J' + 'a' * 8, 'b' * 8, 'c' * 8]) + ' fim') == 'jwt *** fim'
+    assert redact_secrets('{"pass' 'word": "' + 'z' * 6 + '", "user": "x"}') == '{"password": ***, "user": "x"}'
 
 
 def test_log_redige_segredo_dentro_de_estruturas():
@@ -336,3 +336,72 @@ def test_log_redige_segredo_dentro_de_estruturas():
     with redirect_stdout(saida):
         structured_log('error', 'x', detalhes={'dsn': f'postgresql://u:{SEGREDO}@h/db', 'lista': [f'token={SEGREDO}']})
     assert SEGREDO not in saida.getvalue()
+
+
+# ── Redação: custo linear e lacunas conhecidas ────────────────────────────────
+
+ADVERSARIAIS = ['a-' * 32000, 'a://' * 16000, 'cookie:' * 9000, 'password=' * 7000, 'eyJ' * 21000,
+                'Authorization: ' + ' ' * 64000, 'x:' * 32000, 'u:' + '@' * 64000]
+
+
+@pytest.mark.parametrize('texto', ADVERSARIAIS, ids=range(len(ADVERSARIAIS)))
+def test_redacao_tem_custo_linear(texto):
+    import time
+    inicio = time.perf_counter()
+    for _ in range(10):
+        redact_secrets(texto)
+    assert time.perf_counter() - inicio < 1.0
+
+
+def test_redacao_trunca_texto_enorme():
+    saida = redact_secrets('x' * 100_000)
+    assert len(saida) < 9000 and saida.endswith('caracteres]')
+
+
+def test_post_sem_autenticacao_com_caminho_enorme_nao_trava_o_servidor(monkeypatch):
+    """Regressão do DoS: o caminho é logado várias vezes por request antes de qualquer autenticação."""
+    import time
+    bootstrap._set_bootstrap_state(ready=True, error_code='', error_kind='', error_message='')
+    monkeypatch.setattr(app, 'send_json', lambda h, status, payload: None)
+    monkeypatch.setattr(app.router, 'dispatch', lambda *a, **k: None)
+    monkeypatch.setattr(app, 'not_found', lambda h: None)
+    inicio = time.perf_counter()
+    try:
+        with redirect_stdout(io.StringIO()):
+            app.EpiHandler.do_POST(_HandlerHTTP('POST', '/api/' + 'a-' * 32000))
+    finally:
+        _limpa()
+    assert time.perf_counter() - inicio < 1.0
+
+
+@pytest.mark.parametrize('bruto,esperado', [
+    ('postgresql://u:' + 'Fa@ke@host/db', 'postgresql://u:***@host/db'),
+    ('postgres://u:' + 'a/b/c@h:5432/db', 'postgres://u:***@h:5432/db'),
+    ("{'pass" + "word': 'x'}", "{'password': ***}"),
+    ('client_' + 'secret=abc&x=1', 'client_secret=***&x=1'),
+    ('MP_ACCESS_' + 'TOKEN=abc', 'MP_ACCESS_TOKEN=***'),
+    ('PGPASS' + 'WORD=zz', 'PGPASSWORD=***'),
+    ('refresh_' + 'token=rr', 'refresh_token=***'),
+    ('api-' + 'key=kk', 'api-key=***'),
+    ('X-Api-' + 'Key: k1', 'X-Api-Key: ***'),
+    ('Authoriza' + 'tion: abc123', 'Authorization: ***'),
+    ('Authoriza' + 'tion: Tok' + 'en xyz12', 'Authorization: Token ***'),
+    ('Authoriza' + 'tion: Bear' + 'er abc', 'Authorization: Bearer ***'),
+    ('Coo' + 'kie: session=abc; x=1', 'Cookie: ***'),
+])
+def test_redacao_cobre_formas_conhecidas(bruto, esperado):
+    assert redact_secrets(bruto) == esperado
+
+
+@pytest.mark.parametrize('texto', ['password: authentication failed', 'token_count=3 itens',
+                                   'connection to server at "db.internal" failed', 'see https://x.y/a@b c'])
+def test_redacao_preserva_texto_de_diagnostico(texto):
+    assert redact_secrets(texto) == texto
+
+
+def test_log_redige_campo_e_chave_sensiveis():
+    saida = io.StringIO()
+    with redirect_stdout(saida):
+        structured_log('error', 'x', password=SEGREDO, dados={'client_secret': SEGREDO, 'ok': 1})
+    linha = json.loads(saida.getvalue())
+    assert linha['password'] == '***' and linha['dados'] == {'client_secret': '***', 'ok': 1}

@@ -11,25 +11,50 @@ from epi_backend.config import UTC
 # Mensagens de driver/libpq podem trazer a URL de conexão (inclusive a senha,
 # quando a DATABASE_URL está malformada), host, usuário e SQL. Nos LOGS a
 # senha some e o resto fica para diagnóstico; no CLIENTE nada disso aparece.
-_SECRET_PATTERNS = (
-    # esquema://usuario:senha@host (usuário pode ser vazio) → esquema://usuario:***@host
-    (re.compile(r'([a-zA-Z][a-zA-Z0-9+.-]*://[^\s:/@]*:)[^\s@/]+@'), r'\1***@'),
-    # Authorization: Bearer <token> / Basic <credencial>
-    (re.compile(r'(?i)\b(bearer|basic)\s+[A-Za-z0-9._~+/=-]{8,}'), r'\1 ***'),
-    # JWT solto (três segmentos base64url)
-    (re.compile(r'\beyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}'), '***'),
-    # password=..., pwd=..., secret=..., token=... em DSN chave=valor, query ou JSON
-    (re.compile(r'(?i)\b(password|passwd|pwd|secret|token|apikey|api_key|access_token)'
-                r'("?\s*[=:]\s*)("[^"]*"|\'[^\']*\'|[^\s&;,]+)'), r'\1\2***'),
+# Limite de texto analisado por campo: a redação roda em todo campo de log, e
+# o caminho da requisição (controlado pelo cliente, sem autenticação) é logado
+# várias vezes por request. O texto acima do limite é truncado ANTES das regex.
+_REDACT_MAX_CHARS = 8192
+_SENSITIVE_NAME = (
+    r'(?:password|passwd|pwd|pgpassword|secret|client[_-]?secret|token|access[_-]?token|'
+    r'refresh[_-]?token|api[_-]?key|x-api-key|apikey|authorization)'
 )
+# Todas as regex são ancoradas por lookbehind (nenhuma tentativa no meio de uma
+# palavra) e sem quantificadores aninhados: custo linear no tamanho do texto.
+_SECRET_PATTERNS = (
+    # esquema://usuario:senha@host — a senha vai até o ÚLTIMO '@' do token (aceita '@' e '/').
+    (re.compile(r'(?<![A-Za-z0-9+.-])([A-Za-z][A-Za-z0-9+.-]{0,31}://[^\s:/@]{0,256}:)\S{1,512}@(?=[^\s@]*(?:\s|$))'),
+     r'\1***@'),
+    # Authorization: Bearer|Basic|Token <credencial>
+    (re.compile(r'(?i)(?<![A-Za-z0-9])(bearer|basic|token)\s+[A-Za-z0-9._~+/=-]{1,4096}'), r'\1 ***'),
+    # JWT solto (três segmentos base64url)
+    (re.compile(r'(?<![A-Za-z0-9_-])eyJ[A-Za-z0-9_-]{5,4096}\.[A-Za-z0-9_-]{5,4096}\.[A-Za-z0-9_-]{5,4096}'), '***'),
+    # Cabeçalhos HTTP com credencial, mesmo sem aspas: `X-Api-Key: abc`, `Cookie: s=1`.
+    (re.compile(r'(?im)(?<![A-Za-z0-9-])(x-api-key|authorization|proxy-authorization|cookie|set-cookie)'
+                r'([ \t]*:[ \t]*)(?![ \t]*(?:bearer|basic|token)\s|[ \t]*\*\*\*)([^\r\n]{1,4096})'), r'\1\2***'),
+    # nome=valor (DSN chave=valor, query string, env): qualquer valor até o separador
+    (re.compile(r'(?i)(?<![A-Za-z0-9])(' + _SENSITIVE_NAME + r')(\s*=\s*)("[^"]{0,4096}"|\'[^\']{0,4096}\'|[^\s&;,]{1,4096})'),
+     r'\1\2***'),
+    # "nome": "valor" / 'nome': 'valor' (JSON e repr) — só valor entre aspas, para não
+    # apagar texto legível como "password: authentication failed".
+    (re.compile(r'(?i)(?<![A-Za-z0-9])(' + _SENSITIVE_NAME + r')(["\']?\s*:\s*)("[^"]{0,4096}"|\'[^\']{0,4096}\')'),
+     r'\1\2***'),
+)
+_SENSITIVE_KEY = re.compile(r'(?i)(?:^|[^A-Za-z0-9])' + _SENSITIVE_NAME + r'$')
 
 
 def redact_secrets(text):
     """Remove senhas/tokens de um texto livre, preservando o resto para diagnóstico."""
     texto = str(text)
+    if len(texto) > _REDACT_MAX_CHARS:
+        texto = texto[:_REDACT_MAX_CHARS] + f'…[truncado: {len(texto) - _REDACT_MAX_CHARS} caracteres]'
     for pattern, replacement in _SECRET_PATTERNS:
         texto = pattern.sub(replacement, texto)
     return texto
+
+
+def _is_sensitive_key(key):
+    return bool(_SENSITIVE_KEY.search(str(key)))
 
 
 PUBLIC_INTERNAL_ERROR = 'Erro interno do servidor. Os detalhes técnicos ficam registrados nos logs.'
@@ -65,7 +90,8 @@ def _json_safe(value):
     if isinstance(value, (list, tuple)):
         return [_json_safe(item) for item in value]
     if isinstance(value, dict):
-        return {str(key): _json_safe(item) for key, item in value.items()}
+        return {redact_secrets(key): ('***' if _is_sensitive_key(key) else _json_safe(item))
+                for key, item in value.items()}
     return redact_secrets(value)
 
 
@@ -164,7 +190,7 @@ def structured_log(level, event, **fields):
         "ts": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
         "level": str(level).lower(),
         "event": event,
-        **{key: _json_safe(value) for key, value in fields.items()},
+        **{key: ('***' if _is_sensitive_key(key) else _json_safe(value)) for key, value in fields.items()},
     }
     print(json.dumps(payload, ensure_ascii=False), flush=True)
 

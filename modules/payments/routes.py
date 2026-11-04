@@ -495,7 +495,8 @@ def handle_post_webhook(handler, parsed, payload, match):
                 pass
             structured_log('error', 'payments.webhook_error', path=parsed.path, error=str(exc))
             # 200 para o MP não reenfileirar indefinidamente um erro não recuperável.
-            return send_json(handler, 200, {'ok': False, 'error': public_error_message(exc)})
+            send_json(handler, 200, {'ok': False, 'error': public_error_message(exc)})
+            return None
     return send_json(handler, 200, result)
 
 

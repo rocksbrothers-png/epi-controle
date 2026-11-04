@@ -30,7 +30,7 @@ from core.database import get_connection
 from core.repository import require_actor, require_master_actor
 from core.security import require_bearer_actor, resolve_actor_user_id
 from epi_backend.config import BASE_DIR
-from epi_backend.http_utils import require_fields, send_bytes, send_json, structured_log
+from epi_backend.http_utils import public_error_message, require_fields, send_bytes, send_json, structured_log
 from modules.payments import service, subscriptions_service
 from modules.payments.mp_client import MercadoPagoError
 
@@ -495,7 +495,7 @@ def handle_post_webhook(handler, parsed, payload, match):
                 pass
             structured_log('error', 'payments.webhook_error', path=parsed.path, error=str(exc))
             # 200 para o MP não reenfileirar indefinidamente um erro não recuperável.
-            return send_json(handler, 200, {'ok': False, 'error': str(exc)})
+            return send_json(handler, 200, {'ok': False, 'error': public_error_message(exc)})
     return send_json(handler, 200, result)
 
 

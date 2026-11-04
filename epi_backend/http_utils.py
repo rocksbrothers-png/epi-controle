@@ -1,19 +1,76 @@
 import json
 import os
+import re
 from datetime import datetime
 from urllib.parse import unquote
 
 from epi_backend.config import UTC
 
 
+# ── Segredos em texto livre de erro (segurança 503/500) ──────────────────────
+#
+# Mensagens de driver/libpq podem trazer a URL de conexão (inclusive a senha,
+# quando a DATABASE_URL está malformada), host, usuário e SQL. Nos LOGS a
+# senha some e o resto fica para diagnóstico; no CLIENTE nada disso aparece.
+_SECRET_PATTERNS = (
+    # esquema://usuario:senha@host → esquema://usuario:***@host
+    (re.compile(r'([a-zA-Z][a-zA-Z0-9+.-]*://[^\s:/@]+:)[^\s@]+@'), r'\1***@'),
+    # password=..., pwd=..., secret=... em DSN chave=valor ou query
+    (re.compile(r'(?i)\b(password|passwd|pwd|secret|token|apikey|api_key)(\s*[=:]\s*)("[^"]*"|\'[^\']*\'|[^\s&;,]+)'), r'\1\2***'),
+)
+
+
+def redact_secrets(text):
+    """Remove senhas/tokens de um texto livre, preservando o resto para diagnóstico."""
+    texto = str(text)
+    for pattern, replacement in _SECRET_PATTERNS:
+        texto = pattern.sub(replacement, texto)
+    return texto
+
+
+PUBLIC_INTERNAL_ERROR = 'Erro interno do servidor. Os detalhes técnicos ficam registrados nos logs.'
+_INTERNAL_EXCEPTION_NAMES = frozenset({'SchemaMigrationError'})
+# Indícios de texto de infraestrutura que nunca deve ir ao cliente.
+_INFRA_TEXT = re.compile(
+    r'(?i)://|database_url|connection to server|password authentication|could not connect|'
+    r'\bdsn\b|psycopg|sqlite3?\.|no such table|no such column|syntax error|violates .* constraint|'
+    r'duplicate key value|relation \"|column \"'
+)
+
+
+def _is_database_error(exc):
+    for cls in type(exc).__mro__:
+        module = getattr(cls, '__module__', '') or ''
+        if cls.__name__ in _INTERNAL_EXCEPTION_NAMES:
+            return True
+        if module.startswith(('sqlite3', 'psycopg2', 'psycopg')) and cls.__name__ != 'object':
+            return True
+    return False
+
+
+def public_error_message(exc):
+    """Texto do erro 500 que pode ir ao cliente.
+
+    Erros de banco/driver/migração e textos com cara de infraestrutura viram uma
+    mensagem fixa; mensagens de aplicação (ex.: `RuntimeError` com texto de
+    negócio) continuam como estão, para não mudar o que o usuário já vê.
+    """
+    texto = str(exc)
+    if _is_database_error(exc) or _INFRA_TEXT.search(texto):
+        return PUBLIC_INTERNAL_ERROR
+    return texto
+
+
 def _json_safe(value):
-    if isinstance(value, (str, int, float, bool)) or value is None:
+    if isinstance(value, str):
+        return redact_secrets(value)
+    if isinstance(value, (int, float, bool)) or value is None:
         return value
     if isinstance(value, (list, tuple)):
         return [_json_safe(item) for item in value]
     if isinstance(value, dict):
         return {str(key): _json_safe(item) for key, item in value.items()}
-    return str(value)
+    return redact_secrets(value)
 
 
 # ── Redação de credencial em query string (#343, F1) ─────────────────────────

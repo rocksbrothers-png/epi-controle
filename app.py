@@ -80,6 +80,7 @@ from core.bootstrap import init_db
 from epi_backend.db import row_to_dict
 from epi_backend.http_utils import (
     parse_json,
+    public_error_message,
     redact_sensitive_query,
     require_fields,
     send_bytes,
@@ -508,6 +509,7 @@ from epi_backend.bootstrap import (
     _set_bootstrap_state,
     _get_bootstrap_state,
     current_runtime_health,
+    public_bootstrap_detail,
     runtime_probe_response,
 )
 
@@ -869,7 +871,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
                     'message': 'Serviço indisponível: bootstrap do banco pendente ou com falha.',
                     'details': {
                         'kind': state.get('error_kind') or 'bootstrap_not_ready',
-                        'detail': state.get('error_message') or 'A migração/validação de schema ainda não concluiu.',
+                        'detail': public_bootstrap_detail(state),
                         'ready': False,
                         'started_at': state.get('started_at') or '',
                         'completed_at': state.get('completed_at') or '',
@@ -961,7 +963,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
         except Exception as exc:
             structured_log('error', 'http.unhandled_error', method='GET', path=parsed.path, error=str(exc))
             try:
-                return send_json(self, 500, {'error': str(exc)})
+                return send_json(self, 500, {'error': public_error_message(exc)})
             except (BrokenPipeError, ConnectionResetError):
                 return
 
@@ -1041,7 +1043,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
         except Exception as exc:
             structured_log('error', 'http.unhandled_error', method='POST', path=parsed.path, error=str(exc))
             try:
-                return send_json(self, 500, {'error': str(exc)})
+                return send_json(self, 500, {'error': public_error_message(exc)})
             except (BrokenPipeError, ConnectionResetError):
                 return
 
@@ -1091,7 +1093,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
         except Exception as exc:
             structured_log('error', 'http.unhandled_error', method='PUT', path=parsed.path, error=str(exc))
             try:
-                return send_json(self, 500, {'error': str(exc)})
+                return send_json(self, 500, {'error': public_error_message(exc)})
             except (BrokenPipeError, ConnectionResetError):
                 return
 
@@ -1135,7 +1137,7 @@ class EpiHandler(SimpleHTTPRequestHandler):
         except Exception as exc:
             structured_log('error', 'http.unhandled_error', method='DELETE', path=parsed.path, error=str(exc))
             try:
-                return send_json(self, 500, {'error': str(exc)})
+                return send_json(self, 500, {'error': public_error_message(exc)})
             except (BrokenPipeError, ConnectionResetError):
                 return
 

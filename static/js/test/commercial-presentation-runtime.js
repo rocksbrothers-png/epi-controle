@@ -17,8 +17,9 @@
 // pelo teste.
 //
 // A referência "antes" é a cópia literal do app.js
-// (fixtures/app-before-ubx-commercial-c1.js.txt). A implementação "atual" é
-// comparada com ela entrada a entrada, nos cinco idiomas, inclusive exceções.
+// (fixtures/app-before-ubx-commercial-c1.js.txt). A implementação "atual" são
+// os módulos modules/commercial/{business,ui}, comparados com ela entrada a
+// entrada, nos cinco idiomas, inclusive exceções.
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
@@ -89,12 +90,17 @@ function loadOriginal(lang, options) {
   return ctx;
 }
 
-// "Atual": as mesmas 13 funções lidas do static/app.js de hoje.
+// "Atual": os módulos reais carregados como na página (business antes da ui).
+const MODULES = ['js/modules/commercial/business/commercial-rules.js', 'js/modules/commercial/ui/commercial-presentation.js'];
 function loadCurrent(lang, options) {
   const ctx = buildContext(lang, options);
-  const app = read('app.js');
-  vm.runInContext(NAMES.map((n) => extractFunction(app, n)).join('\n\n'), ctx);
+  for (const rel of MODULES) { vm.runInContext(read(rel), ctx); }
   return ctx;
+}
+
+// Corpo de uma função no módulo sem a indentação de dois espaços do IIFE.
+function moduleFunctionText(source, name) {
+  return extractFunction(source, name).split('\n').map((line) => line.replace(/^ {2}/, '')).join('\n');
 }
 
 function outcome(fn) {
@@ -172,14 +178,42 @@ function runMatrix(load, lang) {
 }
 
 module.exports = function ({ test, assert, eq }) {
-  test('UBX Comercial C1: a fixture é cópia literal das 13 funções do app.js de antes da extração', () => {
+  test('UBX Comercial C1: a fixture é cópia literal e os módulos têm os mesmos corpos; o app.js não declara mais as funções', () => {
     const fixture = read('js/test/fixtures/app-before-ubx-commercial-c1.js.txt');
     const found = [...fixture.matchAll(/^function ([A-Za-z_$][\w$]*)\(/gm)].map((m) => m[1]);
     eq(JSON.stringify(found), JSON.stringify(NAMES), 'as 13 funções, na ordem do app.js');
+    const modules = MODULES.map(read).join('\n');
     const app = read('app.js');
     for (const name of NAMES) {
-      eq(extractFunction(fixture, name), extractFunction(app, name), `${name}: texto idêntico ao do app.js`);
+      eq(moduleFunctionText(modules, name), extractFunction(fixture, name), `${name}: corpo idêntico ao do app.js de antes`);
+      assert(!new RegExp(`^(?:async\\s+)?function ${name}\\(`, 'm').test(app), `${name} não pode voltar ao app.js`);
     }
+  });
+
+  test('UBX Comercial C1: contrato publicado, carga idempotente e ordem de carga', () => {
+    const ctx = loadCurrent('pt-BR');
+    eq(JSON.stringify(Object.keys(ctx.__EPI_COMMERCIAL_RULES__)), JSON.stringify(['commercialAlertTone']), 'regras publicadas');
+    eq(Object.keys(ctx.__EPI_COMMERCIAL_PRESENTATION__).length, 12, 'doze funções de apresentação publicadas');
+    assert(Object.isFrozen(ctx.__EPI_COMMERCIAL_RULES__) && Object.isFrozen(ctx.__EPI_COMMERCIAL_PRESENTATION__), 'namespaces congelados');
+    for (const name of NAMES) {
+      eq(typeof ctx[name], 'function', `${name} global`);
+      const ns = name === 'commercialAlertTone' ? ctx.__EPI_COMMERCIAL_RULES__ : ctx.__EPI_COMMERCIAL_PRESENTATION__;
+      eq(ns[name], ctx[name], `${name}: namespace e global são a mesma função`);
+    }
+    const first = ctx.planLabel;
+    for (const rel of MODULES) { vm.runInContext(read(rel), ctx); }
+    eq(ctx.planLabel, first, 'segunda carga não republica');
+    const scripts = read('views/_scripts.html');
+    const order = [...scripts.matchAll(/<script[^>]+src="([^"?]+)/g)].map((m) => m[1]);
+    const iRules = order.indexOf('/js/modules/commercial/business/commercial-rules.js');
+    const iUi = order.indexOf('/js/modules/commercial/ui/commercial-presentation.js');
+    const iApp = order.indexOf('/app.js');
+    assert(iRules >= 0 && iUi > iRules && iApp > iUi, `ordem de carga: regras ${iRules}, apresentação ${iUi}, app ${iApp}`);
+    for (const dep of ['/i18n.js', '/js/core/constants.js', '/js/modules/shared/business/value-format.js', '/js/modules/shared/ui/company-logo.js']) {
+      const i = order.indexOf(dep);
+      assert(i >= 0 && i < iUi, `${dep} carrega antes da apresentação comercial`);
+    }
+    eq(order.filter((src) => src.includes('/modules/commercial/')).length, 2, 'cada módulo carregado uma vez');
   });
 
   test('UBX Comercial C1: valores de referência em pt-BR (comportamento atual fixado)', () => {

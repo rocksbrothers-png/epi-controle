@@ -17,6 +17,7 @@ on:
       - 'scripts/i18n/check_supplier_portal_csp_sri.py'
       - 'scripts/browser/security_output_xss_v2.py'
       - 'scripts/browser/i18n_commercial.py'
+      - 'scripts/browser/ubx_commercial.py'
       - 'modules/ficha/**'
       - '.github/workflows/fix-colab-terc-browser.yml'
   workflow_dispatch:
@@ -69,6 +70,10 @@ jobs:
       - if: ${{ !cancelled() }}
         name: I18N commercial (five locales)
         run: python scripts/browser/i18n_commercial.py --output browser-evidence/i18n-commercial
+      # UBX Comercial C1: painéis renderizados pelos módulos == pela cópia literal do app.js de antes.
+      - if: ${{ !cancelled() }}
+        name: UBX commercial C1 equivalence (five locales)
+        run: python scripts/browser/ubx_commercial.py --output browser-evidence/ubx-commercial
       # SECURITY-OUTPUT-XSS-V2: texto de colaborador, unidade e EPI contaminado em todas as telas não executa.
       - if: ${{ !cancelled() }}
         run: python scripts/browser/security_output_xss_v2.py --output browser-evidence/security-output-xss-v2

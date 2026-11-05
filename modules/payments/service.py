@@ -13,7 +13,9 @@ Persistência:
 import hashlib
 import hmac
 import json
+import re
 from datetime import datetime, timezone
+from urllib.parse import quote
 
 from epi_backend.config import (
     MERCADO_PAGO_ENV,
@@ -773,105 +775,294 @@ def create_catalog_oneoff_payment(connection, *, method_id, plan_key, cycle,
     }
 
 
+# ── Identificadores do Mercado Pago (validação estrita) ───────────────────────
+#
+# O id recebido do cliente (status) ou da notificação (webhook) entra no caminho
+# de uma chamada autenticada com o Access Token do lojista. Só formatos exatos
+# passam: id de pagamento é numérico; id de preapproval é alfanumérico. Nada de
+# '/', '.', '?', '#', '%', espaço ou unicode — path traversal e manipulação de
+# URL ficam impossíveis antes mesmo da codificação do segmento.
+RESOURCE_TYPES = ('payment', 'preapproval')
+_RESOURCE_ID_PATTERNS = {
+    'payment': re.compile(r'[0-9]{1,20}'),
+    'preapproval': re.compile(r'[A-Za-z0-9]{1,64}'),
+}
+# Valores de status/status_detail do Mercado Pago são códigos curtos
+# (ex.: 'approved', 'cc_rejected_bad_filled_card_number'). Qualquer outra coisa
+# (objeto, lista, texto livre) não é ecoada ao cliente.
+_STATUS_VALUE_RE = re.compile(r'[A-Za-z0-9_\-]{1,64}')
+
+# Escopo interno (webhook assinado): sem restrição de empresa, porque a
+# associação vem só do registro local (company_id gravado na criação).
+ANY_COMPANY = object()
+
+
+class PaymentNotFoundError(LookupError):
+    """Pagamento desconhecido localmente ou de outra empresa → 404 genérico."""
+
+
+def normalize_resource_type(value):
+    raw = str(value if value is not None else '').strip()
+    if raw == '':
+        return 'payment'
+    if raw not in RESOURCE_TYPES:
+        raise ValueError('resource_type inválido.')
+    return raw
+
+
+def validate_mp_resource_id(value, resource_type):
+    """Devolve o id como texto se casar exatamente com o formato do tipo."""
+    if not isinstance(value, (str, int)) or isinstance(value, bool):
+        raise ValueError('Identificador de pagamento inválido.')
+    raw = str(value)
+    if not _RESOURCE_ID_PATTERNS[resource_type].fullmatch(raw):
+        raise ValueError('Identificador de pagamento inválido.')
+    return raw
+
+
+def _mp_resource_path(resource_id, resource_type):
+    # Defesa em profundidade: o id já foi validado, e o segmento ainda é
+    # codificado (nenhum caractere reservado sobrevive como separador).
+    segment = quote(validate_mp_resource_id(resource_id, resource_type), safe='')
+    return f'/preapproval/{segment}' if resource_type == 'preapproval' else f'/v1/payments/{segment}'
+
+
+def _status_value(value):
+    if isinstance(value, str) and _STATUS_VALUE_RE.fullmatch(value):
+        return value
+    return ''
+
+
+def local_payment_owner(connection, resource_id, resource_type):
+    """Empresa dona do recurso segundo o banco local, ou None se desconhecido.
+
+    Retorna {'company_id', 'payment_row'}; `payment_row` é a linha de
+    `payments` (ou None quando só existe a assinatura em `subscriptions`).
+    A posse NUNCA vem de dado enviado pelo cliente.
+    """
+    row = get_payment_by_mp_id(connection, resource_id, resource_type)
+    if row:
+        return {'company_id': row.get('company_id'), 'payment_row': row}
+    if resource_type == 'preapproval':
+        try:
+            sub = connection.execute(
+                'SELECT company_id FROM subscriptions WHERE preapproval_id = ? ORDER BY id DESC LIMIT 1',
+                (str(resource_id),),
+            ).fetchone()
+        except Exception:  # pragma: no cover - tabela ausente em bases antigas
+            sub = None
+        if sub:
+            return {'company_id': sub[0], 'payment_row': None}
+    return None
+
+
+def _same_company(owner_company_id, company_id):
+    if company_id is ANY_COMPANY:
+        return True
+    if owner_company_id in (None, '') or company_id in (None, ''):
+        return False
+    try:
+        return int(owner_company_id) == int(company_id)
+    except (TypeError, ValueError):
+        return False
+
+
+_MP_UPDATED_FIELDS = ('date_last_updated', 'last_modified')
+
+
+def _mp_updated_at(raw):
+    """Data de última atualização informada pelo Mercado Pago (ou None)."""
+    if not isinstance(raw, dict):
+        return None
+    for field in _MP_UPDATED_FIELDS:
+        value = raw.get(field)
+        if isinstance(value, str) and value:
+            try:
+                parsed = datetime.fromisoformat(value.replace('Z', '+00:00'))
+            except ValueError:
+                continue
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=UTC)
+            return parsed
+    return None
+
+
+def _is_stale(previous_row, fresh):
+    """True quando o estado recebido é mais antigo que o já gravado.
+
+    Protege contra respostas fora de ordem (duas notificações concorrentes):
+    um estado antigo nunca sobrescreve um mais novo.
+    """
+    if not previous_row:
+        return False
+    try:
+        previous_raw = json.loads(previous_row.get('raw_json') or '{}')
+    except (TypeError, ValueError):
+        return False
+    before, after = _mp_updated_at(previous_raw), _mp_updated_at(fresh)
+    return bool(before and after and after < before)
+
+
 # ── Consulta de status ────────────────────────────────────────────────────────
 
-def fetch_payment_status(connection, mp_payment_id, resource_type='payment'):
-    """Consulta o status atual no Mercado Pago e atualiza o registro local."""
-    resource_type = 'preapproval' if resource_type == 'preapproval' else 'payment'
-    path = (
-        f'/preapproval/{mp_payment_id}'
-        if resource_type == 'preapproval'
-        else f'/v1/payments/{mp_payment_id}'
-    )
-    result = mp_client.get(path)
-    status = str(result.get('status') or '')
-    status_detail = str(result.get('status_detail') or '')
+def fetch_payment_status(connection, mp_payment_id, resource_type='payment', *, company_id):
+    """Consulta o status no Mercado Pago de um recurso CONHECIDO e da empresa.
 
-    existing = get_payment_by_mp_id(connection, mp_payment_id, resource_type)
-    if existing:
+    Ordem obrigatória: valida tipo e id, confirma no banco local que o recurso
+    existe e pertence a `company_id` (ou `ANY_COMPANY`, só para o webhook
+    assinado) e só então chama o Mercado Pago. Id desconhecido ou de outra
+    empresa → `PaymentNotFoundError`, sem chamada externa.
+    """
+    resource_type = normalize_resource_type(resource_type)
+    resource_id = validate_mp_resource_id(mp_payment_id, resource_type)
+    owner = local_payment_owner(connection, resource_id, resource_type)
+    if owner is None or not _same_company(owner['company_id'], company_id):
+        raise PaymentNotFoundError('Pagamento não encontrado.')
+
+    result = mp_client.get(_mp_resource_path(resource_id, resource_type))
+    if not isinstance(result, dict):
+        result = {}
+    status = _status_value(result.get('status'))
+    status_detail = _status_value(result.get('status_detail'))
+
+    payment_row = owner['payment_row']
+    stale = _is_stale(payment_row, result)
+    if payment_row and not stale:
         _update_payment_status(
-            connection, mp_payment_id=mp_payment_id, resource_type=resource_type,
+            connection, mp_payment_id=resource_id, resource_type=resource_type,
             status=status, status_detail=status_detail, raw=result,
         )
+    if stale:
+        structured_log('info', 'payments.status_stale_ignored',
+                       mp_payment_id=resource_id, resource_type=resource_type)
+        status = _status_value(payment_row.get('status'))
+        status_detail = _status_value(payment_row.get('status_detail'))
     return {
-        'payment_id': str(mp_payment_id),
+        'payment_id': resource_id,
         'resource_type': resource_type,
         'status': status,
         'status_detail': status_detail,
-        'persisted': bool(existing),
+        'persisted': bool(payment_row),
+        'stale': stale,
     }
 
 
 # ── Webhook ───────────────────────────────────────────────────────────────────
 
+# Assinatura HMAC-SHA256 em hexadecimal (64 caracteres) e timestamp numérico.
+_SIGNATURE_HASH_RE = re.compile(r'[0-9a-f]{64}')
+_SIGNATURE_TS_RE = re.compile(r'[0-9]{1,20}')
+_REQUEST_ID_RE = re.compile(r'[A-Za-z0-9\-_.:]{1,128}')
+_WEBHOOK_TOPICS = {
+    'payment': 'payment',
+    'preapproval': 'preapproval',
+    'subscription_preapproval': 'preapproval',
+}
+
+
+def webhook_secret_configured():
+    return bool(MERCADO_PAGO_WEBHOOK_SECRET)
+
+
+def _query_value(query, name):
+    if not isinstance(query, dict):
+        return ''
+    value = query.get(name)
+    if isinstance(value, list):
+        value = value[0] if value else ''
+    return value if isinstance(value, str) else ''
+
+
+def signed_data_id(query):
+    """O `data.id` que entra no manifesto assinado (query string da URL)."""
+    return _query_value(query, 'data.id') or _query_value(query, 'id')
+
+
 def verify_webhook_signature(headers, query):
-    """Valida a assinatura x-signature do Mercado Pago (quando o segredo está
-    configurado). Retorna True quando válida ou quando a validação não está
-    habilitada; False quando a assinatura é inválida."""
-    if not MERCADO_PAGO_WEBHOOK_SECRET:
-        return True
-    signature = str(headers.get('x-signature', '') or headers.get('X-Signature', '')).strip()
-    request_id = str(headers.get('x-request-id', '') or headers.get('X-Request-Id', '')).strip()
-    if not signature:
+    """Valida `x-signature` do Mercado Pago (manifesto oficial).
+
+    manifesto = 'id:{data.id em minúsculas};request-id:{x-request-id};ts:{ts};'
+    v1 = HMAC-SHA256(segredo, manifesto) em hexadecimal.
+
+    Falha FECHADA: sem segredo disponível no processo, nenhuma notificação é
+    aceita (retorna False). Assinatura ausente, malformada ou divergente → False.
+    A comparação é em tempo constante.
+    """
+    secret = MERCADO_PAGO_WEBHOOK_SECRET
+    if not secret:
+        return False
+    headers = headers or {}
+    signature = str(headers.get('x-signature', '') or headers.get('X-Signature', '') or '').strip()
+    request_id = str(headers.get('x-request-id', '') or headers.get('X-Request-Id', '') or '').strip()
+    if not signature or len(signature) > 512:
         return False
     parts = {}
     for item in signature.split(','):
-        if '=' in item:
-            key, value = item.split('=', 1)
-            parts[key.strip()] = value.strip()
-    ts = parts.get('ts')
-    received_hash = parts.get('v1')
-    if not ts or not received_hash:
+        if '=' not in item:
+            return False
+        key, value = item.split('=', 1)
+        key = key.strip()
+        if key in parts:
+            return False  # chave repetida: ambíguo, recusa
+        parts[key] = value.strip()
+    ts = parts.get('ts', '')
+    received_hash = parts.get('v1', '').lower()
+    if not _SIGNATURE_TS_RE.fullmatch(ts) or not _SIGNATURE_HASH_RE.fullmatch(received_hash):
         return False
-    data_id = ''
-    if isinstance(query, dict):
-        raw_id = query.get('data.id') or query.get('id')
-        if isinstance(raw_id, list):
-            data_id = raw_id[0] if raw_id else ''
-        else:
-            data_id = raw_id or ''
-    manifest = f'id:{str(data_id).lower()};request-id:{request_id};ts:{ts};'
+    if request_id and not _REQUEST_ID_RE.fullmatch(request_id):
+        return False
+    data_id = signed_data_id(query)
+    if not data_id:
+        return False
+    manifest = f'id:{data_id.lower()};request-id:{request_id};ts:{ts};'
     expected = hmac.new(
-        MERCADO_PAGO_WEBHOOK_SECRET.encode('utf-8'),
+        secret.encode('utf-8'),
         manifest.encode('utf-8'),
         hashlib.sha256,
     ).hexdigest()
-    return hmac.compare_digest(expected, received_hash)
+    return hmac.compare_digest(expected.encode('ascii'), received_hash.encode('ascii'))
 
 
 def handle_webhook(connection, payload, query):
-    """Processa uma notificação do Mercado Pago.
+    """Processa uma notificação JÁ AUTENTICADA pela assinatura.
 
-    Identifica o tipo (payment / preapproval), busca o recurso atualizado e
-    sincroniza o status no banco.
+    - O recurso processado é sempre o `data.id` ASSINADO (query string). Um id
+      diferente no corpo é recusado — o corpo não é coberto pela assinatura.
+    - Só recursos conhecidos localmente são sincronizados; o resto é ignorado
+      sem chamar o Mercado Pago. A empresa vem do registro local.
+    - Idempotente: o estado é sempre relido do Mercado Pago, e um estado mais
+      antigo que o gravado não sobrescreve o atual (notificações fora de ordem).
     """
-    payload = payload or {}
+    payload = payload if isinstance(payload, dict) else {}
     query = query or {}
 
-    def _q(name):
-        value = query.get(name)
-        if isinstance(value, list):
-            return value[0] if value else ''
-        return value or ''
+    topic = payload.get('type') or payload.get('topic') or _query_value(query, 'type') or _query_value(query, 'topic')
+    topic = str(topic or '').strip().lower() if isinstance(topic, str) else ''
+    resource_type = _WEBHOOK_TOPICS.get(topic)
+    if resource_type is None:
+        structured_log('info', 'payments.webhook_ignored', reason='unsupported_topic')
+        return {'ok': True, 'ignored': True, 'reason': 'unsupported_topic'}
 
-    topic = str(
-        payload.get('type') or payload.get('topic') or _q('type') or _q('topic') or ''
-    ).lower()
-    data = payload.get('data') or {}
-    resource_id = str(data.get('id') or payload.get('id') or _q('data.id') or _q('id') or '')
+    signed_id = signed_data_id(query)
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
+    body_id = data.get('id', payload.get('id'))
+    if body_id not in (None, '') and str(body_id) != signed_id:
+        structured_log('warning', 'payments.webhook_id_mismatch', resource_type=resource_type)
+        return {'ok': True, 'ignored': True, 'reason': 'id_mismatch'}
+    try:
+        resource_id = validate_mp_resource_id(signed_id, resource_type)
+    except ValueError:
+        structured_log('warning', 'payments.webhook_invalid_id', resource_type=resource_type)
+        return {'ok': True, 'ignored': True, 'reason': 'invalid_id'}
 
     structured_log('info', 'payments.webhook_received', topic=topic, resource_id=resource_id)
 
-    if not resource_id:
-        return {'ok': True, 'ignored': True, 'reason': 'sem resource_id'}
-
-    if 'preapproval' in topic or 'subscription' in topic:
-        resource_type = 'preapproval'
-    else:
-        resource_type = 'payment'
-
     try:
-        status_info = fetch_payment_status(connection, resource_id, resource_type)
+        status_info = fetch_payment_status(connection, resource_id, resource_type, company_id=ANY_COMPANY)
+    except PaymentNotFoundError:
+        structured_log('info', 'payments.webhook_ignored', reason='unknown_resource',
+                       resource_type=resource_type)
+        return {'ok': True, 'ignored': True, 'reason': 'unknown_resource'}
     except MercadoPagoError as exc:
         structured_log('warning', 'payments.webhook_fetch_failed', resource_id=resource_id, error=str(exc))
         # O texto do erro fica no log; ao chamador do webhook vai um código fixo.
@@ -879,7 +1070,7 @@ def handle_webhook(connection, payload, query):
 
     # Sincroniza o ciclo de vida da assinatura (tabela subscriptions) quando o
     # recurso é um preapproval. Best-effort: não bloqueia a confirmação ao MP.
-    if resource_type == 'preapproval':
+    if resource_type == 'preapproval' and not status_info.get('stale'):
         try:
             from modules.payments import subscriptions_service
             subscriptions_service.sync_subscription_status(

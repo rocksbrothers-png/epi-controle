@@ -247,9 +247,11 @@ def test_erro_do_mercado_pago_nao_ecoa_corpo_bruto(monkeypatch):
     pay_routes._mp_error_response(object(), MercadoPagoError('Mercado Pago: invalid card', status=400, response=resposta))
     erro = capturado['payload']['error']
     assert capturado['status'] == 400 and erro['code'] == 'MERCADO_PAGO_ERROR'
-    assert erro['message'] == 'Mercado Pago: invalid card'
-    assert erro['details'] == {'error': 'bad_request', 'status': 400,
-                               'cause': [{'code': 2006, 'description': 'Card Token not found'}]}
+    # S6: a mensagem é FIXA (nunca o texto do terceiro); S5: details só com códigos.
+    assert erro['message'] == pay_routes.MP_PUBLIC_REFUSED
+    assert 'invalid card' not in json.dumps(capturado)
+    assert erro['details'] == {'error': 'bad_request', 'status': 400, 'cause': [{'code': 2006}]}
+    assert 'Card Token not found' not in json.dumps(capturado)
     assert 'payer@exemplo.invalid' not in json.dumps(capturado) and 'tok_' + 'Z' * 6 not in json.dumps(capturado)
 
 
@@ -271,6 +273,7 @@ def test_falha_de_conexao_com_mercado_pago_nao_expoe_o_erro_de_rede(monkeypatch)
 
 def test_webhook_assinado_com_falha_interna_nao_expoe_o_erro(monkeypatch):
     from modules.payments import routes as pay_routes
+    monkeypatch.setattr(pay_routes.service, 'webhook_secret_configured', lambda: True)
     monkeypatch.setattr(pay_routes.service, 'verify_webhook_signature', lambda headers, query: True)
 
     def explode(*args, **kwargs):
@@ -297,6 +300,7 @@ def test_webhook_assinado_com_falha_interna_nao_expoe_o_erro(monkeypatch):
 
 def test_webhook_sem_assinatura_continua_401(monkeypatch):
     from modules.payments import routes as pay_routes
+    monkeypatch.setattr(pay_routes.service, 'webhook_secret_configured', lambda: True)
     monkeypatch.setattr(pay_routes.service, 'verify_webhook_signature', lambda headers, query: False)
     capturado = {}
     monkeypatch.setattr(pay_routes, 'send_json', lambda h, status, payload: capturado.update(status=status, payload=payload))

@@ -294,7 +294,16 @@ def test_t14_webhook_uses_persisted_company(monkeypatch):
         conn, company_id=2, plan_key='start', cycle='monthly', payment_method='card',
         preapproval_id='WH', status='pending', amount=297.0, created_by=20, origin='authenticated')
     conn.commit()
-    res = routes.handle_post_webhook(_Handler(headers={}), _Parsed(path='/api/payments/webhook'),
+    # Webhook falha fechado (S2): a notificação precisa vir assinada.
+    import hashlib
+    import hmac
+    segredo_teste = 'segredo-de-teste-t14'
+    monkeypatch.setattr(service, 'MERCADO_PAGO_WEBHOOK_SECRET', segredo_teste)
+    manifesto = 'id:wh;request-id:req-t14;ts:1700000000;'
+    v1 = hmac.new(segredo_teste.encode(), manifesto.encode(), hashlib.sha256).hexdigest()
+    headers = {'x-signature': f'ts=1700000000,v1={v1}', 'x-request-id': 'req-t14'}
+    res = routes.handle_post_webhook(_Handler(headers=headers),
+                                     _Parsed(query='type=preapproval&data.id=WH', path='/api/payments/webhook'),
                                      {'type': 'preapproval', 'data': {'id': 'WH'}, 'company_id': 1}, None)
     assert res[0] == 200
     audit = conn.execute("SELECT company_id FROM subscription_audit_logs WHERE action='status_synced'").fetchone()

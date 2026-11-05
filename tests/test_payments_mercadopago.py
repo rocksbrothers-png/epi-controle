@@ -159,28 +159,31 @@ def test_create_preapproval_plan_persists(monkeypatch):
 def test_fetch_payment_status_updates_local(monkeypatch):
     conn = make_connection()
     monkeypatch.setattr(mp_client, 'post', lambda path, body, **k: {
-        'id': 'P9', 'status': 'pending', 'currency_id': 'BRL',
+        'id': '9009', 'status': 'pending', 'currency_id': 'BRL',
         'point_of_interaction': {'transaction_data': {}},
     })
     service.create_pix_payment(conn, {'company_id': 1, 'payer_email': 'a@b.com', 'amount': 5.0})
-    monkeypatch.setattr(mp_client, 'get', lambda path: {'id': 'P9', 'status': 'approved', 'status_detail': 'accredited'})
-    info = service.fetch_payment_status(conn, 'P9', 'payment')
+    # Ids do Mercado Pago são validados (pagamento = numérico) e a consulta é
+    # escopada pela empresa dona do registro local (S1).
+    monkeypatch.setattr(mp_client, 'get', lambda path: {'id': '9009', 'status': 'approved', 'status_detail': 'accredited'})
+    info = service.fetch_payment_status(conn, '9009', 'payment', company_id=1)
     assert info['status'] == 'approved'
-    assert fetch_payment(conn, 'P9')['status'] == 'approved'
+    assert fetch_payment(conn, '9009')['status'] == 'approved'
 
 
 def test_webhook_syncs_status(monkeypatch):
     conn = make_connection()
     monkeypatch.setattr(mp_client, 'post', lambda path, body, **k: {
-        'id': 'W1', 'status': 'pending', 'currency_id': 'BRL',
+        'id': '7001', 'status': 'pending', 'currency_id': 'BRL',
         'point_of_interaction': {'transaction_data': {}},
     })
     service.create_pix_payment(conn, {'company_id': 1, 'payer_email': 'a@b.com', 'amount': 5.0})
-    monkeypatch.setattr(mp_client, 'get', lambda path: {'id': 'W1', 'status': 'approved'})
-    result = service.handle_webhook(conn, {'type': 'payment', 'data': {'id': 'W1'}}, {})
+    monkeypatch.setattr(mp_client, 'get', lambda path: {'id': '7001', 'status': 'approved'})
+    # O recurso processado é o data.id ASSINADO (query string), igual ao do corpo (S2).
+    result = service.handle_webhook(conn, {'type': 'payment', 'data': {'id': '7001'}}, {'data.id': ['7001']})
     assert result['synced'] is True
     assert result['status'] == 'approved'
-    assert fetch_payment(conn, 'W1')['status'] == 'approved'
+    assert fetch_payment(conn, '7001')['status'] == 'approved'
 
 
 def test_missing_required_field_raises():
@@ -196,9 +199,12 @@ def test_public_config_never_exposes_access_token():
     assert not any('access' in k.lower() and 'token' in k.lower() for k in cfg)
 
 
-def test_webhook_signature_disabled_passes():
-    # Sem segredo configurado, a validação não bloqueia.
-    assert service.verify_webhook_signature({}, {}) is True
+def test_webhook_signature_without_secret_fails_closed(monkeypatch):
+    # S2: sem segredo disponível no processo, NENHUMA notificação é aceita
+    # (antes: `True`, falha aberta).
+    monkeypatch.setattr(service, 'MERCADO_PAGO_WEBHOOK_SECRET', '')
+    assert service.verify_webhook_signature({}, {}) is False
+    assert service.verify_webhook_signature({'x-signature': 'ts=1,v1=' + '0' * 64}, {'data.id': ['1']}) is False
 
 
 def test_create_preapproval_plan_persists_plan_key(monkeypatch):

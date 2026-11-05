@@ -83,6 +83,15 @@ function getAuthToken() {
   catch (_e) { return ''; }
 }
 
+// Status é privado (S1): só a empresa dona do pagamento consulta, com a mesma
+// sessão autenticada do checkout. Sem sessão não há consulta.
+async function getStatusJson(url) {
+  const token = getAuthToken();
+  if (!token) { return {}; }
+  const res = await fetch(url, { headers: { Accept: 'application/json', Authorization: `Bearer ${token}` } });
+  return res.json().catch(() => ({}));
+}
+
 async function postJson(url, body) {
   const token = getAuthToken();
   // Sem sessão não há como provar a identidade: o servidor responderia 401.
@@ -258,7 +267,7 @@ function showPixQr(payment) {
 function startStatusPolling(paymentId, resourceType) {
   if (statusTimer) clearInterval(statusTimer);
   statusTimer = setInterval(async () => {
-    const data = await getJson(`${API.status}?payment_id=${encodeURIComponent(paymentId)}&resource_type=${resourceType}`);
+    const data = await getStatusJson(`${API.status}?payment_id=${encodeURIComponent(paymentId)}&resource_type=${encodeURIComponent(resourceType)}`);
     const status = data.payment && data.payment.status;
     if (status) $('status-line').textContent = `Status: ${status}`;
     if (['approved', 'authorized', 'cancelled', 'rejected'].includes(status)) {

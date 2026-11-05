@@ -7804,6 +7804,7 @@ require('./extracted-globals-ownership-runtime')({ test, assert });
 require('./empresas-active-runtime')({ testAsync, test, assert, eq });
 require('./security-logo-xss-runtime')({ test, assert, eq });
 require('./commercial-presentation-runtime')({ test, assert, eq });
+require('./commercial-integrations-runtime')({ testAsync, test, assert, eq });
 require('./users-active-runtime')({ test, assert, eq });
 
 (async () => {

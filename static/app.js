@@ -4993,7 +4993,7 @@ function resetCommercialContractForm({ preserveClauses = true } = {}) {
 async function loadCommercialContract(companyId) {
   if (!companyId || !refs.commercialForm || !canAccessCommercialArea()) return;
   try {
-    const payload = await api(`/api/commercial-contract?actor_user_id=${state.user.id}&company_id=${companyId}`);
+    const payload = await globalThis.__EPI_COMMERCIAL_API__.getContract(state.user.id, companyId);
     state.commercialContract = payload.contract || null;
     renderCommercialContractPanel();
   } catch (error) {
@@ -5052,9 +5052,7 @@ async function toggleCommercialStatus(companyId, mode) {
     ? { active: 1, license_status: 'active' }
     : { active: 0, license_status: 'suspended' };
   try {
-    await api(`/api/companies/${company.id}`, {
-      method: 'PUT',
-      body: JSON.stringify({
+    await globalThis.__EPI_COMPANIES_API__.updateCompany(company.id, {
         actor_user_id: state.user.id,
         name: company.name,
         legal_name: company.legal_name,
@@ -5069,7 +5067,6 @@ async function toggleCommercialStatus(companyId, mode) {
         license_status: next.license_status,
         active: next.active,
         commercial_notes: company.commercial_notes || ''
-      })
     });
     await loadBootstrap();
     fillCommercialForm(company.id);
@@ -5235,14 +5232,13 @@ async function savePlatformBrand(event) {
 function downloadCommercialContractPdf() {
   const companyId = refs.commercialCompany?.value;
   if (!companyId) return;
-  const params = new URLSearchParams({ actor_user_id: state.user.id, company_id: companyId });
-  globalThis.open(`/api/commercial-contract.pdf?${params.toString()}`, '_blank');
+  globalThis.open(globalThis.__EPI_COMMERCIAL_API__.contractPdfUrl({ actor_user_id: state.user.id, company_id: companyId }), '_blank');
 }
 
 async function saveCommercialContractDraft(showToast = false) {
   const payload = buildCommercialContractPayload();
   if (!payload.company_id) return;
-  const response = await api('/api/commercial-contract/save', { method: 'POST', body: JSON.stringify(payload) });
+  const response = await globalThis.__EPI_COMMERCIAL_API__.saveContractDraft(payload);
   state.commercialContract = response.contract || null;
   renderCommercialContractPanel();
   if (showToast) alert(tr('commercial.panel.draftSaved', 'Contrato salvo em rascunho.'));
@@ -5251,7 +5247,7 @@ async function saveCommercialContractDraft(showToast = false) {
 async function generateCommercialContract() {
   try {
     const payload = buildCommercialContractPayload();
-    const response = await api('/api/commercial-contract/generate', { method: 'POST', body: JSON.stringify(payload) });
+    const response = await globalThis.__EPI_COMMERCIAL_API__.generateContract(payload);
     state.commercialContract = response.contract || null;
     renderCommercialContractPanel();
     alert(tr('commercial.panel.generated', 'Contrato gerado com sucesso.'));
@@ -5261,15 +5257,13 @@ async function generateCommercialContract() {
 function viewGeneratedCommercialContract() {
   const companyId = refs.commercialCompany?.value;
   if (!companyId) return;
-  const params = new URLSearchParams({ actor_user_id: state.user.id, company_id: companyId });
-  globalThis.open(`/api/commercial-contract.pdf?${params.toString()}`, '_blank');
+  globalThis.open(globalThis.__EPI_COMMERCIAL_API__.contractPdfUrl({ actor_user_id: state.user.id, company_id: companyId }), '_blank');
 }
 
 function downloadGeneratedCommercialContract() {
   const companyId = refs.commercialCompany?.value;
   if (!companyId) return;
-  const params = new URLSearchParams({ actor_user_id: state.user.id, company_id: companyId, kind: 'generated' });
-  globalThis.open(`/api/commercial-contract/file?${params.toString()}`, '_blank');
+  globalThis.open(globalThis.__EPI_COMMERCIAL_API__.contractFileUrl({ actor_user_id: state.user.id, company_id: companyId, kind: 'generated' }), '_blank');
 }
 
 async function signCommercialContractAction() {
@@ -5277,10 +5271,7 @@ async function signCommercialContractAction() {
     const companyId = refs.commercialCompany?.value;
     const signatureName = refs.commercialSignatureName?.value || '';
     const signatureData = refs.commercialSignatureData?.value || '';
-    const response = await api('/api/commercial-contract/sign', {
-      method: 'POST',
-      body: JSON.stringify({ actor_user_id: state.user.id, company_id: Number(companyId || 0), signature_name: signatureName, signature_data: signatureData })
-    });
+    const response = await globalThis.__EPI_COMMERCIAL_API__.signContract({ actor_user_id: state.user.id, company_id: Number(companyId || 0), signature_name: signatureName, signature_data: signatureData });
     state.commercialContract = response.contract || null;
     renderCommercialContractPanel();
     alert(tr('commercial.panel.signatureRecorded', 'Assinatura digital registrada.'));
@@ -5305,15 +5296,12 @@ async function uploadSignedCommercialContract() {
     if (!file) return alert(tr('commercial.panel.selectSignedPdf', 'Selecione um PDF assinado.'));
     const companyId = refs.commercialCompany?.value;
     const fileBase64 = await fileToBase64(file);
-    const response = await api('/api/commercial-contract/upload-signed', {
-      method: 'POST',
-      body: JSON.stringify({
-        actor_user_id: state.user.id,
-        company_id: Number(companyId || 0),
-        file_name: file.name,
-        file_mime: file.type || 'application/pdf',
-        file_base64: fileBase64
-      })
+    const response = await globalThis.__EPI_COMMERCIAL_API__.uploadSignedContract({
+      actor_user_id: state.user.id,
+      company_id: Number(companyId || 0),
+      file_name: file.name,
+      file_mime: file.type || 'application/pdf',
+      file_base64: fileBase64
     });
     state.commercialContract = response.contract || null;
     renderCommercialContractPanel();
@@ -5324,15 +5312,12 @@ async function uploadSignedCommercialContract() {
 async function sendCommercialContractByEmail() {
   try {
     const companyId = refs.commercialCompany?.value;
-    const response = await api('/api/commercial-contract/send-email', {
-      method: 'POST',
-      body: JSON.stringify({
-        actor_user_id: state.user.id,
-        company_id: Number(companyId || 0),
-        email_to: refs.commercialEmailTo?.value || '',
-        subject: refs.commercialEmailSubject?.value || '',
-        body: refs.commercialEmailBody?.value || ''
-      })
+    const response = await globalThis.__EPI_COMMERCIAL_API__.sendContractEmail({
+      actor_user_id: state.user.id,
+      company_id: Number(companyId || 0),
+      email_to: refs.commercialEmailTo?.value || '',
+      subject: refs.commercialEmailSubject?.value || '',
+      body: refs.commercialEmailBody?.value || ''
     });
     state.commercialContract = response.contract || null;
     renderCommercialContractPanel();
@@ -5395,7 +5380,7 @@ async function saveCommercial(event) {
     values.logo_type = company.logo_type || '';
     values.addendum_enabled = refs.commercialForm.elements.addendum_enabled.checked ? 1 : 0;
     values.monthly_value = Number(company.monthly_value || 0);
-    await api(`/api/companies/${company.id}`, { method: 'PUT', body: JSON.stringify(values) });
+    await globalThis.__EPI_COMPANIES_API__.updateCompany(company.id, values);
     await loadBootstrap();
     fillCommercialForm(company.id);
   } catch (error) { alert(error.message); }
@@ -5429,7 +5414,7 @@ async function saveCommercialSettings(event) {
         enterprise: { label: 'Enterprise', min_users: Number(form.elements.enterprise_min.value || 101), max_users: null }
       }
     };
-    await api('/api/commercial-settings', { method: 'POST', body: JSON.stringify(payload) });
+    await globalThis.__EPI_COMMERCIAL_API__.saveCommercialSettings(payload);
     await loadBootstrap();
     fillCommercialSettingsForm();
     fillCommercialForm(refs.commercialCompany?.value);
@@ -12749,8 +12734,7 @@ async function init() {
   bindAppListener(refs.companyDetails, 'click', (event) => {
     const companyId = event.target?.dataset?.companyViewContract;
     if (!companyId) return;
-    const params = new URLSearchParams({ actor_user_id: state.user.id, company_id: String(companyId) });
-    globalThis.open(`/api/commercial-contract.pdf?${params.toString()}`, '_blank');
+    globalThis.open(globalThis.__EPI_COMMERCIAL_API__.contractPdfUrl({ actor_user_id: state.user.id, company_id: String(companyId) }), '_blank');
   });
     
   bindAppListener(document.getElementById('comercial-view'), 'click', (event) => {

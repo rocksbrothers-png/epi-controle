@@ -132,7 +132,7 @@ function buildContext(lang) {
 
 // "Antes": cópia literal do app.js. "Atual": o que o app.js de hoje carrega
 // (as mesmas funções do app.js + os módulos de integração de que dependem).
-const CURRENT_MODULES = ['js/modules/companies/integrations/companies-api.js'];
+const CURRENT_MODULES = ['js/modules/companies/integrations/companies-api.js', 'js/modules/commercial/integrations/commercial-api.js'];
 const CACHE = new Map();
 function cached(kind, lang, setup) {
   const key = `${kind}:${lang}`;
@@ -247,6 +247,29 @@ async function runConcurrency(load, lang) {
   return out;
 }
 
+
+// Chamadas literais de antes, uma por endpoint, para comparar com o módulo.
+const ORIGINAL_LITERALS = {
+  getContract: (api, a, c) => api(`/api/commercial-contract?actor_user_id=${a}&company_id=${c}`),
+  saveContractDraft: (api, p) => api('/api/commercial-contract/save', { method: 'POST', body: JSON.stringify(p) }),
+  generateContract: (api, p) => api('/api/commercial-contract/generate', { method: 'POST', body: JSON.stringify(p) }),
+  signContract: (api, p) => api('/api/commercial-contract/sign', { method: 'POST', body: JSON.stringify(p) }),
+  uploadSignedContract: (api, p) => api('/api/commercial-contract/upload-signed', { method: 'POST', body: JSON.stringify(p) }),
+  sendContractEmail: (api, p) => api('/api/commercial-contract/send-email', { method: 'POST', body: JSON.stringify(p) }),
+  saveCommercialSettings: (api, p) => api('/api/commercial-settings', { method: 'POST', body: JSON.stringify(p) })
+};
+
+function loadModuleAlone() {
+  const calls = [];
+  const ctx = { JSON, URLSearchParams, Object, Promise };
+  ctx.globalThis = ctx;
+  ctx.api = function api(...args) { calls.push(JSON.stringify([args.length, ...args])); return Promise.resolve({ ok: true }); };
+  vm.createContext(ctx);
+  const before = Object.keys(ctx).sort();
+  vm.runInContext(read('js/modules/commercial/integrations/commercial-api.js'), ctx);
+  return { ctx, calls, before };
+}
+
 module.exports = function ({ testAsync, test, assert, eq }) {
   test('UBX Comercial C2: a fixture é cópia literal das 12 funções chamadoras', () => {
     const fixture = read('js/test/fixtures/app-before-ubx-commercial-c2.js.txt');
@@ -291,5 +314,68 @@ module.exports = function ({ testAsync, test, assert, eq }) {
     const files = loadCurrent('pt-BR', { respond: () => RESPONSES.contract });
     await step(files, 'downloadGeneratedCommercialContract', []);
     eq(JSON.stringify(files.log[0]), JSON.stringify(['open', '/api/commercial-contract/file?actor_user_id=7&company_id=901&kind=generated', '_blank']), 'arquivo gerado');
+  });
+
+  test('UBX Comercial C2: cada função do módulo faz exatamente a chamada literal de antes (9 endpoints)', () => {
+    const { ctx, calls } = loadModuleAlone();
+    const ns = ctx.__EPI_COMMERCIAL_API__;
+    const actors = [7, 8, '9', 0, undefined, null];
+    const companies = [901, '902', '', 0, undefined, 'a b&c=d?e#f', 'ç/ü'];
+    const payloads = [{}, { actor_user_id: 7, company_id: 901, x: 'á "b" <c>' }, { nested: { a: [1, null, 'x'] } }, null, 'texto', 0];
+    let checked = 0;
+    for (const a of actors) {
+      for (const c of companies) {
+        const expected = [];
+        ORIGINAL_LITERALS.getContract((...args) => { expected.push(JSON.stringify([args.length, ...args])); }, a, c);
+        calls.length = 0;
+        ns.getContract(a, c);
+        eq(calls[0], expected[0], `getContract(${a}, ${c})`);
+        for (const extra of [{}, { kind: 'generated' }]) {
+          const query = { actor_user_id: a, company_id: c, ...extra };
+          eq(ns.contractPdfUrl(query), `/api/commercial-contract.pdf?${new URLSearchParams(query).toString()}`, 'URL do PDF');
+          eq(ns.contractFileUrl(query), `/api/commercial-contract/file?${new URLSearchParams(query).toString()}`, 'URL do arquivo');
+          // Botão "ver contrato" dos detalhes da Empresa: company_id como String.
+          const fromCompanies = { actor_user_id: a, company_id: String(c) };
+          eq(ns.contractPdfUrl(fromCompanies), `/api/commercial-contract.pdf?${new URLSearchParams(fromCompanies).toString()}`, 'URL do PDF (Empresas)');
+          checked += 3;
+        }
+        checked += 1;
+      }
+    }
+    for (const name of Object.keys(ORIGINAL_LITERALS).filter((n) => n !== 'getContract')) {
+      for (const payload of payloads) {
+        const expected = [];
+        ORIGINAL_LITERALS[name]((...args) => { expected.push(JSON.stringify([args.length, ...args])); }, payload);
+        calls.length = 0;
+        ns[name](payload);
+        eq(calls[0], expected[0], `${name}(${JSON.stringify(payload)})`);
+        checked += 1;
+      }
+    }
+    assert(checked >= 200, `cobertura: ${checked}`);
+  });
+
+  test('UBX Comercial C2: o módulo só publica o namespace congelado, carrega uma vez e respeita a ordem de carga', () => {
+    const { ctx, before } = loadModuleAlone();
+    const added = Object.keys(ctx).sort().filter((k) => !before.includes(k));
+    eq(JSON.stringify(added), JSON.stringify(['__EPI_COMMERCIAL_API__', '__EPI_MODULE_COMMERCIAL_INTEGRATIONS_LOADED__']), 'globais publicados');
+    assert(Object.isFrozen(ctx.__EPI_COMMERCIAL_API__), 'namespace congelado');
+    eq(JSON.stringify(Object.keys(ctx.__EPI_COMMERCIAL_API__)), JSON.stringify(['getContract', 'contractPdfUrl', 'contractFileUrl', 'saveContractDraft',
+      'generateContract', 'signContract', 'uploadSignedContract', 'sendContractEmail', 'saveCommercialSettings']), 'funções publicadas');
+    const first = ctx.__EPI_COMMERCIAL_API__;
+    vm.runInContext(read('js/modules/commercial/integrations/commercial-api.js'), ctx);
+    eq(ctx.__EPI_COMMERCIAL_API__, first, 'segunda carga não republica');
+    const module = read('js/modules/commercial/integrations/commercial-api.js');
+    assert(!/\bdocument\b|\.innerHTML|\bwindow\.open\b|globalThis\.open|\bstate\.|\brefs\./.test(module), 'sem DOM, abertura de aba ou estado do app');
+    const order = [...read('views/_scripts.html').matchAll(/<script[^>]+src="([^"?]+)/g)].map((m) => m[1]);
+    const i = (src) => order.indexOf(src);
+    const iMod = i('/js/modules/commercial/integrations/commercial-api.js');
+    assert(iMod >= 0 && i('/js/modules/api-client.js') < iMod && i('/js/modules/companies/integrations/companies-api.js') < i('/app.js')
+      && iMod < i('/app.js'), `ordem de carga: api-client ${i('/js/modules/api-client.js')}, commercial-api ${iMod}, app ${i('/app.js')}`);
+    eq(order.filter((src) => src === '/js/modules/commercial/integrations/commercial-api.js').length, 1, 'carregado uma vez');
+    const app = read('app.js');
+    eq((app.match(/\/api\/commercial/g) || []).length, 0, 'nenhum endpoint comercial no app.js');
+    eq((app.match(/__EPI_COMMERCIAL_API__\./g) || []).length, 11, 'onze usos da integração no app.js (10 chamadores + botão "ver contrato" de Empresas)');
+    eq((app.match(/__EPI_COMPANIES_API__\.updateCompany\(/g) || []).length, 2, 'PUT de empresa reaproveitado de Empresas (2 chamadores)');
   });
 };

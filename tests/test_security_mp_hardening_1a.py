@@ -363,10 +363,39 @@ if SAAS:
         binding = checkout_sessions.claim_checkout_session(ambiente['conn'], ambiente['tokens']['A'])
         assert binding['company_id'] == EMPRESA_A
 
+    def test_s1_saas_token_substituido_por_sessao_mais_nova_vira_404(ambiente):
+        checkout_sessions.create_checkout_session(ambiente['conn'], company_id=EMPRESA_A)
+        ambiente['conn'].commit()
+        status, _, _ = _status(ambiente, PAG_A, headers={'X-Checkout-Token': ambiente['tokens']['A']})
+        assert status == 404
+        assert ambiente['mp'].chamadas == []
+
+    def test_s1_saas_token_invalido_com_bearer_valido_usa_o_bearer(ambiente):
+        status, _, _ = _status(ambiente, PAG_A, headers={'X-Checkout-Token': 'invalido', **_bearer(11)})
+        assert status == 200
+
     def test_s1_saas_bearer_da_mesma_empresa_tambem_consulta(ambiente):
         status, _, _ = _status(ambiente, PAG_A, headers=_bearer(11))
         assert status == 200
 
+
+def test_s1_anonimo_com_id_invalido_recebe_401_antes_da_validacao(ambiente):
+    status, _, _ = _status(ambiente, '../../users/me')
+    assert status == 401
+    assert ambiente['mp'].chamadas == []
+
+
+def test_s2_webhook_sem_x_request_id_segue_a_especificacao(ambiente):
+    # Sem x-request-id, o trecho `request-id:...;` sai do manifesto.
+    manifesto = f'id:{PAG_A};ts:1700000000;'
+    v1 = hmac.new(SEGREDO_TESTE.encode(), manifesto.encode(), hashlib.sha256).hexdigest()
+    status, payload, _ = _webhook(ambiente, PAG_A, headers={'x-signature': f'ts=1700000000,v1={v1}'})
+    assert status == 200 and payload['synced'] is True
+    # E a forma com `request-id:;` vazio não é aceita.
+    errado = hmac.new(SEGREDO_TESTE.encode(), f'id:{PAG_A};request-id:;ts:1700000000;'.encode(),
+                      hashlib.sha256).hexdigest()
+    status, _, _ = _webhook(ambiente, PAG_A, headers={'x-signature': f'ts=1700000000,v1={errado}'})
+    assert status == 401
 
 # ── S2: webhook ───────────────────────────────────────────────────────────────
 
@@ -657,7 +686,7 @@ BLOCOS_PAREADOS_MP = (
     ('modules/payments/mp_client.py', None, None),
 )
 PREFIXO_DO_DIGESTO_MP = 'DIGESTO_PARIDADE_MP_1A = '
-DIGESTO_PARIDADE_MP_1A = '1eb57e99c5714d5f3529fac08b02e9c8c9e9461e2006f4e55242ce874c496d17'
+DIGESTO_PARIDADE_MP_1A = 'de9adee70aebc54767ad085a2d0bec6492c61a32444d81499df00b36aedd3242'
 
 
 def _digesto_mp():

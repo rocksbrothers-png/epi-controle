@@ -94,8 +94,8 @@ passa a ser feita pelo endpoint `POST /api/payments/plans` do backend.
 | `POST` | `/api/payments/subscriptions` | Cria assinatura com cartão tokenizado | Público (checkout) |
 | `POST` | `/api/payments/pix` | Cria pagamento Pix | Público (checkout) |
 | `POST` | `/api/payments/boleto` | Cria pagamento boleto | Público (checkout) |
-| `POST` | `/api/payments/webhook` | Recebe notificações do MP | Público (MP) |
-| `GET` | `/api/payments/status?payment_id=...` | Consulta/atualiza status | Público |
+| `POST` | `/api/payments/webhook` | Recebe notificações do MP | Assinatura `x-signature` obrigatória; sem `MERCADO_PAGO_WEBHOOK_SECRET` no processo → 503 (falha fechada) |
+| `GET` | `/api/payments/status?payment_id=...&resource_type=payment\|preapproval` | Consulta/atualiza status de pagamento **da própria empresa** (404 para desconhecido ou de outra empresa) | Bearer (usuário da empresa) |
 | `GET` | `/pagamento` , `/checkout` | Página de checkout (servida pelo backend) | Público |
 
 ### Exemplos de corpo

@@ -25,7 +25,7 @@ from epi_backend.config import (
     WEB_BASE_URL,
 )
 from epi_backend.db import row_to_dict
-from epi_backend.http_utils import structured_log
+from epi_backend.http_utils import redact_secrets, structured_log
 from modules.payments import mp_client
 from modules.payments.mp_client import MercadoPagoError
 
@@ -982,6 +982,7 @@ def verify_webhook_signature(headers, query):
     """Valida `x-signature` do Mercado Pago (manifesto oficial).
 
     manifesto = 'id:{data.id em minúsculas};request-id:{x-request-id};ts:{ts};'
+    (sem `x-request-id`, o trecho `request-id:...;` é omitido, como manda a doc)
     v1 = HMAC-SHA256(segredo, manifesto) em hexadecimal.
 
     Falha FECHADA: sem segredo disponível no processo, nenhuma notificação é
@@ -1014,7 +1015,8 @@ def verify_webhook_signature(headers, query):
     data_id = signed_data_id(query)
     if not data_id:
         return False
-    manifest = f'id:{data_id.lower()};request-id:{request_id};ts:{ts};'
+    # Especificação oficial: valor ausente na notificação sai do manifesto.
+    manifest = f'id:{data_id.lower()};' + (f'request-id:{request_id};' if request_id else '') + f'ts:{ts};'
     expected = hmac.new(
         secret.encode('utf-8'),
         manifest.encode('utf-8'),
@@ -1064,7 +1066,8 @@ def handle_webhook(connection, payload, query):
                        resource_type=resource_type)
         return {'ok': True, 'ignored': True, 'reason': 'unknown_resource'}
     except MercadoPagoError as exc:
-        structured_log('warning', 'payments.webhook_fetch_failed', resource_id=resource_id, error=str(exc))
+        structured_log('warning', 'payments.webhook_fetch_failed', resource_id=resource_id,
+                       error=redact_secrets(str(exc))[:300])
         # O texto do erro fica no log; ao chamador do webhook vai um código fixo.
         return {'ok': True, 'synced': False, 'reason': 'mercado_pago_unavailable'}
 

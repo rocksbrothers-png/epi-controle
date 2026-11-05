@@ -4516,7 +4516,14 @@
       "m_f08064028fbd": "Outsourced company archived: recording {operation} is not allowed. The history remains available only for viewing, reports and audit.",
       "m_5c619a17a948": "Connection failure with Mercado Pago.",
       "m_45cb143d04fe": "Internal server error. The technical details are recorded in the logs.",
-      "m_910dfc324323": "Integrity error: the record conflicts with existing data or required references."
+      "m_910dfc324323": "Integrity error: the record conflicts with existing data or required references.",
+      "m_cae5332533d5": "Repeated query parameters.",
+      "m_6e4f9975f0d5": "Invalid resource_type.",
+      "m_5fff244d23a2": "Invalid payment identifier.",
+      "m_8e6c75803f30": "Payment not found.",
+      "m_a962e8e6afc0": "Mercado Pago declined the operation. Check the details and try again.",
+      "m_8a91cff7f61b": "The payment service is currently unavailable. Please try again shortly.",
+      "m_efb40f2baa92": "Notification receipt is unavailable."
     },
     "fields": {
       "title": "Title",

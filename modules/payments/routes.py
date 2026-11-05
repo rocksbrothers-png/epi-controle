@@ -21,6 +21,7 @@ Páginas servidas pelo backend (mesma origem da API, sem CORS):
   GET  /checkout                   → alias de /pagamento
 """
 
+import re
 from contextlib import closing
 from pathlib import Path
 from urllib.parse import parse_qs
@@ -44,35 +45,114 @@ from modules.payments.mp_client import MercadoPagoError
 _CHECKOUT_PAGE = Path(BASE_DIR) / 'pagamento.html'
 
 
-def _public_mp_details(response):
-    """Só os campos de diagnóstico do Mercado Pago que o cliente pode ver.
+# Mensagens PÚBLICAS fixas. O texto vindo do Mercado Pago (message, error,
+# cause[].description) é de terceiro: pode trazer URL, caminho interno, dado do
+# pagador ou detalhe da conta do lojista. Ele fica só no log redigido; o cliente
+# recebe uma destas frases (traduzidas pelo catálogo apiErrors) e códigos curtos.
+MP_PUBLIC_REFUSED = 'O Mercado Pago recusou a operação. Revise os dados e tente novamente.'
+MP_PUBLIC_UNAVAILABLE = 'Serviço de pagamento indisponível no momento. Tente novamente em instantes.'
+PAYMENT_NOT_FOUND_MESSAGE = 'Pagamento não encontrado.'
+WEBHOOK_UNAVAILABLE_MESSAGE = 'Recebimento de notificações indisponível.'
 
-    O corpo bruto da API de terceiro pode ecoar dados do pagador e da requisição;
-    a chave `details` continua no contrato, com uma lista de permissão.
+_MP_CODE_RE = re.compile(r'[A-Za-z0-9_\-.]{1,40}')
+_MP_MAX_CAUSES = 5
+
+
+def _mp_code(value):
+    """Código curto do Mercado Pago (texto ou inteiro) ou None."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value if -10**9 < value < 10**9 else None
+    if isinstance(value, str) and _MP_CODE_RE.fullmatch(value):
+        return value
+    return None
+
+
+def _public_mp_details(response):
+    """Só CÓDIGOS de diagnóstico do Mercado Pago; nenhum texto livre.
+
+    A chave `details` continua no contrato (`error`, `status`, `cause[].code`),
+    mas descrições e mensagens do terceiro nunca chegam ao cliente.
     """
     if not isinstance(response, dict):
         return {}
     details = {}
     for key in ('error', 'status'):
-        value = response.get(key)
-        if isinstance(value, (str, int)) and not isinstance(value, bool):
+        value = _mp_code(response.get(key))
+        if value is not None:
             details[key] = value
     causes = response.get('cause')
     if isinstance(causes, list):
-        details['cause'] = [
-            {k: c[k] for k in ('code', 'description') if isinstance(c.get(k), (str, int)) and not isinstance(c.get(k), bool)}
-            for c in causes[:5] if isinstance(c, dict)
-        ]
+        public_causes = []
+        for cause in causes:
+            if len(public_causes) >= _MP_MAX_CAUSES:
+                break
+            code = _mp_code(cause.get('code')) if isinstance(cause, dict) else None
+            if code is not None:
+                public_causes.append({'code': code})
+        if public_causes:
+            details['cause'] = public_causes
     return details
 
 
+def _mp_public_status(exc):
+    """Status HTTP ao cliente + mensagem fixa, por classe do erro do MP.
+
+    401/403/429 do Mercado Pago dizem respeito à credencial ou à cota do
+    LOJISTA, nunca à sessão do usuário: viram 503 (um 401 aqui faria o cliente
+    encerrar a própria sessão).
+    """
+    status = exc.status if isinstance(exc.status, int) and not isinstance(exc.status, bool) else None
+    if status is not None and 400 <= status < 500 and status not in (401, 403, 404, 429):
+        return status, MP_PUBLIC_REFUSED
+    if status in (401, 403, 429, 503):
+        return 503, MP_PUBLIC_UNAVAILABLE
+    return 502, MP_PUBLIC_UNAVAILABLE
+
+
 def _mp_error_response(handler, exc):
-    status = exc.status if isinstance(exc.status, int) and 400 <= exc.status < 600 else 502
-    return send_json(handler, status, {
+    http_status, message = _mp_public_status(exc)
+    structured_log('warning', 'payments.mercadopago_error', mp_status=exc.status,
+                   public_status=http_status, error=redact_secrets(str(exc))[:300])
+    return send_json(handler, http_status, {
         'ok': False,
-        'error': {'code': 'MERCADO_PAGO_ERROR', 'message': redact_secrets(str(exc))[:300],
+        'error': {'code': 'MERCADO_PAGO_ERROR', 'message': message,
                   'details': _public_mp_details(exc.response)},
     })
+
+
+def _payment_not_found(handler):
+    send_json(handler, 404, {'ok': False, 'error': {'code': 'NOT_FOUND', 'message': PAYMENT_NOT_FOUND_MESSAGE}})
+    return True
+
+
+def _status_query(parsed):
+    """payment_id/resource_type da query, validados (ValueError → 400)."""
+    query = parse_qs(parsed.query, keep_blank_values=True)
+    ids = query.get('payment_id') or query.get('id') or ['']
+    types = query.get('resource_type') or ['']
+    if len(ids) != 1 or len(types) != 1:
+        raise ValueError('Parâmetros de consulta repetidos.')
+    if not str(ids[0]).strip():
+        raise ValueError('payment_id é obrigatório.')
+    resource_type = service.normalize_resource_type(types[0])
+    return service.validate_mp_resource_id(ids[0], resource_type), resource_type
+
+
+def _send_payment_status(handler, connection, payment_id, resource_type, company_id):
+    try:
+        result = service.fetch_payment_status(connection, payment_id, resource_type, company_id=company_id)
+    except service.PaymentNotFoundError:
+        connection.rollback()
+        return _payment_not_found(handler)
+    except MercadoPagoError as exc:
+        connection.rollback()
+        return _mp_error_response(handler, exc)
+    connection.commit()
+    public = {k: result[k] for k in ('payment_id', 'resource_type', 'status', 'status_detail', 'persisted')}
+    send_json(handler, 200, {'ok': True, 'payment': public})
+    return True
 
 
 # ── GET ───────────────────────────────────────────────────────────────────────
@@ -113,18 +193,20 @@ def handle_get_plans(handler, parsed, payload, match):
 
 
 def handle_get_status(handler, parsed, payload, match):
-    query = parse_qs(parsed.query)
-    payment_id = query.get('payment_id', [''])[0] or query.get('id', [''])[0]
-    if not str(payment_id).strip():
-        return send_json(handler, 400, {'ok': False, 'error': {'code': 'BAD_REQUEST', 'message': 'payment_id é obrigatório.'}})
-    resource_type = query.get('resource_type', ['payment'])[0]
+    """Status de um pagamento da PRÓPRIA empresa do usuário autenticado.
+
+    Exige `Authorization: Bearer` (401 sem ele). A empresa vem do ator no
+    servidor; pagamento desconhecido ou de outra empresa → 404 genérico, sem
+    chamar o Mercado Pago. Nenhum dado do cliente prova posse do pagamento.
+    """
+    actor_user_id = require_bearer_actor(handler, parsed, None)
+    payment_id, resource_type = _status_query(parsed)
     with closing(get_connection()) as connection:
-        try:
-            result = service.fetch_payment_status(connection, payment_id, resource_type)
-        except MercadoPagoError as exc:
-            return _mp_error_response(handler, exc)
-        connection.commit()
-        return send_json(handler, 200, {'ok': True, 'payment': result})
+        actor = require_actor(connection, actor_user_id)
+        company_id = actor.get('company_id')
+        if company_id in (None, ''):
+            return _payment_not_found(handler)
+        return _send_payment_status(handler, connection, payment_id, resource_type, int(company_id))
 
 
 # ── POST ──────────────────────────────────────────────────────────────────────
@@ -511,6 +593,12 @@ def handle_post_subscription_reactivate(handler, parsed, payload, match):
 
 def handle_post_webhook(handler, parsed, payload, match):
     query = parse_qs(parsed.query)
+    if not service.webhook_secret_configured():
+        # Falha FECHADA: sem o segredo no processo nada é aceito. 503 faz o
+        # Mercado Pago reenviar mais tarde, sem perder a notificação.
+        structured_log('critical', 'payments.webhook_secret_unavailable', path=parsed.path)
+        send_json(handler, 503, {'ok': False, 'error': {'code': 'WEBHOOK_UNAVAILABLE', 'message': WEBHOOK_UNAVAILABLE_MESSAGE}})
+        return None
     if not service.verify_webhook_signature(handler.headers, query):
         structured_log('warning', 'payments.webhook_invalid_signature', path=parsed.path)
         return send_json(handler, 401, {'ok': False, 'error': {'code': 'INVALID_SIGNATURE', 'message': 'Assinatura inválida.'}})
@@ -523,7 +611,7 @@ def handle_post_webhook(handler, parsed, payload, match):
                 connection.rollback()
             except Exception:
                 pass
-            structured_log('error', 'payments.webhook_error', path=parsed.path, error=str(exc))
+            structured_log('error', 'payments.webhook_error', path=parsed.path, error=redact_secrets(str(exc))[:300])
             # 200 para o MP não reenfileirar indefinidamente um erro não recuperável.
             send_json(handler, 200, {'ok': False, 'error': public_error_message(exc)})
             return None

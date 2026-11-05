@@ -4516,7 +4516,14 @@
       "m_f08064028fbd": "Entreprise sous-traitante archivée : impossible d'enregistrer {operation}. L'historique reste disponible uniquement pour consultation, rapports et audit.",
       "m_5c619a17a948": "Échec de connexion à Mercado Pago.",
       "m_45cb143d04fe": "Erreur interne du serveur. Les détails techniques sont enregistrés dans les journaux.",
-      "m_910dfc324323": "Erreur d'intégrité : l'enregistrement est en conflit avec des données existantes ou des références obligatoires."
+      "m_910dfc324323": "Erreur d'intégrité : l'enregistrement est en conflit avec des données existantes ou des références obligatoires.",
+      "m_cae5332533d5": "Paramètres de requête répétés.",
+      "m_6e4f9975f0d5": "resource_type non valide.",
+      "m_5fff244d23a2": "Identifiant de paiement non valide.",
+      "m_8e6c75803f30": "Paiement introuvable.",
+      "m_a962e8e6afc0": "Mercado Pago a refusé l'opération. Vérifiez les informations et réessayez.",
+      "m_8a91cff7f61b": "Le service de paiement est momentanément indisponible. Réessayez dans quelques instants.",
+      "m_efb40f2baa92": "La réception des notifications est indisponible."
     },
     "fields": {
       "title": "Titre",

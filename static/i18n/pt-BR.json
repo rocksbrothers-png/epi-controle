@@ -4516,7 +4516,14 @@
       "m_f08064028fbd": "Empresa terceirizada arquivado(a): não é permitido registrar {operation}. O histórico permanece disponível apenas para consulta, relatórios e auditoria.",
       "m_5c619a17a948": "Falha de conexão com o Mercado Pago.",
       "m_45cb143d04fe": "Erro interno do servidor. Os detalhes técnicos ficam registrados nos logs.",
-      "m_910dfc324323": "Erro de integridade: o registro conflita com dados existentes ou referências obrigatórias."
+      "m_910dfc324323": "Erro de integridade: o registro conflita com dados existentes ou referências obrigatórias.",
+      "m_cae5332533d5": "Parâmetros de consulta repetidos.",
+      "m_6e4f9975f0d5": "resource_type inválido.",
+      "m_5fff244d23a2": "Identificador de pagamento inválido.",
+      "m_8e6c75803f30": "Pagamento não encontrado.",
+      "m_a962e8e6afc0": "O Mercado Pago recusou a operação. Revise os dados e tente novamente.",
+      "m_8a91cff7f61b": "Serviço de pagamento indisponível no momento. Tente novamente em instantes.",
+      "m_efb40f2baa92": "Recebimento de notificações indisponível."
     },
     "fields": {
       "title": "Título",

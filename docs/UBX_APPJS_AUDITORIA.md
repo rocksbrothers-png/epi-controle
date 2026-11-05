@@ -1125,3 +1125,30 @@ Pagamentos (`modules/payments`, `pagamento.js`, checkout, webhook) estão fora d
   `planOptionMarkup` com `escapeHtml` (saída idêntica para rótulos legítimos), teste de runtime com rótulo
   malicioso nos cinco idiomas, prova Chromium no formulário do contrato e, como defesa em profundidade a decidir
   pelo responsável, limite de tamanho/caracteres no backend.
+
+### 18.6 SEC-C1-1 — correção (2026-11-05)
+
+- `planOptionMarkup` passa a escapar, com o `escapeHtml` oficial (o mesmo das demais funções do módulo), a
+  **chave** no atributo `value` e o **rótulo** no texto da `<option>`. Os valores continuam convertidos com
+  `${...}` antes do escape, então para valores sem `&<>"'` a saída é byte a byte a mesma. A seleção compara a
+  chave crua, como antes; o navegador devolve a chave exata em `select.value`, então o `PUT /api/companies/<id>`
+  envia o mesmo `plan_name`.
+- A chave é escapada por defesa em profundidade: o backend só emite as cinco chaves fixas, mas o frontend não
+  depende disso. Nenhuma mudança de backend, contrato HTTP, persistência, permissão ou texto traduzido.
+- Demais superfícies do rótulo conferidas e já seguras: `renderCommercialSummaryCard` e `companies-view.js`
+  escapam; `planHintText` vai para `textContent`; o formulário de parâmetros usa `.value`; o PDF do contrato não é
+  HTML.
+- Testes (`commercial-presentation-runtime.js`): o comparativo da C1 continua 0-divergência para todas as funções;
+  em `planOptionMarkup` a saída é igual ao original sempre que os parâmetros não têm `&<>"'` e, nos demais casos,
+  igual à especificação escapada. Bateria SEC-C1-1 nos cinco idiomas: `<script>`, `<img onerror>`, `<svg onload>`,
+  `<details ontoggle>`, fechamento de `</option></select>`, aspas simples e duplas, injeção de atributos
+  (`autofocus onfocus`, `selected`), entidades já escritas, caracteres especiais e Unicode — cada `<option>` tem só
+  `value`/`selected`, nenhuma tag extra, e `value`/texto voltam exatamente à chave/rótulo originais; planos
+  legítimos (inclusive Unicode) geram o mesmo HTML de antes. Sabotagens: 5/5 detectadas (sem escape na chave, sem
+  escape no rótulo, escape duplo, seleção pela chave escapada, troca do `undefined`).
+- Chromium (`scripts/browser/security_commercial_plan_xss.py`, no workflow de navegador): nos cinco idiomas, com
+  rótulos e uma chave maliciosos vindos do bootstrap, nenhum payload executa ao abrir o formulário, trocar o
+  plano e salvar; o `<select>` só tem as opções esperadas, com valor e texto exatos; a dica mostra o rótulo como
+  texto; salvar envia a chave crua no `PUT`. Contra a `main` sem a correção, a mesma prova reprova (8 execuções
+  ao abrir o formulário).
+- Dígitos de paridade: nenhum arquivo coberto por F4/F5B/MP_1A foi alterado; nenhum dígito recalculado.

@@ -149,10 +149,10 @@ function runMatrix(load, lang) {
       results.push(outcome(() => ctx.planEntries()));
       for (const key of ['start', 'enterprise', 'individual', 'inexistente', '', undefined, '"quote']) {
         results.push(outcome(() => ctx.planLabel(key)));
-        results.push(outcome(() => ctx.planOptionMarkup(key)));
+        results.push({ ...outcome(() => ctx.planOptionMarkup(key)), sec: SETTINGS.indexOf(settings), sel: key });
         for (const addendum of [false, true, 'sim', 0]) { results.push(outcome(() => ctx.planHintText(key, addendum))); }
       }
-      results.push(outcome(() => ctx.planOptionMarkup()));
+      results.push({ ...outcome(() => ctx.planOptionMarkup()), sec: SETTINGS.indexOf(settings), sel: '' });
       results.push(outcome(() => ctx.planHintText('start')));
       // Os cartões só leem os parâmetros pelo planLabel: dois cenários bastam.
       if (settings !== null && settings !== SETTINGS[1]) { continue; }
@@ -177,6 +177,54 @@ function runMatrix(load, lang) {
   return results;
 }
 
+
+// SEC-C1-1: especificação da saída corrigida de planOptionMarkup — mesma ordem, mesma seleção pela chave
+// crua, chave e rótulo convertidos com `${}` (como antes) e escapados com o escapeHtml real da página.
+function specOptionMarkup(escapeHtml, settings, selectedPlan = '') {
+  const plans = (settings || buildContext('pt-BR').DEFAULT_SETTINGS).plans || {};
+  return Object.entries(plans).map(([key, plan]) => `<option value="${escapeHtml(`${key}`)}" ${key === selectedPlan ? 'selected' : ''}>${escapeHtml(`${plan.label}`)}</option>`).join('');
+}
+
+const UNSAFE = /[&<>"']/;
+function settingsAreSafe(settings) {
+  const plans = (settings || {}).plans || {};
+  return Object.entries(plans).every(([key, plan]) => !UNSAFE.test(`${key}`) && !UNSAFE.test(`${plan.label}`));
+}
+
+// Decodifica as cinco entidades que escapeHtml produz (e só elas), para conferir a ida e volta.
+function decodeEntities(text) {
+  return text.replace(/&(amp|lt|gt|quot|#39);/g, (m, e) => ({ amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'" }[e]));
+}
+
+// Lê as <option> geradas sem DOM: cada uma precisa casar EXATAMENTE com este formato — um único
+// atributo value entre aspas duplas sem aspas dentro, `selected` opcional e texto sem marcação.
+const OPTION_RE = /<option value="([^"<>]*)" (selected)?>([^<>]*)<\/option>/g;
+function parseOptions(html) {
+  const options = [];
+  let rest = html;
+  for (const m of html.matchAll(OPTION_RE)) {
+    options.push({ value: decodeEntities(m[1]), selected: Boolean(m[2]), text: decodeEntities(m[3]) });
+    rest = rest.replace(m[0], '');
+  }
+  return { options, rest };
+}
+
+const SEC_PAYLOADS = [
+  '<script>window.__xss=1</script>',
+  '<img src=x onerror=window.__xss=1>',
+  '"><img src=x onerror=window.__xss=1>',
+  "' onfocus='window.__xss=1' autofocus='",
+  '" onmouseover="window.__xss=1" x="',
+  '</option></select><img src=x onerror=window.__xss=1>',
+  '<svg onload=window.__xss=1></svg>',
+  '<details open ontoggle=window.__xss=1>',
+  'x" selected="selected',
+  '&lt;b&gt;já escapado&lt;/b&gt; &amp; &#39; &quot;',
+  '& < > " \' ` = / \\ ; : ( ) { } [ ]',
+  'Plano Básico — 日本語 🚀 Ωμέγα ñ ç ü',
+  'Start'
+];
+
 module.exports = function ({ test, assert, eq }) {
   test('UBX Comercial C1: a fixture é cópia literal e os módulos têm os mesmos corpos; o app.js não declara mais as funções', () => {
     const fixture = read('js/test/fixtures/app-before-ubx-commercial-c1.js.txt');
@@ -185,7 +233,13 @@ module.exports = function ({ test, assert, eq }) {
     const modules = MODULES.map(read).join('\n');
     const app = read('app.js');
     for (const name of NAMES) {
-      eq(moduleFunctionText(modules, name), extractFunction(fixture, name), `${name}: corpo idêntico ao do app.js de antes`);
+      const before = extractFunction(fixture, name);
+      // SEC-C1-1: a única mudança permitida é escapar a chave e o rótulo do plano.
+      const expected = name === 'planOptionMarkup'
+        ? before.replace('value="${key}"', 'value="${escapeHtml(`${key}`)}"').replace('>${plan.label}<', '>${escapeHtml(`${plan.label}`)}<')
+        : before;
+      if (name === 'planOptionMarkup') { assert(expected !== before, 'as duas substituições da SEC-C1-1 se aplicam à fixture'); }
+      eq(moduleFunctionText(modules, name), expected, `${name}: corpo idêntico ao do app.js de antes${name === 'planOptionMarkup' ? ' + SEC-C1-1' : ''}`);
       assert(!new RegExp(`^(?:async\\s+)?function ${name}\\(`, 'm').test(app), `${name} não pode voltar ao app.js`);
     }
   });
@@ -241,8 +295,17 @@ module.exports = function ({ test, assert, eq }) {
       const before = runMatrix(loadOriginal, lang);
       const after = runMatrix(loadCurrent, lang);
       eq(after.length, before.length, `${lang}: mesmo número de casos`);
+      const escapeHtml = buildContext(lang).escapeHtml;
       for (let i = 0; i < before.length; i += 1) {
-        eq(JSON.stringify(after[i]), JSON.stringify(before[i]), `${lang}: caso ${i}`);
+        if (before[i].sec !== undefined) {
+          // planOptionMarkup: igual ao original quando os parâmetros não têm & < > " ', e sempre igual à
+          // especificação SEC-C1-1 (escapado).
+          const settings = SETTINGS[before[i].sec];
+          eq(after[i].ok, JSON.stringify(specOptionMarkup(escapeHtml, settings, before[i].sel)), `${lang}: caso ${i} (SEC-C1-1)`);
+          if (settingsAreSafe(settings)) { eq(after[i].ok, before[i].ok, `${lang}: caso ${i} sem caracteres especiais continua idêntico`); }
+        } else {
+          eq(JSON.stringify(after[i]), JSON.stringify(before[i]), `${lang}: caso ${i}`);
+        }
         compared += 1;
       }
     }
@@ -257,5 +320,47 @@ module.exports = function ({ test, assert, eq }) {
       const html = loadCurrent(lang).renderCommercialExpiringCard({ item: company, days: 3 });
       assert(!/commercial\.[a-zA-Z]/.test(html), `${lang}: nenhuma chave crua no cartão`);
     }
+  });
+
+  test('SEC-C1-1: planOptionMarkup neutraliza marcação, aspas, atributos e entidades no rótulo e na chave', () => {
+    for (const lang of LOCALES) {
+      const plans = Object.fromEntries(SEC_PAYLOADS.map((label, i) => [i === 0 ? 'start' : `k${i}${SEC_PAYLOADS[(i + 3) % SEC_PAYLOADS.length]}`, { label, min_users: 1, max_users: 2 }]));
+      const ctx = loadCurrent(lang, { settings: { unit_price: 1, plans } });
+      const keys = Object.keys(plans);
+      for (const selected of ['start', keys[5], 'inexistente', '']) {
+        const html = ctx.planOptionMarkup(selected);
+        const { options, rest } = parseOptions(html);
+        eq(rest, '', `${lang}: nada fora de <option> (selected=${selected})`);
+        eq(options.length, keys.length, `${lang}: uma opção por plano`);
+        options.forEach((option, i) => {
+          eq(option.value, keys[i], `${lang}: value devolve a chave exata ${JSON.stringify(keys[i])}`);
+          eq(option.text, plans[keys[i]].label, `${lang}: texto devolve o rótulo exato ${JSON.stringify(plans[keys[i]].label)}`);
+          eq(option.selected, keys[i] === selected, `${lang}: seleção pela chave crua (${JSON.stringify(keys[i])})`);
+        });
+        assert(!/<(?!\/?option\b)/i.test(html), `${lang}: nenhuma tag além de <option>`);
+        // Estrutura sem o conteúdo dos valores e dos textos: só podem sobrar `value` e `selected`.
+        const skeleton = html.replace(/value="[^"]*"/g, 'value=""').replace(/>[^<]*</g, '><');
+        assert(/^(?:<option value="" (?:selected)?><\/option>)*$/.test(skeleton), `${lang}: só value/selected nas opções: ${skeleton.slice(0, 120)}`);
+      }
+    }
+  });
+
+  test('SEC-C1-1: planos legítimos (inclusive Unicode) geram exatamente o mesmo HTML de antes', () => {
+    const legit = [null, { unit_price: 1, plans: { start: { label: 'Plano Básico — 日本語 🚀 Ωμέγα ñ', min_users: 1, max_users: 2 },
+      enterprise: { label: 'Enterprise+ (100) / anual', min_users: 1, max_users: null } } }];
+    for (const lang of LOCALES) {
+      for (const settings of legit) {
+        for (const selected of ['start', 'enterprise', 'business', '']) {
+          eq(loadCurrent(lang, { settings }).planOptionMarkup(selected), loadOriginal(lang, { settings }).planOptionMarkup(selected),
+            `${lang}: ${JSON.stringify(selected)} sem mudança`);
+        }
+      }
+    }
+  });
+
+  test('SEC-C1-1: a versão original (fixture) reproduz o defeito e a corrigida não', () => {
+    const settings = { unit_price: 1, plans: { start: { label: '<img src=x onerror=window.__xss=1>', min_users: 1, max_users: 2 } } };
+    assert(loadOriginal('pt-BR', { settings }).planOptionMarkup().includes('<img src=x onerror'), 'original insere a marcação crua');
+    eq(loadCurrent('pt-BR', { settings }).planOptionMarkup(), '<option value="start" >&lt;img src=x onerror=window.__xss=1&gt;</option>', 'corrigida escapa');
   });
 };

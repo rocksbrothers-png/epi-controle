@@ -18,6 +18,7 @@ on:
       - 'scripts/browser/security_output_xss_v2.py'
       - 'scripts/browser/i18n_commercial.py'
       - 'scripts/browser/ubx_commercial.py'
+      - 'scripts/browser/security_commercial_plan_xss.py'
       - 'modules/ficha/**'
       - '.github/workflows/fix-colab-terc-browser.yml'
   workflow_dispatch:
@@ -74,6 +75,10 @@ jobs:
       - if: ${{ !cancelled() }}
         name: UBX commercial C1 equivalence (five locales)
         run: python scripts/browser/ubx_commercial.py --output browser-evidence/ubx-commercial
+      # SEC-C1-1: rótulo/chave de plano maliciosos no formulário de contrato não executam; seleção e PUT intactos.
+      - if: ${{ !cancelled() }}
+        name: SEC-C1-1 commercial plan label XSS (five locales)
+        run: python scripts/browser/security_commercial_plan_xss.py --output browser-evidence/sec-c1-1
       # SECURITY-OUTPUT-XSS-V2: texto de colaborador, unidade e EPI contaminado em todas as telas não executa.
       - if: ${{ !cancelled() }}
         run: python scripts/browser/security_output_xss_v2.py --output browser-evidence/security-output-xss-v2

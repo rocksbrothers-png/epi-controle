@@ -16,9 +16,9 @@
 // globalThis com os mesmos nomes e em __EPI_COMMERCIAL_PRESENTATION__
 // (congelado). Carga idempotente.
 //
-// Achado de segurança registrado à parte (docs/UBX_APPJS_AUDITORIA.md §18.5):
-// planOptionMarkup insere a chave e o rótulo do plano no <select> sem escape.
-// A extração preserva o comportamento exato; a correção vai em PR separado.
+// SEC-C1-1 (docs/UBX_APPJS_AUDITORIA.md §18.5–18.6): planOptionMarkup escapa a
+// chave e o rótulo do plano; é a única divergência intencional em relação à
+// cópia literal do app.js de antes da C1.
 (function () {
   if (globalThis.__EPI_MODULE_COMMERCIAL_PRESENTATION_LOADED__) { return; }
   globalThis.__EPI_MODULE_COMMERCIAL_PRESENTATION_LOADED__ = true;
@@ -31,8 +31,12 @@
     return getCommercialSettings().plans?.[planKey]?.label || planKey;
   }
 
+  // SEC-C1-1: chave e rótulo do plano entram escapados (atributo value e texto da opção). O rótulo é
+  // texto livre gravado pelo Master em /api/commercial-settings; sem escape, marcação dentro de <option>
+  // executava ao entrar no <select> por innerHTML. O valor é convertido como antes (`${...}`) e só então
+  // escapado: para valores sem & < > " ' a saída é idêntica à anterior. A seleção compara a chave crua.
   function planOptionMarkup(selectedPlan = '') {
-    return planEntries().map(([key, plan]) => `<option value="${key}" ${key === selectedPlan ? 'selected' : ''}>${plan.label}</option>`).join('');
+    return planEntries().map(([key, plan]) => `<option value="${escapeHtml(`${key}`)}" ${key === selectedPlan ? 'selected' : ''}>${escapeHtml(`${plan.label}`)}</option>`).join('');
   }
 
   function planHintText(planKey, addendumEnabled = false) {

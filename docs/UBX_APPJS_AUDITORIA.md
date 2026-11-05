@@ -1040,3 +1040,88 @@ continua com a sua `const` (usada por outras funções). Consumidores, todos pel
 - Chromium nos 5 idiomas: `security_logo_xss.py` 40/40, `ubx_companies.py` 20/20, `ubx_my_company.py` 10/10.
 - Os dígitos de paridade da F4/F5B (`tests/test_343_f4_*`, `tests/test_343_f5b_*`) foram atualizados porque o
   `app.js` faz parte do contrato pareado; o mesmo commit existe no SaaS.
+
+## 18. UBX Comercial — fatia C1 (2026-11-05): apresentação comercial pura
+
+Primeira fatia do Comercial, depois da I18N-FULL-V1 (Corporate #1080 / SaaS #454), da segurança 503/500 e do
+Lote 1-A do Mercado Pago. Base: Corporate `main` `b92f093c`, SaaS `main` `61fbdfa9`. Somente frontend: nenhum
+arquivo de `modules/payments`, `pagamento.js`, checkout, webhook, backend, banco, autenticação ou autorização foi
+tocado.
+
+### 18.1 O que saiu do `app.js`
+
+| Destino | Conteúdo |
+|---|---|
+| `modules/commercial/business/commercial-rules.js` (26) | `commercialAlertTone` — pura, só lê o item recebido. |
+| `modules/commercial/ui/commercial-presentation.js` (128) | `planEntries`, `planLabel`, `planOptionMarkup`, `planHintText`, `commercialRiskMeta`, `commercialActions`, `renderCommercialSummaryCard`, `renderCommercialAlertCard`, `renderCommercialExpiringCard`, `formatCommercialAuditDetails`, `renderCommercialHistoryItem`, `formatCommercialDetails`. Só devolvem texto/markup: não escrevem no DOM, não fazem HTTP, não alteram estado. |
+
+Corpos idênticos aos do `app.js` (o teste compara texto a texto com a fixture, descontada a indentação do IIFE),
+inclusive chaves de tradução, fallbacks, escapes da SECURITY-OUTPUT-XSS-V1 e a checagem
+`hasPermission('companies:update')`. As funções são publicadas em `globalThis` (antes eram globais por Annex B) e
+nos namespaces congelados `__EPI_COMMERCIAL_RULES__` e `__EPI_COMMERCIAL_PRESENTATION__`; carga idempotente. Os
+dois scripts carregam depois de `i18n.js`, `constants.js`, `value-format.js` e `company-logo.js` e antes do
+`app.js`. Os chamadores continuam no `app.js` (`renderCommercialSummary`, `renderCommercialAlerts`,
+`renderCommercialExpiring`, `renderCommercialHistory`, `fillCommercialForm`, `refreshCommercialPreview`,
+`exportCommercialHistory`, `printCommercialHistory`) e em `companies-view.js` (`planLabel`), todos pelo nome global
+na hora da chamada.
+
+### 18.2 Métricas
+
+| Métrica | Antes (`main`) | Depois |
+|---|---|---|
+| Linhas do `app.js` | 17.052 | 16.975 |
+| Declarações de nível superior | 725 | 712 |
+| Endpoints no `app.js` | 104 | 104 |
+| Endpoints na camada UI | 69 | 69 |
+| Ciclos entre scripts | 0 | 0 |
+| Módulos UBX (`static/js/modules/**/*.js`) | 50 | 52 |
+
+### 18.3 Equivalência
+
+- Fixture literal: `static/js/test/fixtures/app-before-ubx-commercial-c1.js.txt`, criada e testada **antes** da
+  extração (commit de caracterização separado, verde contra o `app.js` original).
+- `commercial-presentation-runtime.js`: as funções rodam com as dependências reais da página — motor do `i18n.js`
+  com os cinco catálogos, `escapeHtml`/`formatDate` de `view-helpers.js`, `formatCurrency` de `value-format.js`,
+  `companyLogoMarkup` de `company-logo.js` — e a implementação extraída é comparada com a fixture em 33.000 casos
+  nos cinco idiomas (permissão concedida/negada, quatro variantes de parâmetros comerciais, 300+ empresas com todas
+  as combinações de status/limite, vencimentos de 0 a 30 dias, nomes e históricos com `<>"'&`, exceções): 0
+  divergências. Também fixa valores de referência em pt-BR, o contrato publicado, a carga idempotente e a ordem de
+  carga.
+- Sabotagens nos módulos: 15/15 detectadas (tom do alerta, status, permissão, escape do nome, limiar de urgência,
+  chave de tradução, `=== null`, fallback do rótulo, formato de data, detalhes, separador, idioma da moeda,
+  publicação, congelamento, plano selecionado).
+- Chromium (`scripts/browser/ubx_commercial.py`, novo, no workflow de navegador): nos cinco idiomas, KPIs, resumo,
+  alertas, vencimentos, histórico, opções de plano e dica renderizados pelos módulos são idênticos aos renderizados
+  pela cópia literal do app.js de antes, injetada na mesma página e chamada pelos mesmos chamadores; sem gravações,
+  sem erros e sem marcação executada. Uma sabotagem no módulo faz o script reprovar.
+- Os dígitos de paridade F4/F5B foram recalculados pela função oficial dos testes (o `app.js` e o `run-tests.js`
+  são pareados). `DIGESTO_PARIDADE_MP_1A` não muda: nenhum arquivo de pagamento foi tocado.
+
+### 18.4 Fora desta fatia
+
+C2 (`integrations/commercial-api.js`), C3 (`ui/commercial-view.js`) e C4 (`formatCompanyCurrency`,
+`updateTopbarCompanyBadge`, `renderMyCompanyDomains`) continuam no `app.js` e dependem de autorização própria.
+Pagamentos (`modules/payments`, `pagamento.js`, checkout, webhook) estão fora da UBX.
+
+### 18.5 Achado de segurança registrado (não corrigido nesta fatia)
+
+**SEC-C1-1 — `planOptionMarkup` insere o rótulo e a chave do plano em `<select>.innerHTML` sem escape.**
+
+- Fonte: `label` dos planos em `POST /api/commercial-settings`; o backend só aplica `strip()`. As chaves são fixas
+  (`individual`, `start`, `business`, `corporate`, `enterprise`) — só o rótulo é texto livre.
+- Quem grava: somente o Administrador Master (`require_master_actor` + conferência de papel e de ator).
+- Onde executa: `fillCommercialForm` → `refs.commercialForm.elements.plan_name.innerHTML = planOptionMarkup()`, na
+  área Comercial, que só o Administrador Master acessa (`canAccessCommercialArea`). Nos demais pontos o rótulo é
+  escapado (`renderCommercialSummaryCard`, `companies-view.js`) ou vai para `textContent` (`planHintText`).
+- Prova: no Chromium 141 (parser de `<select>` personalizável), `<img onerror>`, `<svg onload>` e
+  `<details ontoggle>` dentro de `<option>` executam quando inseridos por `innerHTML`. A CSP do app ainda é
+  *Report-Only*, então não mitiga.
+- Severidade: **baixa (P3)**. É XSS armazenado, mas quem grava e quem é atingido têm o mesmo privilégio máximo
+  (Master → Master): explorar exige já ser Master. O risco real é um Master comprometido atingir outro Master, ou
+  um rótulo colado de fonte externa.
+- Impacto na C1: nenhum. A extração preserva o comportamento exato e não cria consumidor novo nem amplia a
+  superfície. **Não impede o merge nem o deploy** desta fatia.
+- Correção proposta em PR separado (SECURITY-COMMERCIAL-PLAN-LABEL-V1): escapar chave e rótulo em
+  `planOptionMarkup` com `escapeHtml` (saída idêntica para rótulos legítimos), teste de runtime com rótulo
+  malicioso nos cinco idiomas, prova Chromium no formulário do contrato e, como defesa em profundidade a decidir
+  pelo responsável, limite de tamanho/caracteres no backend.

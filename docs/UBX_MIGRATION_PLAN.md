@@ -277,7 +277,17 @@ Detalhes em [`UBX_APPJS_AUDITORIA.md` §17](UBX_APPJS_AUDITORIA.md#17-ubx-v5--fa
 - `modules/shared/ui/company-logo.js`: original × módulo em 1.000+ combinações (0 divergências), 10 sabotagens
   detectadas e Chromium 70/70 nos 5 idiomas (logotipo malicioso/legítimo, Empresas, Minha Empresa).
 
+## UBX Comercial — fatia C1 (2026-11-05): apresentação comercial pura
+
+Detalhes em [`UBX_APPJS_AUDITORIA.md` §18](UBX_APPJS_AUDITORIA.md#18-ubx-comercial--fatia-c1-2026-11-05-apresentação-comercial-pura).
+
+- `app.js` 17.052 → 16.975 linhas; 725 → 712 declarações; 104 endpoints (sem mudança).
+- `modules/commercial/business/commercial-rules.js` e `modules/commercial/ui/commercial-presentation.js`:
+  33.000 casos comparados com a cópia literal do app.js nos cinco idiomas (0 divergências), 15 sabotagens
+  detectadas e equivalência no Chromium nos cinco idiomas (`scripts/browser/ubx_commercial.py`).
+- Achado de segurança preexistente SEC-C1-1 (`planOptionMarkup`, P3) registrado na §18.5, para PR separado.
+
 ## Próximo passo
-UBX-V5, Etapa 2 (restante): Comercial (e `renderMyCompanyDomains`/`formatCompanyCurrency`/`updateTopbarCompanyBadge`),
-após a I18N-FULL-V1 (o PR altera essas funções — §17) e, por último, a Etapa 3 (navegação/bootstrap) com os
-pré-requisitos de auditoria de autorização.
+UBX Comercial C2 (`integrations/commercial-api.js`), C3 (`ui/commercial-view.js`) e C4 (`formatCompanyCurrency`,
+`updateTopbarCompanyBadge`, `renderMyCompanyDomains`), cada uma com autorização própria, e, por último, a Etapa 3
+(navegação/bootstrap) com os pré-requisitos de auditoria de autorização. Pagamentos ficam fora da UBX.

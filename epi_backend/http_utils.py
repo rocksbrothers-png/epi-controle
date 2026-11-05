@@ -1,19 +1,111 @@
 import json
 import os
+import re
 from datetime import datetime
 from urllib.parse import unquote
 
 from epi_backend.config import UTC
 
+# ── Segredos em texto livre de erro (segurança 503/500) ──────────────────────
+#
+# Mensagens de driver/libpq podem trazer a URL de conexão (inclusive a senha,
+# quando a DATABASE_URL está malformada), host, usuário e SQL. Nos LOGS a
+# senha some e o resto fica para diagnóstico; no CLIENTE nada disso aparece.
+# Limite de texto analisado por campo: a redação roda em todo campo de log, e
+# o caminho da requisição (controlado pelo cliente, sem autenticação) é logado
+# várias vezes por request. O texto acima do limite é truncado ANTES das regex.
+_REDACT_MAX_CHARS = 8192
+_REDACT_MARGIN = 1024
+_SENSITIVE_NAME = (
+    r'(?:password|passwd|pwd|pgpassword|secret|client[_-]?secret|token|access[_-]?token|'
+    r'refresh[_-]?token|api[_-]?key|x-api-key|apikey|authorization)'
+)
+# Todas as regex são ancoradas por lookbehind (nenhuma tentativa no meio de uma
+# palavra) e sem quantificadores aninhados: custo linear no tamanho do texto.
+_SECRET_PATTERNS = (
+    # esquema://usuario:senha@host — a senha vai até o ÚLTIMO '@' do token (aceita '@' e '/').
+    (re.compile(r'(?<![A-Za-z0-9+.-])([A-Za-z][A-Za-z0-9+.-]{0,31}://[^\s:/@]{0,256}:)\S{1,512}@(?=[^\s@]*(?:\s|$))'),
+     r'\1***@'),
+    # Bearer|Basic <credencial>; `Token` só logo após `Authorization:`. O valor precisa ter
+    # cara de credencial (≥ 8 caracteres com dígito ou símbolo), para não mascarar texto como
+    # "Invalid token signature" ou "basic validation failed".
+    (re.compile(r'(?i)(?<![A-Za-z0-9])(bearer|basic|(?<=:)\s*token)\s+'
+                r'(?=[A-Za-z0-9._~+/=-]{8,4096})(?=[A-Za-z0-9._~+/=-]{0,4095}?(?:[0-9._~+/=-]|(?-i:[a-z][A-Z])))[A-Za-z0-9._~+/=-]{8,4096}'),
+     r'\1 ***'),
+    # JWT solto (três segmentos base64url)
+    (re.compile(r'(?<![A-Za-z0-9_-])eyJ[A-Za-z0-9_-]{5,4096}\.[A-Za-z0-9_-]{5,4096}\.[A-Za-z0-9_-]{5,4096}'), '***'),
+    # Cabeçalhos HTTP com credencial, mesmo sem aspas: `X-Api-Key: abc`, `Cookie: s=1`.
+    (re.compile(r'(?im)(?<![A-Za-z0-9-])(x-api-key|authorization|proxy-authorization|cookie|set-cookie)'
+                r'([ \t]*+:[ \t]*+)((?:bearer|basic|token)[ \t]+)?+(?!\*\*\*)([^\r\n]{1,4096})'), r'\1\2\3***'),
+    # nome=valor (DSN chave=valor, query string, env): qualquer valor até o separador
+    (re.compile(r'(?i)(?<![A-Za-z0-9])(' + _SENSITIVE_NAME + r')(\s*=\s*)("[^"]{0,4096}"|\'[^\']{0,4096}\'|[^\s&;,]{1,4096})'),
+     r'\1\2***'),
+    # "nome": "valor" / 'nome': 'valor' (JSON e repr) — só valor entre aspas, para não
+    # apagar texto legível como "password: authentication failed".
+    (re.compile(r'(?i)(?<![A-Za-z0-9])(' + _SENSITIVE_NAME + r')(["\']?\s*:\s*)("[^"]{0,4096}"|\'[^\']{0,4096}\')'),
+     r'\1\2***'),
+)
+_SENSITIVE_KEY = re.compile(r'(?i)(?:^|[^A-Za-z0-9])' + _SENSITIVE_NAME + r'$')
+
+
+def redact_secrets(text):
+    """Remove senhas/tokens de um texto livre, preservando o resto para diagnóstico."""
+    texto = str(text)
+    excedente = len(texto) - _REDACT_MAX_CHARS
+    # Redige uma fatia com folga ANTES de cortar: um segredo que cruza o limite é
+    # mascarado inteiro, e o corte nunca deixa metade de uma senha no log.
+    if excedente > 0:
+        texto = texto[:_REDACT_MAX_CHARS + _REDACT_MARGIN]
+    for pattern, replacement in _SECRET_PATTERNS:
+        texto = pattern.sub(replacement, texto)
+    if excedente > 0:
+        texto = texto[:_REDACT_MAX_CHARS] + f'…[truncado: {excedente} caracteres]'
+    return texto
+
+
+def _is_sensitive_key(key, value=None):
+    # Booleanos, números e None não carregam credencial (`has_token: True`).
+    if isinstance(value, (bool, int, float)) or value is None:
+        return False
+    return bool(_SENSITIVE_KEY.search(str(key)))
+
+
+PUBLIC_INTERNAL_ERROR = 'Erro interno do servidor. Os detalhes técnicos ficam registrados nos logs.'
+
+
+class PublicServerError(RuntimeError):
+    """Falha de servidor cuja mensagem é, por CONTRATO, segura para o cliente.
+
+    Só use com texto fixo de negócio escrito no código (nunca `str(exc)` de
+    terceiros, SQL, caminhos, URLs ou dados do usuário). Qualquer outra exceção
+    que chegue a um handler genérico de 500 vira PUBLIC_INTERNAL_ERROR.
+    """
+
+
+def public_error_message(exc):
+    """Texto do erro 500 que pode ir ao cliente: lista de PERMISSÃO, não de bloqueio.
+
+    Exceção não classificada → mensagem genérica. A mensagem original só passa
+    quando a exceção é `PublicServerError` (contrato explícito no ponto do raise).
+    """
+    if isinstance(exc, PublicServerError):
+        texto = str(exc).strip()
+        if texto:
+            return texto
+    return PUBLIC_INTERNAL_ERROR
+
 
 def _json_safe(value):
-    if isinstance(value, (str, int, float, bool)) or value is None:
+    if isinstance(value, str):
+        return redact_secrets(value)
+    if isinstance(value, (int, float, bool)) or value is None:
         return value
     if isinstance(value, (list, tuple)):
         return [_json_safe(item) for item in value]
     if isinstance(value, dict):
-        return {str(key): _json_safe(item) for key, item in value.items()}
-    return str(value)
+        return {redact_secrets(key): ('***' if _is_sensitive_key(key, item) else _json_safe(item))
+                for key, item in value.items()}
+    return redact_secrets(value)
 
 
 # ── Redação de credencial em query string (#343, F1) ─────────────────────────
@@ -111,7 +203,7 @@ def structured_log(level, event, **fields):
         "ts": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
         "level": str(level).lower(),
         "event": event,
-        **{key: _json_safe(value) for key, value in fields.items()},
+        **{key: ('***' if _is_sensitive_key(key, value) else _json_safe(value)) for key, value in fields.items()},
     }
     print(json.dumps(payload, ensure_ascii=False), flush=True)
 

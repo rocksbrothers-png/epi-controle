@@ -4513,7 +4513,10 @@
       "m_c0e993983fba": "Data de devolução inválida: \"{value}\".",
       "m_968997453735": "Colaborador arquivado(a): não é permitido registrar {operation}. O histórico permanece disponível apenas para consulta, relatórios e auditoria.",
       "m_bea0b10cd6b2": "EPI arquivado(a): não é permitido registrar {operation}. O histórico permanece disponível apenas para consulta, relatórios e auditoria.",
-      "m_f08064028fbd": "Empresa terceirizada arquivado(a): não é permitido registrar {operation}. O histórico permanece disponível apenas para consulta, relatórios e auditoria."
+      "m_f08064028fbd": "Empresa terceirizada arquivado(a): não é permitido registrar {operation}. O histórico permanece disponível apenas para consulta, relatórios e auditoria.",
+      "m_5c619a17a948": "Falha de conexão com o Mercado Pago.",
+      "m_45cb143d04fe": "Erro interno do servidor. Os detalhes técnicos ficam registrados nos logs.",
+      "m_910dfc324323": "Erro de integridade: o registro conflita com dados existentes ou referências obrigatórias."
     },
     "fields": {
       "title": "Título",

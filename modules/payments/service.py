@@ -874,7 +874,8 @@ def handle_webhook(connection, payload, query):
         status_info = fetch_payment_status(connection, resource_id, resource_type)
     except MercadoPagoError as exc:
         structured_log('warning', 'payments.webhook_fetch_failed', resource_id=resource_id, error=str(exc))
-        return {'ok': True, 'synced': False, 'reason': str(exc)}
+        # O texto do erro fica no log; ao chamador do webhook vai um código fixo.
+        return {'ok': True, 'synced': False, 'reason': 'mercado_pago_unavailable'}
 
     # Sincroniza o ciclo de vida da assinatura (tabela subscriptions) quando o
     # recurso é um preapproval. Best-effort: não bloqueia a confirmação ao MP.

@@ -34,6 +34,24 @@ def _get_bootstrap_state() -> dict:
         return dict(DB_BOOTSTRAP_STATE)
 
 
+# Texto público da falha de bootstrap. O erro bruto (host, usuário, SQL, DSN)
+# continua em DB_BOOTSTRAP_STATE['error_message'] e nos logs internos, mas nunca
+# vai para o cliente: o 503 e /health são respondidos antes da autenticação.
+PUBLIC_BOOTSTRAP_PENDING = 'A migração/validação de schema ainda não concluiu.'
+PUBLIC_BOOTSTRAP_FAILED = (
+    'Falha na inicialização ou migração do banco de dados. '
+    'Os detalhes técnicos ficam registrados nos logs do servidor.'
+)
+
+
+def public_bootstrap_detail(state: dict) -> str:
+    if state.get('ready'):
+        return ''
+    if state.get('error_code') or state.get('error_message'):
+        return PUBLIC_BOOTSTRAP_FAILED
+    return PUBLIC_BOOTSTRAP_PENDING
+
+
 def current_runtime_health() -> dict:
     state = _get_bootstrap_state()
     ready = bool(state.get('ready'))
@@ -45,7 +63,7 @@ def current_runtime_health() -> dict:
         'ready': ready,
         'error_code': state.get('error_code') or '',
         'error_kind': state.get('error_kind') or '',
-        'error_message': state.get('error_message') or '',
+        'error_message': public_bootstrap_detail(state) if has_failure else '',
         'started_at': state.get('started_at') or '',
         'completed_at': state.get('completed_at') or '',
     }

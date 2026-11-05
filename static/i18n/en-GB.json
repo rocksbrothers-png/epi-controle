@@ -4513,7 +4513,10 @@
       "m_c0e993983fba": "Invalid return date: \"{value}\".",
       "m_968997453735": "Employee archived: recording {operation} is not allowed. The history remains available only for viewing, reports and audit.",
       "m_bea0b10cd6b2": "PPE archived: recording {operation} is not allowed. The history remains available only for viewing, reports and audit.",
-      "m_f08064028fbd": "Outsourced company archived: recording {operation} is not allowed. The history remains available only for viewing, reports and audit."
+      "m_f08064028fbd": "Outsourced company archived: recording {operation} is not allowed. The history remains available only for viewing, reports and audit.",
+      "m_5c619a17a948": "Connection failure with Mercado Pago.",
+      "m_45cb143d04fe": "Internal server error. The technical details are recorded in the logs.",
+      "m_910dfc324323": "Integrity error: the record conflicts with existing data or required references."
     },
     "fields": {
       "title": "Title",

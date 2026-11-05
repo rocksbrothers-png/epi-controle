@@ -4513,7 +4513,10 @@
       "m_c0e993983fba": "Ugyldig returdato: «{value}».",
       "m_968997453735": "Den ansatte er arkivert: det er ikke tillatt å registrere {operation}. Historikken er bare tilgjengelig for visning, rapporter og revisjon.",
       "m_bea0b10cd6b2": "PVU-et er arkivert: det er ikke tillatt å registrere {operation}. Historikken er bare tilgjengelig for visning, rapporter og revisjon.",
-      "m_f08064028fbd": "Den innleide virksomheten er arkivert: det er ikke tillatt å registrere {operation}. Historikken er bare tilgjengelig for visning, rapporter og revisjon."
+      "m_f08064028fbd": "Den innleide virksomheten er arkivert: det er ikke tillatt å registrere {operation}. Historikken er bare tilgjengelig for visning, rapporter og revisjon.",
+      "m_5c619a17a948": "Tilkoblingsfeil mot Mercado Pago.",
+      "m_45cb143d04fe": "Intern serverfeil. De tekniske detaljene er registrert i loggene.",
+      "m_910dfc324323": "Integritetsfeil: posten er i konflikt med eksisterende data eller påkrevde referanser."
     },
     "fields": {
       "title": "Tittel",

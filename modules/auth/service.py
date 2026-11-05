@@ -337,10 +337,13 @@ def _safe_bootstrap_section(section_name, loader, fallback, warnings, actor, pat
                 connection.rollback()
             except Exception:
                 pass
+        # Mensagem e tipo vão ao cliente só por contrato explícito; o erro bruto
+        # (SQL, constraint, caminho) fica no log `bootstrap.section_failed` abaixo.
+        from epi_backend.http_utils import PublicServerError, public_error_message
         warning = {
             'section': section_name,
-            'message': str(exc),
-            'type': type(exc).__name__,
+            'message': public_error_message(exc),
+            'type': type(exc).__name__ if isinstance(exc, PublicServerError) else 'ServerError',
         }
         warnings.append(warning)
         from epi_backend.http_utils import structured_log

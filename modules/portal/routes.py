@@ -15,7 +15,7 @@ from core.repository import (
 from core.security import resolve_actor_user_id
 from epi_backend.db import row_to_dict
 from epi_backend.epi_scope import get_epi_effective_jv_name, is_epi_visible_for_unit
-from epi_backend.http_utils import require_fields, request_base_url, send_bytes, send_json, structured_log
+from epi_backend.http_utils import PublicServerError, require_fields, request_base_url, send_bytes, send_json, structured_log
 from modules.employees.service import ensure_actor_employee_scope, normalize_preferred_contact_channel
 from modules.ficha.service import (
     assert_ficha_period_can_close,
@@ -449,14 +449,14 @@ def handle_post_employee_sign_batch(handler, parsed, payload, match):
             )
             if period_rowcount != 1:
                 connection.rollback()
-                raise RuntimeError('Falha ao salvar assinatura em lote no período.')
+                raise PublicServerError('Falha ao salvar assinatura em lote no período.')
             items_rowcount = sign_ficha_items_batch(
                 connection, int(ficha['id']),
                 signature_name or 'Assinado digitalmente', signature_data, client_ip, now, signature_comment
             )
             if items_rowcount <= 0:
                 connection.rollback()
-                raise RuntimeError('Nenhum item da ficha foi assinado.')
+                raise PublicServerError('Nenhum item da ficha foi assinado.')
             sign_unsigned_deliveries_for_period(
                 connection, int(ficha['id']),
                 signature_name or 'Assinado digitalmente', signature_data, client_ip, now, signature_comment
@@ -507,7 +507,7 @@ def handle_post_employee_sign_batch(handler, parsed, payload, match):
             and str(persisted_signature_data.get('batch_signature_at') or '').strip()
         )
         if not persisted_ok:
-            raise RuntimeError('Erro crítico: assinatura em lote não persistiu no período.')
+            raise PublicServerError('Erro crítico: assinatura em lote não persistiu no período.')
         return send_json(
             handler,
             200,

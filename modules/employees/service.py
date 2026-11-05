@@ -1,6 +1,6 @@
 """Serviços de gestão de colaboradores."""
 
-from epi_backend.http_utils import structured_log
+from epi_backend.http_utils import PublicServerError, structured_log
 from epi_backend.db import row_to_dict
 from core.auth import ensure_resource_company
 from core.repository import actor_operational_unit_id  # noqa: F401 - reexportado (ver nota abaixo)
@@ -550,7 +550,7 @@ def _generate_simplified_employee_code(connection, company_id):
         ).fetchone()
         if not exists:
             return candidate
-    raise RuntimeError('Não foi possível gerar um código único para o colaborador.')
+    raise PublicServerError('Não foi possível gerar um código único para o colaborador.')
 
 
 def ensure_actor_unit_scope_for_target(connection, actor, unit_id):

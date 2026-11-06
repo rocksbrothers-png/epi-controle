@@ -307,6 +307,20 @@ Detalhes em [`UBX_APPJS_AUDITORIA.md` §20](UBX_APPJS_AUDITORIA.md#20-ubx-comerc
 - 2.715 cenários × 5 idiomas e concorrência comparados com a cópia literal do app.js (0 divergências), 28/29
   sabotagens detectadas (1 mutante equivalente) e Chromium passo a passo nos cinco idiomas contra a referência da `main`.
 
+## UBX Comercial — fatia C4 (2026-11-06): funções compartilhadas
+
+Detalhes em [`UBX_APPJS_AUDITORIA.md` §21](UBX_APPJS_AUDITORIA.md#21-ubx-comercial--fatia-c4-2026-11-06-funções-compartilhadas).
+
+- `formatCompanyCurrency` → `modules/companies/ui/companies-view.js`; `renderMyCompanyDomains` →
+  `modules/my-company/ui/my-company-view.js`; `fileToBase64` → `modules/shared/ui/file-data-url.js` (módulos já
+  existentes, corpos idênticos, mesmos nomes globais).
+- Ficam no `app.js`, com o motivo na §21.1–21.2: parâmetros comerciais da sessão, marca da plataforma,
+  `openAndPrintPopup`, `updateTopbarCompanyBadge` e a orquestração (propostas separadas na §21.7).
+- `app.js` 16.441 → 16.394 linhas; 679 → 676 declarações; 94 endpoints (sem mudança).
+- 1.735 comparações × 5 idiomas com a cópia literal (0 divergências), 17/19 sabotagens detectadas (2 mutantes
+  equivalentes) e Chromium nos cinco idiomas contra a referência gravada da `main`.
+
 ## Próximo passo
-UBX Comercial C4 (`formatCompanyCurrency`, `updateTopbarCompanyBadge`, `renderMyCompanyDomains`), com autorização própria, e, por último, a Etapa 3 (navegação/bootstrap) com os
+Com a C4, a UBX Comercial planejada está concluída. Propostas separadas (§21.7): marca da plataforma,
+`openAndPrintPopup` e `updateTopbarCompanyBadge`, cada uma com autorização própria, e, por último, a Etapa 3 (navegação/bootstrap) com os
 pré-requisitos de auditoria de autorização. Pagamentos ficam fora da UBX.

@@ -46,7 +46,8 @@ function makeEnv(opts = {}) {
   const node = (id) => ({ id, value: '', textContent: '', innerHTML: '' });
   const nodes = { 'my-company-form': form, 'my-company-readonly': node('readonly'), 'my-company-feedback': node('feedback'),
     'my-company-domain-feedback': node('domainFeedback'), 'my-company-domain-input': node('domainInput'),
-    'my-company-domain-type': node('domainType'), 'my-company-domains-table': node('domainsTable'), 'my-company-domain-add': node('domainAdd') };
+    'my-company-domain-type': node('domainType'), 'my-company-domains-table': node('domainsTable'), 'my-company-domain-add': node('domainAdd'),
+    'my-company-domain-instructions': node('domainInstructions') };
   for (const id of opts.missing || []) { delete nodes[id]; }
   const state = { user: opts.noUser ? null : { id: 7, role: 'general_admin' }, myCompany: opts.cached ? { id: 1, cached: true } : null };
   const replies = opts.replies || {};
@@ -62,7 +63,10 @@ function makeEnv(opts = {}) {
     fileToDataUrl: async (f) => { log.push(['dataUrl', f.type]); if (opts.convertFails) { throw new Error('falha conv'); } return `data:${f.type}`; },
     bindAppListener: (target, event, handler) => { log.push(['listen', target ? (target.id || 'form/input') : null, event, handler && handler.name]); handlers.push([target, event, handler]); },
     loadBootstrap: async (o) => { log.push(['loadBootstrap', JSON.stringify(o ?? null)]); if (opts.bootstrapFails) { throw new Error('bootstrap fora do ar'); } },
-    renderMyCompanyDomains: (domains) => log.push(['renderDomains', JSON.stringify(domains)]),
+    // UBX Comercial C4: renderMyCompanyDomains mora no módulo; os dois lados usam a função real (a cópia
+    // literal do app.js no lado "antes"), com tr/escapeHtml determinísticos. O HTML vai para os nós fotografados.
+    tr: (key, fallback, params) => `${key}|${fallback}${params ? `|${JSON.stringify(params)}` : ''}`,
+    escapeHtml: (v) => String(v ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch])),
     alert: (m) => log.push(['alert', String(m)]),
     confirm: (m) => { const r = confirms.length ? confirms.shift() : true; log.push(['confirm', m, r]); return r; },
     console: { warn: (m, e) => log.push(['console.warn', m, e && e.message]), error: () => {}, log: () => {} },
@@ -86,8 +90,12 @@ function loadModules(env) {
   return env.ctx;
 }
 
+const C4_FIXTURE = path.join(__dirname, 'fixtures', 'app-before-ubx-commercial-c4.js.txt');
 function loadFrozen(env) {
   vm.runInContext(fs.readFileSync(FROZEN_FILE, 'utf8'), env.ctx);
+  // renderMyCompanyDomains era global do app.js até a C4: no lado "antes", a cópia literal.
+  const c4 = fs.readFileSync(C4_FIXTURE, 'utf8');
+  vm.runInContext(c4.slice(c4.indexOf('function renderMyCompanyDomains(')), env.ctx);
   return env.ctx;
 }
 
@@ -225,7 +233,9 @@ module.exports = function ({ testAsync, test, assert, eq }) {
     for (const name of [...NAMES, 'MY_COMPANY_IMAGE_TYPES', 'MY_COMPANY_COLOR_DEFAULTS']) {
       assert(!new RegExp(`^\\s*(?:async\\s+)?(?:function|const|let|var)\\s+${name}\\b`, 'm').test(app), `${name} voltou ao app.js`);
     }
-    assert(/^function renderMyCompanyDomains\(/m.test(app), 'renderMyCompanyDomains segue no app.js (alterada pelo PR pendente I18N-FULL-V1)');
+    // UBX Comercial C4: renderMyCompanyDomains também saiu do app.js para o módulo.
+    assert(!/^\s*function renderMyCompanyDomains\(/m.test(app), 'renderMyCompanyDomains voltou ao app.js');
+    eq(typeof ctx.renderMyCompanyDomains, 'function', 'renderMyCompanyDomains publicada pelo módulo');
   });
 };
 

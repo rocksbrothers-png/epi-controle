@@ -61,7 +61,10 @@ function makeEnv(opts = {}) {
     planLabel: (p) => (p ? `P(${p})` : ''),
     canAccessCommercialArea: () => opts.commercial !== false,
     companyLogoMarkup: (c, cls) => `<img class="${cls}" data-logo="${c?.logo_type || ''}">`,
-    formatCompanyCurrency: (v) => `R$${v || 0}`,
+    // UBX Comercial C4: formatCompanyCurrency mora no módulo de Empresas; os dois lados usam a função real
+    // (a cópia literal do app.js no lado "antes") sobre este formatCurrency controlado.
+    formatCurrency: (v, lang) => `R$${v}|${lang}`,
+    EpiI18n: { lang: 'nb-NO' },
     formatCompanyAvailabilityText: (c) => `AV(${c.available_slots || 0},${c.limit_reached})`,
     formatCnpj: (v) => `CNPJ(${v})`,
     fileToJpegDataUrl: async (file) => { log.push(['fileToJpeg', file.type]); return `data:${file.type};x`; },
@@ -88,8 +91,16 @@ function loadModules(env) {
   return env.ctx;
 }
 
+const C4_FIXTURE = path.join(__dirname, 'fixtures', 'app-before-ubx-commercial-c4.js.txt');
+function c4Function(name) {
+  const source = fs.readFileSync(C4_FIXTURE, 'utf8');
+  const start = source.indexOf(`function ${name}(`);
+  return source.slice(start, source.indexOf('\n}\n', start) + 2);
+}
 function loadFrozen(env) {
   vm.runInContext(fs.readFileSync(FROZEN_FILE, 'utf8'), env.ctx);
+  // formatCompanyCurrency era global do app.js até a C4: no lado "antes", a cópia literal.
+  vm.runInContext(c4Function('formatCompanyCurrency'), env.ctx);
   return env.ctx;
 }
 

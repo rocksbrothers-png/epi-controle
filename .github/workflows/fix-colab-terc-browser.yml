@@ -21,6 +21,7 @@ on:
       - 'scripts/browser/security_commercial_plan_xss.py'
       - 'scripts/browser/ubx_commercial_integrations.py'
       - 'scripts/browser/ubx_commercial_view.py'
+      - 'scripts/browser/ubx_commercial_shared.py'
       - 'modules/ficha/**'
       - '.github/workflows/fix-colab-terc-browser.yml'
   workflow_dispatch:
@@ -91,6 +92,10 @@ jobs:
       - if: ${{ !cancelled() }}
         name: UBX commercial C3 view equivalence (five locales)
         run: python scripts/browser/ubx_commercial_view.py --output browser-evidence/ubx-commercial-c3
+      # UBX Comercial C4: moeda (ICU do Chromium), domínios e leitura de arquivo reproduzem a referência da main.
+      - if: ${{ !cancelled() }}
+        name: UBX commercial C4 shared functions equivalence (five locales)
+        run: python scripts/browser/ubx_commercial_shared.py --output browser-evidence/ubx-commercial-c4
       # SECURITY-OUTPUT-XSS-V2: texto de colaborador, unidade e EPI contaminado em todas as telas não executa.
       - if: ${{ !cancelled() }}
         run: python scripts/browser/security_output_xss_v2.py --output browser-evidence/security-output-xss-v2

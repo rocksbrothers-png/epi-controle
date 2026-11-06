@@ -320,7 +320,23 @@ Detalhes em [`UBX_APPJS_AUDITORIA.md` §21](UBX_APPJS_AUDITORIA.md#21-ubx-comerc
 - 1.735 comparações × 5 idiomas com a cópia literal (0 divergências), 17/19 sabotagens detectadas (2 mutantes
   equivalentes) e Chromium nos cinco idiomas contra a referência gravada da `main`.
 
+## UBX Marca da plataforma (2026-11-06) — implementação local da §21.7
+
+**Nesta branch, sem push/PR/merge/deploy; ainda não integrada à main.** Detalhes em
+[`UBX_APPJS_AUDITORIA.md` §22](UBX_APPJS_AUDITORIA.md#22-ubx-marca-da-plataforma-2026-11-06--proposta-da-217).
+
+- Sete funções de Marca em `modules/platform-brand/ui/platform-brand-view.js`; HTTP canônico em
+  `modules/platform-brand/integrations/platform-brand-api.js`. Quatro globais legadas e três async
+  somente no namespace. Listeners preservados no `init`.
+- `DEFAULT_PLATFORM_BRAND` tem uma definição, com alias por referência no app para bootstrap e mensagens.
+- `app.js`: 16.394 → 16.292 linhas; 676 → 669 declarações; 94 → 93 entradas de endpoint; zero ciclos
+  entre scripts. Cinco ciclos internos permanecem. Nenhuma mudança de backend, regras ou infraestrutura.
+- 820 comparações nos cinco idiomas, 25/25 mutações detectadas, Chromium contra referência da própria
+  base, guarda/build/F4/F5B e regressões aplicáveis. Sem percentual global: não existe denominador aprovado.
+
 ## Próximo passo
-Com a C4, a UBX Comercial planejada está concluída. Propostas separadas (§21.7): marca da plataforma,
-`openAndPrintPopup` e `updateTopbarCompanyBadge`, cada uma com autorização própria, e, por último, a Etapa 3 (navegação/bootstrap) com os
-pré-requisitos de auditoria de autorização. Pagamentos ficam fora da UBX.
+A Marca implementada nesta branch aguarda revisão e autorização para publicação e integração.
+As propostas seguintes da §21.7 continuam separadas: `openAndPrintPopup` e shell/topbar, cada uma
+com autorização própria. O plano completo mantém pendentes Compras e demais domínios operacionais;
+Migração fica por último entre os domínios. Navegação/bootstrap (Etapa 3) e a limpeza dos shims
+ficam no final, com auditoria de autorização e estado. Pagamentos ficam fora da UBX.

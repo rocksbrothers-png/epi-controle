@@ -240,7 +240,7 @@ const ROLE_ALIASES = {
 };
 
 const DEFAULT_COMPANY_LOGO = `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><rect width="80" height="80" rx="20" fill="#f6d8c8"/><path d="M20 56h40M26 48V26h28v22" fill="none" stroke="#96401c" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>')}`;
-const DEFAULT_PLATFORM_BRAND = { display_name: 'Sua Empresa', legal_name: '', cnpj: '', logo_type: '', login_logo_type: '' };
+const DEFAULT_PLATFORM_BRAND = globalThis.__EPI_PLATFORM_BRAND_UI__.DEFAULT_PLATFORM_BRAND;
 const DEFAULT_COMMERCIAL_SETTINGS = {
   unit_price: 42,
   plans: {
@@ -2795,91 +2795,7 @@ function isMobileUserAgent() {
 
 
 // companyLogoSrc e companyLogoMarkup: static/js/modules/shared/ui/company-logo.js (UBX-V5).
-
-function renderPlatformLogoPreview(logoValue) {
-  if (!refs.platformLogoPreview) return;
-  refs.platformLogoPreview.innerHTML = `<div class="logo-preview-card">${companyLogoMarkup({ name: state.platformBrand?.display_name || tr('commercial.panel.defaultBrandName', 'Sua Empresa'), logo_type: logoValue }, 'company-logo company-logo-lg')}<span>${escapeHtml(logoValue ? tr('commercial.panel.logoLoaded', 'Logotipo carregado') : tr('commercial.panel.logoDefault', 'Imagem padrão em uso'))}</span></div>`;
-}
-
-function renderPlatformLoginLogoPreview(logoValue) {
-  if (!refs.platformLoginLogoPreview) return;
-  refs.platformLoginLogoPreview.innerHTML = `<div class="logo-preview-card">${companyLogoMarkup({ name: tr('commercial.panel.loginLogoName', 'Logo da tela de login'), logo_type: logoValue }, 'company-logo company-logo-lg')}<span>${escapeHtml(logoValue ? tr('commercial.panel.loginLogoLoaded', 'Logotipo de login carregado') : tr('commercial.panel.loginLogoDefault', 'Sem logotipo de login (padrão)'))}</span></div>`;
-}
-
-async function handlePlatformLogoUpload(event) {
-  const file = event.target.files?.[0];
-  if (!file) {
-    refs.platformBrandForm.elements.logo_type.value = '';
-    renderPlatformLogoPreview('');
-    return;
-  }
-  const allowed = ['image/png', 'image/jpeg', 'image/svg+xml'];
-  if (!allowed.includes(file.type)) {
-    alert('Envie um logotipo PNG, JPG ou SVG.');
-    event.target.value = '';
-    return;
-  }
-  try {
-    refs.platformBrandForm.elements.logo_type.value = await fileToJpegDataUrl(file);
-    renderPlatformLogoPreview(refs.platformBrandForm.elements.logo_type.value);
-  } catch (error) {
-    alert(error.message);
-    event.target.value = '';
-  }
-}
-
-async function handlePlatformLoginLogoUpload(event) {
-  const file = event.target.files?.[0];
-  if (!file) {
-    refs.platformBrandForm.elements.login_logo_type.value = '';
-    renderPlatformLoginLogoPreview('');
-    return;
-  }
-  const allowed = ['image/png', 'image/svg+xml'];
-  if (!allowed.includes(file.type)) {
-    alert(tr('commercial.panel.loginLogoFormat', 'A logo da tela de login aceita apenas PNG ou SVG.'));
-    event.target.value = '';
-    return;
-  }
-  try {
-    refs.platformBrandForm.elements.login_logo_type.value = await fileToDataUrl(file);
-    renderPlatformLoginLogoPreview(refs.platformBrandForm.elements.login_logo_type.value);
-  } catch (error) {
-    alert(error.message);
-    event.target.value = '';
-  }
-}
-
-function renderPlatformBrand() {
-  const brand = state.platformBrand || DEFAULT_PLATFORM_BRAND;
-  if (refs.platformBrandName) {
-    globalThis.EpiI18n?.clearBinding?.(refs.platformBrandName);
-    refs.platformBrandName.textContent = brand.display_name || DEFAULT_PLATFORM_BRAND.display_name;
-  }
-  if (refs.platformBrandLogo) refs.platformBrandLogo.innerHTML = companyLogoMarkup({ name: brand.display_name, logo_type: brand.logo_type }, 'company-logo company-logo-sm');
-  if (refs.platformBrandForm) {
-    refs.platformBrandForm.elements.display_name.value = brand.display_name || '';
-    refs.platformBrandForm.elements.legal_name.value = brand.legal_name || '';
-    refs.platformBrandForm.elements.cnpj.value = brand.cnpj || '';
-    refs.platformBrandForm.elements.logo_type.value = brand.logo_type || '';
-    refs.platformBrandForm.elements.login_logo_type.value = brand.login_logo_type || '';
-  }
-  if (refs.platformLogoFile) refs.platformLogoFile.value = '';
-  if (refs.platformLoginLogoFile) refs.platformLoginLogoFile.value = '';
-  renderPlatformLogoPreview(brand.logo_type || '');
-  renderPlatformLoginLogoPreview(brand.login_logo_type || '');
-  // Só re-renderiza o login logo se o platformBrand tiver um logo definido.
-  // Caso contrário mantém o logo do tenant aplicado pelo tenant-init.js.
-  const loginLogoSrc = brand.login_logo_type || '';
-  if (refs.loginBrandLogo) {
-    if (loginLogoSrc) {
-      refs.loginBrandLogo.innerHTML = companyLogoMarkup({ name: brand.display_name, logo_type: loginLogoSrc }, 'company-logo company-logo-lg');
-    } else if (!window.__epiTenant) {
-      refs.loginBrandLogo.innerHTML = '';
-    }
-    // Se não há logo de plataforma mas há tenant, o tenant-init.js já aplicou
-  }
-}
+// Marca da plataforma: static/js/modules/platform-brand/{ui,integrations}/ (UBX Marca).
 
 // `canManageMinimumStock()` foi REMOVIDA (#271-B3). Ela testava
 // `['admin','user']` e por isso escondia o editor do Administrador Geral, a
@@ -4841,10 +4757,6 @@ function syncDeliveriesOptions() {
 
 // companyRowActions: static/js/modules/companies/ui/ (UBX-V5, Etapa 2).
 
-function platformBrandDisplayName() {
-  return state.platformBrand?.display_name || DEFAULT_PLATFORM_BRAND.display_name;
-}
-
 // formatCommercialDetails: static/js/modules/commercial/ui/commercial-presentation.js (UBX Comercial C1).
 
 function openAndPrintPopup(html, features = 'width=1100,height=800') {
@@ -4870,20 +4782,6 @@ function openAndPrintPopup(html, features = 'width=1100,height=800') {
     setTimeout(triggerPrint, 500);
   }
   return popup;
-}
-
-async function savePlatformBrand(event) {
-  event.preventDefault();
-  if (state.user?.role !== 'master_admin') return;
-  try {
-    const values = formValues(refs.platformBrandForm);
-    values.actor_user_id = state.user.id;
-    if (values.cnpj) values.cnpj = formatCnpj(values.cnpj);
-    const payload = await api('/api/platform-brand', { method: 'POST', body: JSON.stringify(values) });
-    state.platformBrand = { ...DEFAULT_PLATFORM_BRAND, ...payload.brand };
-    renderPlatformBrand();
-    alert(tr('commercial.panel.brandUpdated', 'Marca da sua empresa atualizada.'));
-  } catch (error) { alert(error.message); }
 }
 
 // fileToBase64 (leitura de arquivo em base64): static/js/modules/shared/ui/file-data-url.js (UBX Comercial C4).
@@ -11535,7 +11433,7 @@ async function init() {
     if (event.target?.dataset?.purchaseFunctionChipRemove) setPurchaseFunctionUnitSelection(event.target.dataset.purchaseFunctionChipRemove, false);
   });
   bindAppListener(refs.companyForm, 'submit', saveCompany);
-  bindAppListener(refs.platformBrandForm, 'submit', savePlatformBrand);
+  bindAppListener(refs.platformBrandForm, 'submit', globalThis.__EPI_PLATFORM_BRAND_UI__.savePlatformBrand);
   // Assíncronas do Comercial (C3): só no namespace, como eram de bloco no app.js; a referência é estável (namespace congelado).
   bindAppListener(refs.commercialSettingsForm, 'submit', globalThis.__EPI_COMMERCIAL_VIEW__.saveCommercialSettings);
   bindAppListener(refs.commercialForm, 'submit', globalThis.__EPI_COMMERCIAL_VIEW__.saveCommercial);
@@ -11569,8 +11467,8 @@ async function init() {
   bindAppListener(refs.commercialExportExcel, 'click', exportCommercialExcel);
   bindAppListener(refs.commercialPrint, 'click', printCommercialHistory);
 
-  bindAppListener(refs.platformLogoFile, 'change', handlePlatformLogoUpload);
-  bindAppListener(refs.platformLoginLogoFile, 'change', handlePlatformLoginLogoUpload);
+  bindAppListener(refs.platformLogoFile, 'change', globalThis.__EPI_PLATFORM_BRAND_UI__.handlePlatformLogoUpload);
+  bindAppListener(refs.platformLoginLogoFile, 'change', globalThis.__EPI_PLATFORM_BRAND_UI__.handlePlatformLoginLogoUpload);
   configureEpiPhotoInputCapture();
   bindAppListener(document.getElementById('epi-photo-file'), 'change', handleEpiPhotoUpload);
   bindAppListener(document.getElementById('epi-photo-open-camera'), 'click', () => openEpiPhotoPicker({ preferCamera: true }));

@@ -142,11 +142,19 @@ function cached(kind, lang, setup) {
 function loadOriginal(lang, opts) {
   return cached('original', lang, (ctx) => vm.runInContext(read('js/test/fixtures/app-before-ubx-commercial-c2.js.txt'), ctx)).reset(opts);
 }
+// UBX Comercial C3: os 12 chamadores moram agora em modules/commercial/ui/commercial-view.js e
+// commercial-contract-view.js.
+// Cada um é extraído de lá e roda sozinho neste contexto (as funções vizinhas
+// continuam controladas pelo teste); `state` e `refs` chegam pelos mesmos
+// globais que o módulo lê na página (__EPI_APP_STATE__ e __EPI_REFS__).
+const CURRENT_CALLERS = ['js/modules/commercial/ui/commercial-contract-view.js', 'js/modules/commercial/ui/commercial-view.js'];
 function loadCurrent(lang, opts) {
   return cached('current', lang, (ctx) => {
     for (const rel of CURRENT_MODULES) { vm.runInContext(read(rel), ctx); }
-    const app = read('app.js');
-    vm.runInContext(NAMES.map((n) => extractFunction(app, n)).join('\n\n'), ctx);
+    Object.defineProperty(ctx, '__EPI_APP_STATE__', { get: () => ctx.state, configurable: true });
+    Object.defineProperty(ctx, '__EPI_REFS__', { get: () => ctx.refs, configurable: true });
+    const view = CURRENT_CALLERS.map(read).join('\n');
+    vm.runInContext(NAMES.map((n) => extractFunction(view, n)).join('\n\n'), ctx);
   }).reset(opts);
 }
 
@@ -374,8 +382,13 @@ module.exports = function ({ testAsync, test, assert, eq }) {
       && iMod < i('/app.js'), `ordem de carga: api-client ${i('/js/modules/api-client.js')}, commercial-api ${iMod}, app ${i('/app.js')}`);
     eq(order.filter((src) => src === '/js/modules/commercial/integrations/commercial-api.js').length, 1, 'carregado uma vez');
     const app = read('app.js');
+    const view = CURRENT_CALLERS.map(read).join('\n');
     eq((app.match(/\/api\/commercial/g) || []).length, 0, 'nenhum endpoint comercial no app.js');
-    eq((app.match(/__EPI_COMMERCIAL_API__\./g) || []).length, 11, 'onze usos da integração no app.js (10 chamadores + botão "ver contrato" de Empresas)');
-    eq((app.match(/__EPI_COMPANIES_API__\.updateCompany\(/g) || []).length, 2, 'PUT de empresa reaproveitado de Empresas (2 chamadores)');
+    eq((view.match(/\/api\/commercial/g) || []).length, 0, 'nenhum endpoint comercial na interface comercial');
+    // UBX Comercial C3: os 10 chamadores foram para a interface comercial; no app.js fica o botão "ver contrato" de Empresas.
+    eq((app.match(/__EPI_COMMERCIAL_API__\./g) || []).length, 1, 'um uso da integração no app.js (botão "ver contrato" de Empresas)');
+    eq((view.match(/__EPI_COMMERCIAL_API__\./g) || []).length, 10, 'dez usos da integração na interface comercial (10 chamadores)');
+    eq(((app + view).match(/__EPI_COMPANIES_API__\.updateCompany\(/g) || []).length, 2, 'PUT de empresa reaproveitado de Empresas (2 chamadores)');
+    eq((view.match(/__EPI_COMPANIES_API__\.updateCompany\(/g) || []).length, 2, 'os 2 chamadores do PUT estão na interface comercial');
   });
 };

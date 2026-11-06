@@ -3787,10 +3787,12 @@ test('#343 F5-B G-conv-5: o editor comercial é resetado ATOMICAMENTE', () => {
     'o reset comercial voltou a limpar só a metade do contrato');
   assert(!/comercial:.*resetCommercialContractForm/.test(linha),
     'o reset comercial voltou a chamar direto o reset parcial');
-  // E `fillCommercialForm` continua sendo a autoridade que recarrega as duas.
-  const preenche = fonte.slice(fonte.indexOf('function fillCommercialForm('));
-  const fim = preenche.indexOf('\n}');
-  assert(preenche.slice(0, fim).includes('resetCommercialContractForm('),
+  // E `fillCommercialForm` continua sendo a autoridade que recarrega as duas
+  // (UBX Comercial C3: mora em modules/commercial/ui/commercial-view.js).
+  const interfaceComercial = _semComentariosF5B(fs.readFileSync(path.join(JS_ROOT, 'modules', 'commercial', 'ui', 'commercial-view.js'), 'utf-8'));
+  const preenche = interfaceComercial.slice(interfaceComercial.indexOf('function fillCommercialForm('));
+  const fim = preenche.indexOf('\n  }');  // fim da função (indentada dentro do IIFE do módulo)
+  assert(fim > 0 && preenche.slice(0, fim).includes('resetCommercialContractForm('),
     'fillCommercialForm deixou de resetar a metade do contrato: o reset deixaria de ser atômico');
 });
 
@@ -6154,11 +6156,16 @@ test('PR3 A-6: onde o requisito de rascunho é REAL, ele já existe — e é ser
   // prefixo, `tests/test_frontend_api_contract.py` varre todo .js sob static/ e
   // lê esta linha como uma chamada de API do frontend — cobrando rota GET para
   // o que é POST. O nome da função é tão específico quanto, e não se disfarça.
-  assert(appJs.includes('async function saveCommercialContractDraft('),
+  // UBX Comercial C3: o chamador saiu do app.js para a interface do contrato
+  // comercial (commercial-contract-view.js); o app.js continua ligando o botão de salvar contrato.
+  const interfaceComercial = fs.readFileSync(path.join(JS_ROOT, 'modules', 'commercial', 'ui', 'commercial-contract-view.js'), 'utf-8');
+  assert(interfaceComercial.includes('async function saveCommercialContractDraft('),
     'o rascunho server-side do contrato comercial sumiu: a comparação A/B/C precisa ser refeita');
+  assert(appJs.includes('__EPI_COMMERCIAL_VIEW__.saveCommercialContractManagement'),
+    'o botão de salvar o contrato comercial deixou de estar ligado');
   // UBX Comercial C2: a chamada saiu do app.js para a camada de integração; o
   // caminho continua o mesmo, agora literal em commercial-api.js.
-  assert(appJs.includes('__EPI_COMMERCIAL_API__.saveContractDraft('),
+  assert(interfaceComercial.includes('__EPI_COMMERCIAL_API__.saveContractDraft('),
     'o rascunho do contrato comercial deixou de passar pela integração comercial');
   const integracaoComercial = fs.readFileSync(path.join(JS_ROOT, 'modules', 'commercial', 'integrations', 'commercial-api.js'), 'utf-8');
   assert(integracaoComercial.includes("commercial-contract/save"),

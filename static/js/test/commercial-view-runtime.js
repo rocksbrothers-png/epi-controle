@@ -24,8 +24,11 @@
 //
 // A referência "antes" é a cópia literal do app.js
 // (fixtures/app-before-ubx-commercial-c3.js.txt); a "atual" é o que a página
-// carrega hoje. Os cenários rodam nas duas e precisam ser idênticos, nos cinco
-// idiomas.
+// carrega hoje: modules/commercial/ui/commercial-contract-view.js e
+// commercial-view.js, chamados pela fachada __EPI_COMMERCIAL_VIEW__ (as chamadas
+// internas entre as funções ficam dentro de cada módulo, como ficavam dentro do
+// bloco do app.js). Os cenários
+// rodam nas duas e precisam ser idênticos, nos cinco idiomas.
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
@@ -45,6 +48,12 @@ const ASYNC_NAMES = ['loadCommercialContract', 'toggleCommercialStatus', 'saveCo
   'signCommercialContractAction', 'uploadSignedCommercialContract', 'sendCommercialContractByEmail', 'saveCommercial',
   'saveCommercialContractManagement', 'saveCommercialSettings'];
 const read = (rel) => fs.readFileSync(path.join(STATIC, rel), 'utf8');
+// A interface comercial extraída, na ordem de carga da página.
+const VIEW_MODULES = ['js/modules/commercial/ui/commercial-contract-view.js', 'js/modules/commercial/ui/commercial-view.js'];
+const CONTRACT_NAMES = ['contractStatusLabel', 'renderCommercialContractPanel', 'resetCommercialContractForm', 'loadCommercialContract',
+  'buildCommercialContractPayload', 'downloadCommercialContractPdf', 'saveCommercialContractDraft', 'generateCommercialContract',
+  'viewGeneratedCommercialContract', 'downloadGeneratedCommercialContract', 'signCommercialContractAction',
+  'uploadSignedCommercialContract', 'sendCommercialContractByEmail', 'saveCommercialContractManagement'];
 const CATALOGS = Object.fromEntries(LOCALES.map((l) => [l, JSON.parse(read(`i18n/${l}.json`))]));
 
 function extractFunction(source, name) {
@@ -93,6 +102,10 @@ const LOGS = [
   { id: 4, company_id: 903, company_name: 'Terceira', action_label: 'Contrato', actor_name: 'Ana', created_at: '2026-10-15T00:00:00',
     summary: 'linha 1\nlinha 2', details: null }
 ];
+// Mais registros que o limite do painel de histórico (12), com datas e atores variados.
+const MANY_LOGS = () => Array.from({ length: 15 }, (_, i) => ({ ...clone(LOGS[i % LOGS.length]), id: 100 + i, company_id: 901,
+  created_at: `2026-${String(1 + (i % 11)).padStart(2, '0')}-${String(10 + i).padStart(2, '0')}T0${i % 10}:00:00`,
+  actor_name: i % 3 ? 'Bruno' : `Ana ${i}` }));
 const CONTRACTS = {
   rich: { id: 5, company_id: 901, status: 'pending_signature', contract_number: 'CT-5', issue_date: '2026-11-01', contractor_address: 'Rua <b>',
     contractor_representative: 'Ana', contractor_representative_role: 'Diretora', contractor_email: 'ana@exemplo.test', contractor_phone: '11',
@@ -141,13 +154,13 @@ const FORM_FIELDS = ['company_id', 'plan_name', 'user_limit', 'addendum_enabled'
   'commercial_notes', 'unit_price_display', 'monthly_value', 'projected_monthly_value'];
 const SETTINGS_FIELDS = ['unit_price', 'individual_max', 'start_max', 'business_max', 'corporate_max', 'enterprise_min'];
 
-function buildRefs(shape) {
+function buildRefs(shape, opts = {}) {
   if (shape === 'none') { return {}; }
   const refs = {
     commercialCompany: el(),
     commercialForm: { elements: Object.fromEntries(FORM_FIELDS.map((n) => [n, el({ name: n })])) },
     commercialSettingsForm: { elements: Object.fromEntries(SETTINGS_FIELDS.map((n) => [n, el({ name: n })])) },
-    commercialSignedFile: el({ files: [{ name: 'assinado <1>.pdf', type: 'application/pdf' }] }),
+    commercialSignedFile: el({ files: [{ name: 'assinado <1>.pdf', type: opts.fileType ?? 'application/pdf' }] }),
     commercialFilterActor: el(), commercialFilterDateFrom: el(), commercialFilterDateTo: el(), commercialFilterStatus: el()
   };
   for (const name of [...CONTRACT_REFS, ...PANEL_REFS]) { refs[name] = el(); }
@@ -220,14 +233,22 @@ function buildContext(lang) {
     const answer = env.opts.respond(apiPath, method);
     if (answer.deferred) { return new Promise((resolve, reject) => env.deferred.push({ apiPath, resolve, reject })); }
     if (answer.error) { return Promise.reject(makeError(answer.error)); }
-    return Promise.resolve(clone(answer.value));
+    // Cada gravação devolve um contrato diferente (número com a ação): torna visível
+    // qualquer troca de ordem entre gravar o estado e renderizar.
+    const value = clone(answer.value);
+    if (method !== 'GET' && value?.contract) { value.contract.contract_number = `${value.contract.contract_number || ''}#${apiPath.split('/').pop()}`; }
+    return Promise.resolve(value);
   };
   ctx.open = (url, target) => { log('open', url, target); return null; };
   ctx.alert = (message) => { log('alert', String(message)); };
   ctx.console = { warn: (...args) => log('warn', String(args[0]), args[1]?.status ?? args[1]?.name ?? null) };
+  // Recarga assíncrona de verdade (termina depois de um ciclo): quem não espera por ela aparece no log.
   ctx.loadBootstrap = async () => {
     log('loadBootstrap');
+    await Promise.resolve();
+    await Promise.resolve();
     if (env.opts.bootstrapMutates) { ctx.state.companies = ctx.state.companies.map((c) => ({ ...c, user_count: Number(c.user_count || 0) + 1 })); }
+    log('loadBootstrap:done');
   };
   ctx.canAccessCommercialArea = () => { log('canAccessCommercialArea'); return ctx.state.__canAccess ?? true; };
   ctx.hasPermission = (p) => { log('hasPermission', p); return env.opts.permitted ?? true; };
@@ -271,7 +292,7 @@ function buildContext(lang) {
     ctx.state = {
       user: { id: opts.userId ?? 7, role: opts.role ?? 'master_admin', company_id: opts.userCompany ?? null },
       companies: opts.noCompanies ? [] : clone(COMPANIES),
-      companyAuditLogs: opts.noCompanies ? [] : clone(LOGS),
+      companyAuditLogs: opts.noCompanies ? [] : opts.manyLogs ? MANY_LOGS() : clone(LOGS),
       commercialSettings: opts.settings ? clone(opts.settings) : null,
       commercialContract: null,
       commercialClauseTemplate: '',
@@ -279,7 +300,7 @@ function buildContext(lang) {
       platformBrand: opts.brand ? { display_name: opts.brand } : null,
       __canAccess: opts.canAccess
     };
-    ctx.refs = buildRefs(opts.refs);
+    ctx.refs = buildRefs(opts.refs, opts);
     return env;
   };
   return env;
@@ -301,9 +322,8 @@ function loadOriginal(lang, opts) {
 }
 function loadCurrent(lang, opts) {
   const env = cached('current', lang, (ctx) => {
-    const app = read('app.js');
-    vm.runInContext(NAMES.map((n) => extractFunction(app, n)).join('\n\n'), ctx);
-    ctx.__VIEW__ = Object.fromEntries(NAMES.map((n) => [n, ctx[n]]));
+    for (const rel of VIEW_MODULES) { vm.runInContext(read(rel), ctx); }
+    ctx.__VIEW__ = ctx.__EPI_COMMERCIAL_VIEW__;
   });
   return env.reset(opts);
 }
@@ -349,7 +369,8 @@ const RENDER_ALL = [
 const LANGCHANGE = [call('renderCommercialStats'), call('renderCommercialSummary'), call('renderCommercialAlerts'),
   call('renderCommercialExpiring'), call('renderCommercialHistory')];
 const FILTERS = [setField('commercialFilterStatus', 'suspended'), setField('commercialFilterActor', 'Bruno'),
-  setField('commercialFilterDateFrom', '2026-09-01'), setField('commercialFilterDateTo', '2026-11-30'), call('syncCommercialFilter')];
+  // Limites do período exatamente nas datas de registros (09-01 e 11-02): pega < × <= e > × >=.
+  setField('commercialFilterDateFrom', '2026-09-01'), setField('commercialFilterDateTo', '2026-11-02'), call('syncCommercialFilter')];
 
 const SEQUENCES = {
   renderAll: RENDER_ALL,
@@ -411,7 +432,8 @@ const VARIANTS = [
   { refs: 'partial', bareI18n: true },
   { settings: { unit_price: '19.9', plans: { start: { label: `Start ${XSS}`, max_users: 3 }, enterprise: { label: 'Ent', max_users: null },
     custom: { label: 'Custom & "x"', max_users: 7 } } }, brand: 'Marca <i>' },
-  { fileReadFails: true, popupBlocked: true, role: 'registry_admin', userCompany: 902 }
+  { fileReadFails: true, popupBlocked: true, role: 'registry_admin', userCompany: 902 },
+  { manyLogs: true, fileType: '' }
 ];
 const API_SEQUENCES = new Set(['contractActions', 'companyActions', 'switchContext', 'navigation']);
 // Leituras do contrato: o contrato e o 403 (limpa o painel). Corpo nulo e 5xx na leitura entram nas sequências com gravação.
@@ -534,5 +556,51 @@ module.exports = function ({ testAsync, test, assert, eq }) {
     eq(refs.commercialContractStatus.binding.key, 'commercial.panel.contractStatus', 'binding vivo do status');
     const api = env.log.filter((e) => e[0] === 'api');
     eq(JSON.stringify(api), JSON.stringify([['api', '/api/commercial-contract?actor_user_id=7&company_id=901', 1, 'undefined']]), 'uma leitura de contrato');
+  });
+
+  test('UBX Comercial C3: os módulos publicam as 23 síncronas e os namespaces congelados, carregam uma vez e respeitam a ordem de carga', () => {
+    const ctx = { Object, Set, Map, JSON };
+    ctx.globalThis = ctx;
+    vm.createContext(ctx);
+    const before = Object.keys(ctx);
+    for (const rel of VIEW_MODULES) { vm.runInContext(read(rel), ctx); }
+    const added = Object.keys(ctx).filter((k) => !before.includes(k)).sort();
+    const sync = NAMES.filter((n) => !ASYNC_NAMES.includes(n));
+    eq(JSON.stringify(added), JSON.stringify(['__EPI_COMMERCIAL_CONTRACT_VIEW__', '__EPI_COMMERCIAL_VIEW__', '__EPI_MODULE_COMMERCIAL_CONTRACT_VIEW_LOADED__',
+      '__EPI_MODULE_COMMERCIAL_VIEW_LOADED__', ...sync].sort()), 'globais publicados');
+    const ns = ctx.__EPI_COMMERCIAL_VIEW__;
+    const contract = ctx.__EPI_COMMERCIAL_CONTRACT_VIEW__;
+    assert(Object.isFrozen(ns) && Object.isFrozen(contract), 'namespaces congelados');
+    eq(JSON.stringify(Object.keys(ns)), JSON.stringify(NAMES), 'fachada: as 33 funções, na ordem do app.js');
+    eq(JSON.stringify(Object.keys(contract)), JSON.stringify(CONTRACT_NAMES), 'contrato: as 14 funções');
+    for (const name of CONTRACT_NAMES) { assert(ns[name] === contract[name], `${name}: fachada === contrato`); }
+    for (const name of sync) { assert(ctx[name] === ns[name], `${name}: global === namespace`); }
+    for (const name of ASYNC_NAMES) { assert(!(name in ctx), `${name} continua fora de globalThis (era de bloco)`); }
+    for (const rel of VIEW_MODULES) { vm.runInContext(read(rel), ctx); }
+    assert(ctx.__EPI_COMMERCIAL_VIEW__ === ns && ctx.__EPI_COMMERCIAL_CONTRACT_VIEW__ === contract, 'segunda carga não republica');
+
+    for (const rel of VIEW_MODULES) {
+      const module = read(rel);
+      assert(!/(?<![.\w$])api\(|fetch\(|XMLHttpRequest|\/api\//.test(module), `${rel}: sem HTTP direto (só a C2 e o updateCompany de Empresas)`);
+      assert(!/addEventListener|bindAppListener|safeOn\(/.test(module), `${rel}: sem listeners (a ligação continua no app.js; nenhum duplicado)`);
+      assert(!/\blet\s+(state|refs)\b|__EPI_APP_STATE__\s*=|__EPI_REFS__\s*=/.test(module), `${rel}: sem estado paralelo (state/refs são os do app.js)`);
+    }
+    assert(!/__EPI_COMMERCIAL_VIEW__|commercial-view\.js/.test(read(VIEW_MODULES[0]).replace(/^\s*\/\/.*$/gm, '')), 'o contrato não depende da tela (sem ciclo)');
+
+    const app = read('app.js');
+    for (const name of NAMES) {
+      assert(!new RegExp(`^\\s*(?:async\\s+)?function ${name}\\(`, 'm').test(app), `${name} não ficou duplicada no app.js`);
+    }
+    for (const name of ASYNC_NAMES.filter((n) => !['loadCommercialContract', 'saveCommercialContractDraft'].includes(n))) {
+      assert(app.includes(`__EPI_COMMERCIAL_VIEW__.${name}`), `${name}: o app.js liga pelo namespace`);
+    }
+    const order = [...read('views/_scripts.html').matchAll(/<script[^>]+src="([^"?]+)/g)].map((m) => m[1]);
+    const i = (src) => order.indexOf(src);
+    const iContract = i('/js/modules/commercial/ui/commercial-contract-view.js');
+    const iView = i('/js/modules/commercial/ui/commercial-view.js');
+    assert(iContract > i('/js/modules/commercial/integrations/commercial-api.js') && iContract > i('/js/views/view-helpers.js')
+      && iView > iContract && iView > i('/js/modules/commercial/ui/commercial-presentation.js') && iView < i('/app.js'),
+    `ordem de carga: contrato ${iContract}, comercial ${iView}, app ${i('/app.js')}`);
+    for (const rel of VIEW_MODULES) { eq(order.filter((src) => src === `/${rel}`).length, 1, `${rel} carregado uma vez`); }
   });
 };

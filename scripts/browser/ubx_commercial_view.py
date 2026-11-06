@@ -30,7 +30,9 @@ referência, idioma a idioma:
    conjunto (correm em paralelo e mudam de ordem até na mesma versão);
 3. abas abertas, conteúdo impresso, arquivos baixados e diálogos;
 4. as requisições externas (bloqueadas pelo harness);
-e exige nenhum erro de página e nenhuma marcação executada.
+e exige nenhum erro de página e nenhuma marcação executada. Cada fotografia só é
+tirada com a rede parada (nenhuma requisição /api em voo), para não depender do
+tempo de resposta.
 
 python scripts/browser/ubx_commercial_view.py --output /tmp/ubx-c3
 python scripts/browser/ubx_commercial_view.py --record --static /caminho/da/main/static
@@ -97,6 +99,12 @@ class Fixture(c2.Fixture):
         self.company_list[0]['contract_end'] = '2026-11-20'  # vence em 5 dias no relógio fixo
         self.company_list.append(dict(EXTRA_COMPANY))
         self.downloads = []
+        # Requisições /api em voo: a fotografia só é tirada com a rede parada (sem corrida de tempo).
+        self.pending = set()
+        is_api = lambda r: urlsplit(r.url).path.startswith(('/api/', '/health'))
+        self.page.on('request', lambda r: self.pending.add(r) if is_api(r) else None)
+        self.page.on('requestfinished', lambda r: self.pending.discard(r))
+        self.page.on('requestfailed', lambda r: self.pending.discard(r))
 
     def route(self, route):
         request = route.request
@@ -130,6 +138,14 @@ class Recorder:
 
     def shot(self, label, wait=300):
         self.f.page.wait_for_timeout(wait)
+        quiet = 0
+        for _ in range(100):  # até ~5 s: rede parada por 3 leituras seguidas, depois a renderização
+            quiet = quiet + 1 if not self.f.pending else 0
+            if quiet >= 3:
+                break
+            self.f.page.wait_for_timeout(50)
+        assert not self.f.pending, f'{label}: requisições ainda em voo: {[r.url for r in self.f.pending]}'
+        self.f.page.wait_for_timeout(100)
         self.steps.append({'label': label, 'snapshot': self.f.page.evaluate(SNAPSHOT)})
 
 

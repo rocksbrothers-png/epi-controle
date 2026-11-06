@@ -267,7 +267,9 @@ module.exports = function ({ test, assert, eq }) {
       const i = order.indexOf(dep);
       assert(i >= 0 && i < iUi, `${dep} carrega antes da apresentação comercial`);
     }
-    eq(order.filter((src) => src.includes('/modules/commercial/')).length, 2, 'cada módulo carregado uma vez');
+    for (const rel of MODULES) {
+      eq(order.filter((src) => src === `/${rel}`).length, 1, `${rel} carregado uma vez`);
+    }
   });
 
   test('UBX Comercial C1: valores de referência em pt-BR (comportamento atual fixado)', () => {

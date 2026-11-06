@@ -1,0 +1,194 @@
+// Fixture da UBX Comercial, fatia C2 — chamadores das integrações comerciais (tests: static/js/test/commercial-integrations-runtime.js).
+//
+// As 12 funções do static/app.js que chamam os endpoints comerciais, copiadas literalmente imediatamente antes
+// da extração da C2 (main 98e52a3e), na ordem em que aparecem. Referência fixa para a comparação antes × depois.
+// Não é carregado pela aplicação.
+
+async function loadCommercialContract(companyId) {
+  if (!companyId || !refs.commercialForm || !canAccessCommercialArea()) return;
+  try {
+    const payload = await api(`/api/commercial-contract?actor_user_id=${state.user.id}&company_id=${companyId}`);
+    state.commercialContract = payload.contract || null;
+    renderCommercialContractPanel();
+  } catch (error) {
+    if (error?.status === 403) {
+      resetCommercialContractForm({ preserveClauses: true });
+      return;
+    }
+    console.warn('[commercial-contract] Não foi possível carregar contrato', error);
+  }
+}
+
+async function toggleCommercialStatus(companyId, mode) {
+  const company = state.companies.find((item) => String(item.id) === String(companyId));
+  if (!company || !hasPermission('companies:update')) return;
+  const next = mode === 'reactivate'
+    ? { active: 1, license_status: 'active' }
+    : { active: 0, license_status: 'suspended' };
+  try {
+    await api(`/api/companies/${company.id}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        actor_user_id: state.user.id,
+        name: company.name,
+        legal_name: company.legal_name,
+        cnpj: company.cnpj,
+        logo_type: company.logo_type || '',
+        plan_name: company.plan_name,
+        user_limit: company.user_limit,
+        contract_start: company.contract_start || '',
+        contract_end: company.contract_end || '',
+        monthly_value: company.monthly_value || 0,
+        addendum_enabled: company.addendum_enabled || 0,
+        license_status: next.license_status,
+        active: next.active,
+        commercial_notes: company.commercial_notes || ''
+      })
+    });
+    await loadBootstrap();
+    fillCommercialForm(company.id);
+  } catch (error) { alert(error.message); }
+}
+
+function downloadCommercialContractPdf() {
+  const companyId = refs.commercialCompany?.value;
+  if (!companyId) return;
+  const params = new URLSearchParams({ actor_user_id: state.user.id, company_id: companyId });
+  globalThis.open(`/api/commercial-contract.pdf?${params.toString()}`, '_blank');
+}
+
+async function saveCommercialContractDraft(showToast = false) {
+  const payload = buildCommercialContractPayload();
+  if (!payload.company_id) return;
+  const response = await api('/api/commercial-contract/save', { method: 'POST', body: JSON.stringify(payload) });
+  state.commercialContract = response.contract || null;
+  renderCommercialContractPanel();
+  if (showToast) alert(tr('commercial.panel.draftSaved', 'Contrato salvo em rascunho.'));
+}
+
+async function generateCommercialContract() {
+  try {
+    const payload = buildCommercialContractPayload();
+    const response = await api('/api/commercial-contract/generate', { method: 'POST', body: JSON.stringify(payload) });
+    state.commercialContract = response.contract || null;
+    renderCommercialContractPanel();
+    alert(tr('commercial.panel.generated', 'Contrato gerado com sucesso.'));
+  } catch (error) { alert(error.message); }
+}
+
+function viewGeneratedCommercialContract() {
+  const companyId = refs.commercialCompany?.value;
+  if (!companyId) return;
+  const params = new URLSearchParams({ actor_user_id: state.user.id, company_id: companyId });
+  globalThis.open(`/api/commercial-contract.pdf?${params.toString()}`, '_blank');
+}
+
+function downloadGeneratedCommercialContract() {
+  const companyId = refs.commercialCompany?.value;
+  if (!companyId) return;
+  const params = new URLSearchParams({ actor_user_id: state.user.id, company_id: companyId, kind: 'generated' });
+  globalThis.open(`/api/commercial-contract/file?${params.toString()}`, '_blank');
+}
+
+async function signCommercialContractAction() {
+  try {
+    const companyId = refs.commercialCompany?.value;
+    const signatureName = refs.commercialSignatureName?.value || '';
+    const signatureData = refs.commercialSignatureData?.value || '';
+    const response = await api('/api/commercial-contract/sign', {
+      method: 'POST',
+      body: JSON.stringify({ actor_user_id: state.user.id, company_id: Number(companyId || 0), signature_name: signatureName, signature_data: signatureData })
+    });
+    state.commercialContract = response.contract || null;
+    renderCommercialContractPanel();
+    alert(tr('commercial.panel.signatureRecorded', 'Assinatura digital registrada.'));
+  } catch (error) { alert(error.message); }
+}
+
+async function uploadSignedCommercialContract() {
+  try {
+    const file = refs.commercialSignedFile?.files?.[0];
+    if (!file) return alert(tr('commercial.panel.selectSignedPdf', 'Selecione um PDF assinado.'));
+    const companyId = refs.commercialCompany?.value;
+    const fileBase64 = await fileToBase64(file);
+    const response = await api('/api/commercial-contract/upload-signed', {
+      method: 'POST',
+      body: JSON.stringify({
+        actor_user_id: state.user.id,
+        company_id: Number(companyId || 0),
+        file_name: file.name,
+        file_mime: file.type || 'application/pdf',
+        file_base64: fileBase64
+      })
+    });
+    state.commercialContract = response.contract || null;
+    renderCommercialContractPanel();
+    alert(tr('commercial.panel.signedUploaded', 'Contrato assinado enviado com sucesso.'));
+  } catch (error) { alert(error.message); }
+}
+
+async function sendCommercialContractByEmail() {
+  try {
+    const companyId = refs.commercialCompany?.value;
+    const response = await api('/api/commercial-contract/send-email', {
+      method: 'POST',
+      body: JSON.stringify({
+        actor_user_id: state.user.id,
+        company_id: Number(companyId || 0),
+        email_to: refs.commercialEmailTo?.value || '',
+        subject: refs.commercialEmailSubject?.value || '',
+        body: refs.commercialEmailBody?.value || ''
+      })
+    });
+    state.commercialContract = response.contract || null;
+    renderCommercialContractPanel();
+    alert(tr('commercial.panel.emailLogged', 'Registro de envio por e-mail atualizado.'));
+  } catch (error) { alert(error.message); }
+}
+
+async function saveCommercial(event) {
+  event.preventDefault();
+  if (!requirePermission('commercial:view')) return;
+  const companyId = refs.commercialCompany?.value;
+  const company = state.companies.find((item) => String(item.id) === String(companyId));
+  if (!company) return;
+  try {
+    const values = formValues(refs.commercialForm);
+    values.actor_user_id = state.user.id;
+    values.name = company.name;
+    values.legal_name = company.legal_name;
+    values.cnpj = company.cnpj;
+    values.logo_type = company.logo_type || '';
+    values.addendum_enabled = refs.commercialForm.elements.addendum_enabled.checked ? 1 : 0;
+    values.monthly_value = Number(company.monthly_value || 0);
+    await api(`/api/companies/${company.id}`, { method: 'PUT', body: JSON.stringify(values) });
+    await loadBootstrap();
+    fillCommercialForm(company.id);
+  } catch (error) { alert(error.message); }
+}
+
+async function saveCommercialSettings(event) {
+  event.preventDefault();
+  if (state.user?.role !== 'master_admin') return;
+  try {
+    const form = refs.commercialSettingsForm;
+    const startMax = Number(form.elements.start_max.value || 10);
+    const businessMax = Number(form.elements.business_max.value || 25);
+    const corporateMax = Number(form.elements.corporate_max.value || 100);
+    const payload = {
+      actor_user_id: state.user.id,
+      unit_price: Number(form.elements.unit_price.value || 0),
+      plans: {
+        individual: { label: 'Individual', min_users: 1, max_users: Number(form.elements.individual_max.value || 1) },
+        start: { label: 'Start', min_users: 1, max_users: startMax },
+        business: { label: 'Business', min_users: startMax + 1, max_users: businessMax },
+        corporate: { label: 'Corporate', min_users: businessMax + 1, max_users: corporateMax },
+        enterprise: { label: 'Enterprise', min_users: Number(form.elements.enterprise_min.value || 101), max_users: null }
+      }
+    };
+    await api('/api/commercial-settings', { method: 'POST', body: JSON.stringify(payload) });
+    await loadBootstrap();
+    fillCommercialSettingsForm();
+    fillCommercialForm(refs.commercialCompany?.value);
+  } catch (error) { alert(error.message); }
+}

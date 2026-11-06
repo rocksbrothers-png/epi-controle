@@ -19,6 +19,7 @@ on:
       - 'scripts/browser/i18n_commercial.py'
       - 'scripts/browser/ubx_commercial.py'
       - 'scripts/browser/security_commercial_plan_xss.py'
+      - 'scripts/browser/ubx_commercial_integrations.py'
       - 'modules/ficha/**'
       - '.github/workflows/fix-colab-terc-browser.yml'
   workflow_dispatch:
@@ -79,6 +80,10 @@ jobs:
       - if: ${{ !cancelled() }}
         name: SEC-C1-1 commercial plan label XSS (five locales)
         run: python scripts/browser/security_commercial_plan_xss.py --output browser-evidence/sec-c1-1
+      # UBX Comercial C2: as 10 ações comerciais pela interface reproduzem a referência gravada da main (requisições, abas, diálogos).
+      - if: ${{ !cancelled() }}
+        name: UBX commercial C2 integrations equivalence (five locales)
+        run: python scripts/browser/ubx_commercial_integrations.py --output browser-evidence/ubx-commercial-c2
       # SECURITY-OUTPUT-XSS-V2: texto de colaborador, unidade e EPI contaminado em todas as telas não executa.
       - if: ${{ !cancelled() }}
         run: python scripts/browser/security_output_xss_v2.py --output browser-evidence/security-output-xss-v2

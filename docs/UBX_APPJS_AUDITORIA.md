@@ -1152,3 +1152,85 @@ Pagamentos (`modules/payments`, `pagamento.js`, checkout, webhook) estão fora d
   texto; salvar envia a chave crua no `PUT`. Contra a `main` sem a correção, a mesma prova reprova (8 execuções
   ao abrir o formulário).
 - Dígitos de paridade: nenhum arquivo coberto por F4/F5B/MP_1A foi alterado; nenhum dígito recalculado.
+
+## 19. UBX Comercial — fatia C2 (2026-11-05): integrações comerciais
+
+Base: Corporate `main` `98e52a3e`, SaaS `main` `e07ed043` (C1 #1083/#457 e SEC-C1-1 #1084/#458 integrados, CI
+pós-merge verde, nenhum PR aberto). Somente frontend: nenhum arquivo de `modules/payments`, `pagamento.js`, checkout,
+webhook, backend, banco, autenticação, autorização ou assinatura eletrônica de EPI foi tocado.
+
+### 19.1 Inventário dos endpoints (antes da extração)
+
+Todos pelo cliente oficial `api` (mesma sessão, cabeçalhos e tratamento de erro), exceto as duas rotas abertas em
+nova aba (`globalThis.open`). Os nove são exatamente as nove rotas de `modules/commercial/routes.py` (idênticas nos
+dois produtos).
+
+| # | Método e caminho | Chamador(es) no app.js | Corpo / query | Resposta usada | Erro |
+|---|---|---|---|---|---|
+| 1 | `GET /api/commercial-contract` | `loadCommercialContract` (via `fillCommercialForm`) | `?actor_user_id&company_id`, chamada de um argumento | `contract` → estado + painel | 403 → reseta o formulário; demais → `console.warn` |
+| 2 | `GET /api/commercial-contract.pdf` | `downloadCommercialContractPdf`, `viewGeneratedCommercialContract`, botão "ver contrato" de Empresas | `actor_user_id`, `company_id` | nova aba | — |
+| 3 | `GET /api/commercial-contract/file` | `downloadGeneratedCommercialContract` | `actor_user_id`, `company_id`, `kind=generated` | nova aba | — |
+| 4 | `POST /api/commercial-contract/save` | `saveCommercialContractDraft` (chamado só por `saveCommercialContractManagement`, o botão de gestão do contrato) | `buildCommercialContractPayload()` | `contract` | propaga ao chamador, que mostra `alert` |
+| 5 | `POST /api/commercial-contract/generate` | `generateCommercialContract` | `buildCommercialContractPayload()` | `contract` | `alert` |
+| 6 | `POST /api/commercial-contract/sign` | `signCommercialContractAction` | ator, empresa (`Number`), nome e imagem da assinatura | `contract` | `alert` |
+| 7 | `POST /api/commercial-contract/upload-signed` | `uploadSignedCommercialContract` | ator, empresa, nome/MIME/base64 do PDF | `contract` | `alert` |
+| 8 | `POST /api/commercial-contract/send-email` | `sendCommercialContractByEmail` | ator, empresa, destinatário, assunto, corpo | `contract` | `alert` |
+| 9 | `POST /api/commercial-settings` | `saveCommercialSettings` (só `master_admin`) | preço unitário e cinco planos | recarrega bootstrap e formulários | `alert` |
+| — | `PUT /api/companies/<id>` | `toggleCommercialStatus`, `saveCommercial` | empresa inteira / valores do formulário | recarrega bootstrap e formulário | `alert` |
+
+Nota: o PUT de empresas pertence ao domínio Empresas e já tinha integração oficial (`companies-api.js`).
+
+Classificação financeira: nenhum desses endpoints toca pagamentos, assinaturas recorrentes, Mercado Pago, checkout ou
+webhook; nada bloqueado por acoplamento financeiro. A "assinatura" do item 6 é a assinatura do CONTRATO COMERCIAL
+(nome + imagem gravados pelo backend), não a assinatura eletrônica de EPI; o corpo é preservado byte a byte.
+
+### 19.2 O que mudou
+
+- `modules/commercial/integrations/commercial-api.js` (novo): `getContract`, `contractPdfUrl`, `contractFileUrl`,
+  `saveContractDraft`, `generateContract`, `signContract`, `uploadSignedContract`, `sendContractEmail`,
+  `saveCommercialSettings` — caminho e método literais, `globalThis.api` resolvido na chamada, `JSON.stringify` sobre
+  o mesmo objeto. Publica só `__EPI_COMMERCIAL_API__` (congelado) e a flag de carga; sem DOM, sem estado, sem
+  abertura de aba. Carregado depois de `api-client.js` e antes do `app.js`.
+- `app.js`: só a linha de HTTP de cada chamador mudou (10 chamadores + o listener "ver contrato" de Empresas); as
+  funções continuam no app.js (são da C3), com o mesmo `try/catch`, `alert`, recarga e renderização. O
+  `PUT /api/companies/<id>` passou a usar o `updateCompany` oficial de `companies-api.js` (sem duplicar a chamada).
+- Nenhuma declaração nova no app.js; nenhum novo global de função; nenhum cliente HTTP novo.
+
+### 19.3 Métricas
+
+| Métrica | Antes | Depois |
+|---|---|---|
+| Linhas do `app.js` | 16.975 | 16.959 |
+| Declarações de nível superior | 712 | 712 |
+| Endpoints no `app.js` | 104 | 94 |
+| Ciclos entre scripts | 0 | 0 |
+| Módulos UBX | 52 | 53 |
+
+### 19.4 Equivalência
+
+- Caracterização antes de mover (commit próprio, verde contra o app.js original): fixture literal das 12 funções e
+  `commercial-integrations-runtime.js`, que registra cada efeito observável em ordem (chamada `api` com número de
+  argumentos e opções serializadas, `open`, contrato no estado a cada renderização, recarga, formulários, alertas no
+  idioma ativo, `console.warn`, exceções). 6.400 cenários × 5 idiomas: respostas válidas, vazias e nulas; 401, 403,
+  404, 500, 502; rede; timeout; troca de usuário, perfil e empresa; sem permissão, sem empresa, sem arquivo; e
+  concorrência com respostas fora de ordem e ações duplicadas — 0 divergências. Cada função do módulo é comparada
+  com a chamada literal de antes; o módulo só publica o namespace; ordem de carga conferida; nenhum endpoint
+  comercial resta no app.js.
+- Sabotagens: 14/14 detectadas (método, caminho, corpo, querystring, opções extras, ordem de argumentos, `Number`,
+  `await` removido, ordem da query).
+- Chromium (`scripts/browser/ubx_commercial_integrations.py`, no workflow de navegador): as 10 ações comerciais pela
+  interface real, com sucesso e com 403, nos cinco idiomas, reproduzem a referência gravada contra a `main` anterior
+  (`static/js/test/fixtures/ubx-commercial-c2-browser.json`): requisições comerciais na mesma ordem (método, caminho,
+  query, corpo), recargas em segundo plano como conjunto (mudam de ordem até na mesma versão — a `main` contra a
+  própria referência só passa com essa regra), mesmas abas e mesmos diálogos. Uma sabotagem no módulo reprova.
+- Ajustes de testes existentes pela mudança de arquivo (sem mudar a intenção): o PR3 A-6 passa a conferir o caminho do
+  rascunho em `commercial-api.js`; o teste da C1 confere a carga única de cada script da C1. Dígitos F4/F5B
+  recalculados pela função oficial (o app.js e o run-tests.js são pareados); MP_1A inalterado.
+
+### 19.5 Segurança e isolamento
+
+Autorização (`commercial:view`, `require_master_actor`, `ensure_company_access`) e isolamento por empresa/tenant
+continuam inteiramente no backend, sem mudança; os testes de escopo comercial (`test_commercial_access_scope.py`,
+`test_commercial_contract_management.py`) e o contrato front↔back (`test_frontend_api_contract.py`) passam. As guardas do
+frontend (`canAccessCommercialArea`, `hasPermission('companies:update')`, `requirePermission('commercial:view')`,
+`master_admin` nos parâmetros) ficaram nos mesmos lugares, antes das chamadas. Nenhum achado novo.

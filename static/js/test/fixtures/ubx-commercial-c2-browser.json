@@ -1,0 +1,5272 @@
+{
+ "pt-BR": {
+  "calls": [
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/save",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "contract_number": "CT-901",
+     "issue_date": "",
+     "start_date": "2026-01-01",
+     "end_date": "2026-12-31",
+     "status": "pending_signature",
+     "contractor_name": "Empresa QA",
+     "contractor_legal_name": "Empresa QA Ltda",
+     "contractor_trade_name": "Empresa QA",
+     "contractor_cnpj": "11222333000181",
+     "contractor_address": "",
+     "contractor_representative": "",
+     "contractor_representative_role": "",
+     "contractor_email": "",
+     "contractor_phone": "",
+     "contractor_witness_1": "",
+     "contractor_witness_2": "",
+     "provider_name": "",
+     "provider_legal_name": "",
+     "provider_cnpj": "",
+     "provider_address": "",
+     "provider_representative": "",
+     "provider_representative_role": "",
+     "provider_email": "",
+     "provider_phone": "",
+     "provider_witnesses": "",
+     "clauses_text": "",
+     "notes": "QA"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/generate",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "contract_number": "CT-901",
+     "issue_date": "",
+     "start_date": "2026-01-01",
+     "end_date": "2026-12-31",
+     "status": "generated",
+     "contractor_name": "Empresa QA",
+     "contractor_legal_name": "Empresa QA Ltda",
+     "contractor_trade_name": "Empresa QA",
+     "contractor_cnpj": "11222333000181",
+     "contractor_address": "",
+     "contractor_representative": "",
+     "contractor_representative_role": "",
+     "contractor_email": "",
+     "contractor_phone": "",
+     "contractor_witness_1": "",
+     "contractor_witness_2": "",
+     "provider_name": "",
+     "provider_legal_name": "",
+     "provider_cnpj": "",
+     "provider_address": "",
+     "provider_representative": "",
+     "provider_representative_role": "",
+     "provider_email": "",
+     "provider_phone": "",
+     "provider_witnesses": "",
+     "clauses_text": "",
+     "notes": "QA"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/sign",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "signature_name": "Ana \"QA\" <b>",
+     "signature_data": "data:image/png;base64,QUJD"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/upload-signed",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "file_name": "assinado <1>.pdf",
+     "file_mime": "application/pdf",
+     "file_base64": "JVBERi0xLjQKJVFBCg=="
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/send-email",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "email_to": "cliente@exemplo.test",
+     "subject": "Contrato & aditivo",
+     "body": "Linha 1\nLinha \"2\""
+    }
+   },
+   {
+    "method": "PUT",
+    "path": "/api/companies/901",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "name": "Empresa QA",
+     "legal_name": "Empresa QA Ltda",
+     "cnpj": "11222333000181",
+     "logo_type": "",
+     "plan_name": "start",
+     "user_limit": 100,
+     "contract_start": "2026-01-01",
+     "contract_end": "2026-12-31",
+     "monthly_value": 500,
+     "addendum_enabled": 0,
+     "license_status": "suspended",
+     "active": 0,
+     "commercial_notes": "QA"
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/health",
+    "query": "",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/bootstrap",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/db-pool/status",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/low",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/requests",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/fichas",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-rules",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/module-visibility",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-framework",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/compliance",
+    "query": "company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-retention-policy",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/company-purchase-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-epi-audit",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/reports",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-archive",
+    "query": "company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "PUT",
+    "path": "/api/companies/901",
+    "query": "",
+    "body": {
+     "company_id": "901",
+     "plan_name": "start",
+     "user_limit": "100",
+     "contract_start": "2026-01-01",
+     "contract_end": "2026-12-31",
+     "unit_price_display": "R$ 42,00",
+     "monthly_value": 500,
+     "projected_monthly_value": "R$ 4.200,00",
+     "license_status": "suspended",
+     "active": "0",
+     "commercial_notes": "QA",
+     "actor_user_id": 7,
+     "name": "Empresa QA",
+     "legal_name": "Empresa QA Ltda",
+     "cnpj": "11222333000181",
+     "logo_type": "",
+     "addendum_enabled": 0
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/health",
+    "query": "",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/bootstrap",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/db-pool/status",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/low",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/requests",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/fichas",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-rules",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/module-visibility",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-framework",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/compliance",
+    "query": "company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-retention-policy",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/company-purchase-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-epi-audit",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/reports",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-archive",
+    "query": "company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-settings",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "unit_price": 42,
+     "plans": {
+      "individual": {
+       "label": "Individual",
+       "min_users": 1,
+       "max_users": 1
+      },
+      "start": {
+       "label": "Start",
+       "min_users": 1,
+       "max_users": 10
+      },
+      "business": {
+       "label": "Business",
+       "min_users": 11,
+       "max_users": 25
+      },
+      "corporate": {
+       "label": "Corporate",
+       "min_users": 26,
+       "max_users": 100
+      },
+      "enterprise": {
+       "label": "Enterprise",
+       "min_users": 101,
+       "max_users": null
+      }
+     }
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/health",
+    "query": "",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/bootstrap",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/db-pool/status",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/low",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/requests",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/fichas",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-rules",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/module-visibility",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-framework",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/compliance",
+    "query": "company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-retention-policy",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/company-purchase-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-epi-audit",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/reports",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-archive",
+    "query": "company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/save",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "contract_number": "CT-901",
+     "issue_date": "",
+     "start_date": "2026-01-01",
+     "end_date": "2026-12-31",
+     "status": "pending_signature",
+     "contractor_name": "Empresa QA",
+     "contractor_legal_name": "Empresa QA Ltda",
+     "contractor_trade_name": "Empresa QA",
+     "contractor_cnpj": "11222333000181",
+     "contractor_address": "",
+     "contractor_representative": "",
+     "contractor_representative_role": "",
+     "contractor_email": "",
+     "contractor_phone": "",
+     "contractor_witness_1": "",
+     "contractor_witness_2": "",
+     "provider_name": "",
+     "provider_legal_name": "",
+     "provider_cnpj": "",
+     "provider_address": "",
+     "provider_representative": "",
+     "provider_representative_role": "",
+     "provider_email": "",
+     "provider_phone": "",
+     "provider_witnesses": "",
+     "clauses_text": "",
+     "notes": "QA"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/generate",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "contract_number": "CT-901",
+     "issue_date": "",
+     "start_date": "2026-01-01",
+     "end_date": "2026-12-31",
+     "status": "pending_signature",
+     "contractor_name": "Empresa QA",
+     "contractor_legal_name": "Empresa QA Ltda",
+     "contractor_trade_name": "Empresa QA",
+     "contractor_cnpj": "11222333000181",
+     "contractor_address": "",
+     "contractor_representative": "",
+     "contractor_representative_role": "",
+     "contractor_email": "",
+     "contractor_phone": "",
+     "contractor_witness_1": "",
+     "contractor_witness_2": "",
+     "provider_name": "",
+     "provider_legal_name": "",
+     "provider_cnpj": "",
+     "provider_address": "",
+     "provider_representative": "",
+     "provider_representative_role": "",
+     "provider_email": "",
+     "provider_phone": "",
+     "provider_witnesses": "",
+     "clauses_text": "",
+     "notes": "QA"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/sign",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "signature_name": "Ana \"QA\" <b>",
+     "signature_data": "data:image/png;base64,QUJD"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/upload-signed",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "file_name": "assinado <1>.pdf",
+     "file_mime": "application/pdf",
+     "file_base64": "JVBERi0xLjQKJVFBCg=="
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/send-email",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "email_to": "cliente@exemplo.test",
+     "subject": "Contrato & aditivo",
+     "body": "Linha 1\nLinha \"2\""
+    }
+   },
+   {
+    "method": "PUT",
+    "path": "/api/companies/901",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "name": "Empresa QA",
+     "legal_name": "Empresa QA Ltda",
+     "cnpj": "11222333000181",
+     "logo_type": "",
+     "plan_name": "start",
+     "user_limit": "100",
+     "contract_start": "2026-01-01",
+     "contract_end": "2026-12-31",
+     "monthly_value": 500,
+     "addendum_enabled": 0,
+     "license_status": "active",
+     "active": 1,
+     "commercial_notes": "QA"
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/health",
+    "query": "",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/bootstrap",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/db-pool/status",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/low",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/requests",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/fichas",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-rules",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/module-visibility",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-framework",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/compliance",
+    "query": "company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-retention-policy",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/company-purchase-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-epi-audit",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/reports",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-archive",
+    "query": "company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "PUT",
+    "path": "/api/companies/901",
+    "query": "",
+    "body": {
+     "company_id": "901",
+     "plan_name": "start",
+     "user_limit": "100",
+     "contract_start": "2026-01-01",
+     "contract_end": "2026-12-31",
+     "unit_price_display": "R$ 42,00",
+     "monthly_value": 500,
+     "projected_monthly_value": "R$ 4.200,00",
+     "license_status": "active",
+     "active": "1",
+     "commercial_notes": "QA",
+     "actor_user_id": 7,
+     "name": "Empresa QA",
+     "legal_name": "Empresa QA Ltda",
+     "cnpj": "11222333000181",
+     "logo_type": "",
+     "addendum_enabled": 0
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/health",
+    "query": "",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/bootstrap",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/db-pool/status",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/low",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/requests",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/fichas",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-rules",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/module-visibility",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-framework",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/compliance",
+    "query": "company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-retention-policy",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/company-purchase-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-epi-audit",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/reports",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-settings",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "unit_price": 42,
+     "plans": {
+      "individual": {
+       "label": "Individual",
+       "min_users": 1,
+       "max_users": 1
+      },
+      "start": {
+       "label": "Start",
+       "min_users": 1,
+       "max_users": 10
+      },
+      "business": {
+       "label": "Business",
+       "min_users": 11,
+       "max_users": 25
+      },
+      "corporate": {
+       "label": "Corporate",
+       "min_users": 26,
+       "max_users": 100
+      },
+      "enterprise": {
+       "label": "Enterprise",
+       "min_users": 101,
+       "max_users": null
+      }
+     }
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-archive",
+    "query": "company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7",
+    "body": null
+   }
+  ],
+  "opens": [
+   [
+    "/api/commercial-contract.pdf?actor_user_id=7&company_id=901",
+    "_blank"
+   ],
+   [
+    "/api/commercial-contract.pdf?actor_user_id=7&company_id=901",
+    "_blank"
+   ],
+   [
+    "/api/commercial-contract/file?actor_user_id=7&company_id=901&kind=generated",
+    "_blank"
+   ],
+   [
+    "/api/commercial-contract.pdf?actor_user_id=7&company_id=901",
+    "_blank"
+   ],
+   [
+    "/api/commercial-contract.pdf?actor_user_id=7&company_id=901",
+    "_blank"
+   ],
+   [
+    "/api/commercial-contract.pdf?actor_user_id=7&company_id=901",
+    "_blank"
+   ],
+   [
+    "/api/commercial-contract/file?actor_user_id=7&company_id=901&kind=generated",
+    "_blank"
+   ],
+   [
+    "/api/commercial-contract.pdf?actor_user_id=7&company_id=901",
+    "_blank"
+   ]
+  ],
+  "dialogs": [
+   "Contrato salvo em rascunho.",
+   "Contrato gerado com sucesso.",
+   "Assinatura digital registrada.",
+   "Contrato assinado enviado com sucesso.",
+   "Registro de envio por e-mail atualizado.",
+   "QA forbidden",
+   "QA forbidden",
+   "QA forbidden",
+   "QA forbidden",
+   "QA forbidden",
+   "QA forbidden"
+  ],
+  "external": [
+   "https://unpkg.com/htmx.org@1.9.12"
+  ]
+ },
+ "en-GB": {
+  "calls": [
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/save",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "contract_number": "CT-901",
+     "issue_date": "",
+     "start_date": "2026-01-01",
+     "end_date": "2026-12-31",
+     "status": "pending_signature",
+     "contractor_name": "Empresa QA",
+     "contractor_legal_name": "Empresa QA Ltda",
+     "contractor_trade_name": "Empresa QA",
+     "contractor_cnpj": "11222333000181",
+     "contractor_address": "",
+     "contractor_representative": "",
+     "contractor_representative_role": "",
+     "contractor_email": "",
+     "contractor_phone": "",
+     "contractor_witness_1": "",
+     "contractor_witness_2": "",
+     "provider_name": "",
+     "provider_legal_name": "",
+     "provider_cnpj": "",
+     "provider_address": "",
+     "provider_representative": "",
+     "provider_representative_role": "",
+     "provider_email": "",
+     "provider_phone": "",
+     "provider_witnesses": "",
+     "clauses_text": "",
+     "notes": "QA"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/generate",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "contract_number": "CT-901",
+     "issue_date": "",
+     "start_date": "2026-01-01",
+     "end_date": "2026-12-31",
+     "status": "generated",
+     "contractor_name": "Empresa QA",
+     "contractor_legal_name": "Empresa QA Ltda",
+     "contractor_trade_name": "Empresa QA",
+     "contractor_cnpj": "11222333000181",
+     "contractor_address": "",
+     "contractor_representative": "",
+     "contractor_representative_role": "",
+     "contractor_email": "",
+     "contractor_phone": "",
+     "contractor_witness_1": "",
+     "contractor_witness_2": "",
+     "provider_name": "",
+     "provider_legal_name": "",
+     "provider_cnpj": "",
+     "provider_address": "",
+     "provider_representative": "",
+     "provider_representative_role": "",
+     "provider_email": "",
+     "provider_phone": "",
+     "provider_witnesses": "",
+     "clauses_text": "",
+     "notes": "QA"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/sign",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "signature_name": "Ana \"QA\" <b>",
+     "signature_data": "data:image/png;base64,QUJD"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/upload-signed",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "file_name": "assinado <1>.pdf",
+     "file_mime": "application/pdf",
+     "file_base64": "JVBERi0xLjQKJVFBCg=="
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/send-email",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "email_to": "cliente@exemplo.test",
+     "subject": "Contrato & aditivo",
+     "body": "Linha 1\nLinha \"2\""
+    }
+   },
+   {
+    "method": "PUT",
+    "path": "/api/companies/901",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "name": "Empresa QA",
+     "legal_name": "Empresa QA Ltda",
+     "cnpj": "11222333000181",
+     "logo_type": "",
+     "plan_name": "start",
+     "user_limit": 100,
+     "contract_start": "2026-01-01",
+     "contract_end": "2026-12-31",
+     "monthly_value": 500,
+     "addendum_enabled": 0,
+     "license_status": "suspended",
+     "active": 0,
+     "commercial_notes": "QA"
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/health",
+    "query": "",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/bootstrap",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/db-pool/status",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/low",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/requests",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/fichas",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-rules",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/module-visibility",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-framework",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/compliance",
+    "query": "company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-retention-policy",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/company-purchase-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-epi-audit",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/reports",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-archive",
+    "query": "company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "PUT",
+    "path": "/api/companies/901",
+    "query": "",
+    "body": {
+     "company_id": "901",
+     "plan_name": "start",
+     "user_limit": "100",
+     "contract_start": "2026-01-01",
+     "contract_end": "2026-12-31",
+     "unit_price_display": "R$42.00",
+     "monthly_value": 500,
+     "projected_monthly_value": "R$4,200.00",
+     "license_status": "suspended",
+     "active": "0",
+     "commercial_notes": "QA",
+     "actor_user_id": 7,
+     "name": "Empresa QA",
+     "legal_name": "Empresa QA Ltda",
+     "cnpj": "11222333000181",
+     "logo_type": "",
+     "addendum_enabled": 0
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/health",
+    "query": "",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/bootstrap",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/db-pool/status",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/low",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/requests",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/fichas",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-rules",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/module-visibility",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-framework",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/compliance",
+    "query": "company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-retention-policy",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/company-purchase-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-epi-audit",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/reports",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-archive",
+    "query": "company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-settings",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "unit_price": 42,
+     "plans": {
+      "individual": {
+       "label": "Individual",
+       "min_users": 1,
+       "max_users": 1
+      },
+      "start": {
+       "label": "Start",
+       "min_users": 1,
+       "max_users": 10
+      },
+      "business": {
+       "label": "Business",
+       "min_users": 11,
+       "max_users": 25
+      },
+      "corporate": {
+       "label": "Corporate",
+       "min_users": 26,
+       "max_users": 100
+      },
+      "enterprise": {
+       "label": "Enterprise",
+       "min_users": 101,
+       "max_users": null
+      }
+     }
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/health",
+    "query": "",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/bootstrap",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/db-pool/status",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/low",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/requests",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/fichas",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-rules",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/module-visibility",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-framework",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/compliance",
+    "query": "company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-retention-policy",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/company-purchase-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-epi-audit",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/reports",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-archive",
+    "query": "company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/save",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "contract_number": "CT-901",
+     "issue_date": "",
+     "start_date": "2026-01-01",
+     "end_date": "2026-12-31",
+     "status": "pending_signature",
+     "contractor_name": "Empresa QA",
+     "contractor_legal_name": "Empresa QA Ltda",
+     "contractor_trade_name": "Empresa QA",
+     "contractor_cnpj": "11222333000181",
+     "contractor_address": "",
+     "contractor_representative": "",
+     "contractor_representative_role": "",
+     "contractor_email": "",
+     "contractor_phone": "",
+     "contractor_witness_1": "",
+     "contractor_witness_2": "",
+     "provider_name": "",
+     "provider_legal_name": "",
+     "provider_cnpj": "",
+     "provider_address": "",
+     "provider_representative": "",
+     "provider_representative_role": "",
+     "provider_email": "",
+     "provider_phone": "",
+     "provider_witnesses": "",
+     "clauses_text": "",
+     "notes": "QA"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/generate",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "contract_number": "CT-901",
+     "issue_date": "",
+     "start_date": "2026-01-01",
+     "end_date": "2026-12-31",
+     "status": "pending_signature",
+     "contractor_name": "Empresa QA",
+     "contractor_legal_name": "Empresa QA Ltda",
+     "contractor_trade_name": "Empresa QA",
+     "contractor_cnpj": "11222333000181",
+     "contractor_address": "",
+     "contractor_representative": "",
+     "contractor_representative_role": "",
+     "contractor_email": "",
+     "contractor_phone": "",
+     "contractor_witness_1": "",
+     "contractor_witness_2": "",
+     "provider_name": "",
+     "provider_legal_name": "",
+     "provider_cnpj": "",
+     "provider_address": "",
+     "provider_representative": "",
+     "provider_representative_role": "",
+     "provider_email": "",
+     "provider_phone": "",
+     "provider_witnesses": "",
+     "clauses_text": "",
+     "notes": "QA"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/sign",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "signature_name": "Ana \"QA\" <b>",
+     "signature_data": "data:image/png;base64,QUJD"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/upload-signed",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "file_name": "assinado <1>.pdf",
+     "file_mime": "application/pdf",
+     "file_base64": "JVBERi0xLjQKJVFBCg=="
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/send-email",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "email_to": "cliente@exemplo.test",
+     "subject": "Contrato & aditivo",
+     "body": "Linha 1\nLinha \"2\""
+    }
+   },
+   {
+    "method": "PUT",
+    "path": "/api/companies/901",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "name": "Empresa QA",
+     "legal_name": "Empresa QA Ltda",
+     "cnpj": "11222333000181",
+     "logo_type": "",
+     "plan_name": "start",
+     "user_limit": "100",
+     "contract_start": "2026-01-01",
+     "contract_end": "2026-12-31",
+     "monthly_value": 500,
+     "addendum_enabled": 0,
+     "license_status": "active",
+     "active": 1,
+     "commercial_notes": "QA"
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/health",
+    "query": "",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/bootstrap",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/db-pool/status",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/low",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/requests",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/fichas",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-rules",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/module-visibility",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-framework",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/compliance",
+    "query": "company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-retention-policy",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/company-purchase-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-epi-audit",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/reports",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-archive",
+    "query": "company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "PUT",
+    "path": "/api/companies/901",
+    "query": "",
+    "body": {
+     "company_id": "901",
+     "plan_name": "start",
+     "user_limit": "100",
+     "contract_start": "2026-01-01",
+     "contract_end": "2026-12-31",
+     "unit_price_display": "R$42.00",
+     "monthly_value": 500,
+     "projected_monthly_value": "R$4,200.00",
+     "license_status": "active",
+     "active": "1",
+     "commercial_notes": "QA",
+     "actor_user_id": 7,
+     "name": "Empresa QA",
+     "legal_name": "Empresa QA Ltda",
+     "cnpj": "11222333000181",
+     "logo_type": "",
+     "addendum_enabled": 0
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/health",
+    "query": "",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/bootstrap",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/db-pool/status",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/low",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/requests",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/fichas",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-rules",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/module-visibility",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-framework",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/compliance",
+    "query": "company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-retention-policy",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/company-purchase-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-epi-audit",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/reports",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-settings",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "unit_price": 42,
+     "plans": {
+      "individual": {
+       "label": "Individual",
+       "min_users": 1,
+       "max_users": 1
+      },
+      "start": {
+       "label": "Start",
+       "min_users": 1,
+       "max_users": 10
+      },
+      "business": {
+       "label": "Business",
+       "min_users": 11,
+       "max_users": 25
+      },
+      "corporate": {
+       "label": "Corporate",
+       "min_users": 26,
+       "max_users": 100
+      },
+      "enterprise": {
+       "label": "Enterprise",
+       "min_users": 101,
+       "max_users": null
+      }
+     }
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-archive",
+    "query": "company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7",
+    "body": null
+   }
+  ],
+  "opens": [
+   [
+    "/api/commercial-contract.pdf?actor_user_id=7&company_id=901",
+    "_blank"
+   ],
+   [
+    "/api/commercial-contract.pdf?actor_user_id=7&company_id=901",
+    "_blank"
+   ],
+   [
+    "/api/commercial-contract/file?actor_user_id=7&company_id=901&kind=generated",
+    "_blank"
+   ],
+   [
+    "/api/commercial-contract.pdf?actor_user_id=7&company_id=901",
+    "_blank"
+   ],
+   [
+    "/api/commercial-contract.pdf?actor_user_id=7&company_id=901",
+    "_blank"
+   ],
+   [
+    "/api/commercial-contract.pdf?actor_user_id=7&company_id=901",
+    "_blank"
+   ],
+   [
+    "/api/commercial-contract/file?actor_user_id=7&company_id=901&kind=generated",
+    "_blank"
+   ],
+   [
+    "/api/commercial-contract.pdf?actor_user_id=7&company_id=901",
+    "_blank"
+   ]
+  ],
+  "dialogs": [
+   "Contract saved as a draft.",
+   "Contract generated successfully.",
+   "Digital signature recorded.",
+   "Signed contract uploaded successfully.",
+   "Email sending record updated.",
+   "QA forbidden",
+   "QA forbidden",
+   "QA forbidden",
+   "QA forbidden",
+   "QA forbidden",
+   "QA forbidden"
+  ],
+  "external": [
+   "https://unpkg.com/htmx.org@1.9.12"
+  ]
+ },
+ "es-ES": {
+  "calls": [
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/save",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "contract_number": "CT-901",
+     "issue_date": "",
+     "start_date": "2026-01-01",
+     "end_date": "2026-12-31",
+     "status": "pending_signature",
+     "contractor_name": "Empresa QA",
+     "contractor_legal_name": "Empresa QA Ltda",
+     "contractor_trade_name": "Empresa QA",
+     "contractor_cnpj": "11222333000181",
+     "contractor_address": "",
+     "contractor_representative": "",
+     "contractor_representative_role": "",
+     "contractor_email": "",
+     "contractor_phone": "",
+     "contractor_witness_1": "",
+     "contractor_witness_2": "",
+     "provider_name": "",
+     "provider_legal_name": "",
+     "provider_cnpj": "",
+     "provider_address": "",
+     "provider_representative": "",
+     "provider_representative_role": "",
+     "provider_email": "",
+     "provider_phone": "",
+     "provider_witnesses": "",
+     "clauses_text": "",
+     "notes": "QA"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/generate",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "contract_number": "CT-901",
+     "issue_date": "",
+     "start_date": "2026-01-01",
+     "end_date": "2026-12-31",
+     "status": "generated",
+     "contractor_name": "Empresa QA",
+     "contractor_legal_name": "Empresa QA Ltda",
+     "contractor_trade_name": "Empresa QA",
+     "contractor_cnpj": "11222333000181",
+     "contractor_address": "",
+     "contractor_representative": "",
+     "contractor_representative_role": "",
+     "contractor_email": "",
+     "contractor_phone": "",
+     "contractor_witness_1": "",
+     "contractor_witness_2": "",
+     "provider_name": "",
+     "provider_legal_name": "",
+     "provider_cnpj": "",
+     "provider_address": "",
+     "provider_representative": "",
+     "provider_representative_role": "",
+     "provider_email": "",
+     "provider_phone": "",
+     "provider_witnesses": "",
+     "clauses_text": "",
+     "notes": "QA"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/sign",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "signature_name": "Ana \"QA\" <b>",
+     "signature_data": "data:image/png;base64,QUJD"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/upload-signed",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "file_name": "assinado <1>.pdf",
+     "file_mime": "application/pdf",
+     "file_base64": "JVBERi0xLjQKJVFBCg=="
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/send-email",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "email_to": "cliente@exemplo.test",
+     "subject": "Contrato & aditivo",
+     "body": "Linha 1\nLinha \"2\""
+    }
+   },
+   {
+    "method": "PUT",
+    "path": "/api/companies/901",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "name": "Empresa QA",
+     "legal_name": "Empresa QA Ltda",
+     "cnpj": "11222333000181",
+     "logo_type": "",
+     "plan_name": "start",
+     "user_limit": 100,
+     "contract_start": "2026-01-01",
+     "contract_end": "2026-12-31",
+     "monthly_value": 500,
+     "addendum_enabled": 0,
+     "license_status": "suspended",
+     "active": 0,
+     "commercial_notes": "QA"
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/health",
+    "query": "",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/bootstrap",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/db-pool/status",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/low",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/requests",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/fichas",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-rules",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/module-visibility",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-framework",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/compliance",
+    "query": "company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-retention-policy",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/company-purchase-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-epi-audit",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/reports",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-archive",
+    "query": "company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "PUT",
+    "path": "/api/companies/901",
+    "query": "",
+    "body": {
+     "company_id": "901",
+     "plan_name": "start",
+     "user_limit": "100",
+     "contract_start": "2026-01-01",
+     "contract_end": "2026-12-31",
+     "unit_price_display": "42,00 BRL",
+     "monthly_value": 500,
+     "projected_monthly_value": "4200,00 BRL",
+     "license_status": "suspended",
+     "active": "0",
+     "commercial_notes": "QA",
+     "actor_user_id": 7,
+     "name": "Empresa QA",
+     "legal_name": "Empresa QA Ltda",
+     "cnpj": "11222333000181",
+     "logo_type": "",
+     "addendum_enabled": 0
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/health",
+    "query": "",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/bootstrap",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/db-pool/status",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/low",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/requests",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/fichas",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-rules",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/module-visibility",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-framework",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/compliance",
+    "query": "company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-retention-policy",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/company-purchase-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-epi-audit",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/reports",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-archive",
+    "query": "company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-settings",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "unit_price": 42,
+     "plans": {
+      "individual": {
+       "label": "Individual",
+       "min_users": 1,
+       "max_users": 1
+      },
+      "start": {
+       "label": "Start",
+       "min_users": 1,
+       "max_users": 10
+      },
+      "business": {
+       "label": "Business",
+       "min_users": 11,
+       "max_users": 25
+      },
+      "corporate": {
+       "label": "Corporate",
+       "min_users": 26,
+       "max_users": 100
+      },
+      "enterprise": {
+       "label": "Enterprise",
+       "min_users": 101,
+       "max_users": null
+      }
+     }
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/health",
+    "query": "",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/bootstrap",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/db-pool/status",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/low",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/requests",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/fichas",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-rules",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/module-visibility",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-framework",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/compliance",
+    "query": "company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-retention-policy",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/company-purchase-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-epi-audit",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/reports",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-archive",
+    "query": "company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/save",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "contract_number": "CT-901",
+     "issue_date": "",
+     "start_date": "2026-01-01",
+     "end_date": "2026-12-31",
+     "status": "pending_signature",
+     "contractor_name": "Empresa QA",
+     "contractor_legal_name": "Empresa QA Ltda",
+     "contractor_trade_name": "Empresa QA",
+     "contractor_cnpj": "11222333000181",
+     "contractor_address": "",
+     "contractor_representative": "",
+     "contractor_representative_role": "",
+     "contractor_email": "",
+     "contractor_phone": "",
+     "contractor_witness_1": "",
+     "contractor_witness_2": "",
+     "provider_name": "",
+     "provider_legal_name": "",
+     "provider_cnpj": "",
+     "provider_address": "",
+     "provider_representative": "",
+     "provider_representative_role": "",
+     "provider_email": "",
+     "provider_phone": "",
+     "provider_witnesses": "",
+     "clauses_text": "",
+     "notes": "QA"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/generate",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "contract_number": "CT-901",
+     "issue_date": "",
+     "start_date": "2026-01-01",
+     "end_date": "2026-12-31",
+     "status": "pending_signature",
+     "contractor_name": "Empresa QA",
+     "contractor_legal_name": "Empresa QA Ltda",
+     "contractor_trade_name": "Empresa QA",
+     "contractor_cnpj": "11222333000181",
+     "contractor_address": "",
+     "contractor_representative": "",
+     "contractor_representative_role": "",
+     "contractor_email": "",
+     "contractor_phone": "",
+     "contractor_witness_1": "",
+     "contractor_witness_2": "",
+     "provider_name": "",
+     "provider_legal_name": "",
+     "provider_cnpj": "",
+     "provider_address": "",
+     "provider_representative": "",
+     "provider_representative_role": "",
+     "provider_email": "",
+     "provider_phone": "",
+     "provider_witnesses": "",
+     "clauses_text": "",
+     "notes": "QA"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/sign",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "signature_name": "Ana \"QA\" <b>",
+     "signature_data": "data:image/png;base64,QUJD"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/upload-signed",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "file_name": "assinado <1>.pdf",
+     "file_mime": "application/pdf",
+     "file_base64": "JVBERi0xLjQKJVFBCg=="
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/send-email",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "email_to": "cliente@exemplo.test",
+     "subject": "Contrato & aditivo",
+     "body": "Linha 1\nLinha \"2\""
+    }
+   },
+   {
+    "method": "PUT",
+    "path": "/api/companies/901",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "name": "Empresa QA",
+     "legal_name": "Empresa QA Ltda",
+     "cnpj": "11222333000181",
+     "logo_type": "",
+     "plan_name": "start",
+     "user_limit": "100",
+     "contract_start": "2026-01-01",
+     "contract_end": "2026-12-31",
+     "monthly_value": 500,
+     "addendum_enabled": 0,
+     "license_status": "active",
+     "active": 1,
+     "commercial_notes": "QA"
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/health",
+    "query": "",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/bootstrap",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/db-pool/status",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/low",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/requests",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/fichas",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-rules",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/module-visibility",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-framework",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/compliance",
+    "query": "company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-retention-policy",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/company-purchase-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-epi-audit",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/reports",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-archive",
+    "query": "company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "PUT",
+    "path": "/api/companies/901",
+    "query": "",
+    "body": {
+     "company_id": "901",
+     "plan_name": "start",
+     "user_limit": "100",
+     "contract_start": "2026-01-01",
+     "contract_end": "2026-12-31",
+     "unit_price_display": "42,00 BRL",
+     "monthly_value": 500,
+     "projected_monthly_value": "4200,00 BRL",
+     "license_status": "active",
+     "active": "1",
+     "commercial_notes": "QA",
+     "actor_user_id": 7,
+     "name": "Empresa QA",
+     "legal_name": "Empresa QA Ltda",
+     "cnpj": "11222333000181",
+     "logo_type": "",
+     "addendum_enabled": 0
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/health",
+    "query": "",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/bootstrap",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/db-pool/status",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/low",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/requests",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/fichas",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-rules",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/module-visibility",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-framework",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/compliance",
+    "query": "company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-retention-policy",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/company-purchase-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-epi-audit",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/reports",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-settings",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "unit_price": 42,
+     "plans": {
+      "individual": {
+       "label": "Individual",
+       "min_users": 1,
+       "max_users": 1
+      },
+      "start": {
+       "label": "Start",
+       "min_users": 1,
+       "max_users": 10
+      },
+      "business": {
+       "label": "Business",
+       "min_users": 11,
+       "max_users": 25
+      },
+      "corporate": {
+       "label": "Corporate",
+       "min_users": 26,
+       "max_users": 100
+      },
+      "enterprise": {
+       "label": "Enterprise",
+       "min_users": 101,
+       "max_users": null
+      }
+     }
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-archive",
+    "query": "company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7",
+    "body": null
+   }
+  ],
+  "opens": [
+   [
+    "/api/commercial-contract.pdf?actor_user_id=7&company_id=901",
+    "_blank"
+   ],
+   [
+    "/api/commercial-contract.pdf?actor_user_id=7&company_id=901",
+    "_blank"
+   ],
+   [
+    "/api/commercial-contract/file?actor_user_id=7&company_id=901&kind=generated",
+    "_blank"
+   ],
+   [
+    "/api/commercial-contract.pdf?actor_user_id=7&company_id=901",
+    "_blank"
+   ],
+   [
+    "/api/commercial-contract.pdf?actor_user_id=7&company_id=901",
+    "_blank"
+   ],
+   [
+    "/api/commercial-contract.pdf?actor_user_id=7&company_id=901",
+    "_blank"
+   ],
+   [
+    "/api/commercial-contract/file?actor_user_id=7&company_id=901&kind=generated",
+    "_blank"
+   ],
+   [
+    "/api/commercial-contract.pdf?actor_user_id=7&company_id=901",
+    "_blank"
+   ]
+  ],
+  "dialogs": [
+   "Contrato guardado como borrador.",
+   "Contrato generado correctamente.",
+   "Firma digital registrada.",
+   "Contrato firmado enviado correctamente.",
+   "Registro de envío por correo electrónico actualizado.",
+   "QA forbidden",
+   "QA forbidden",
+   "QA forbidden",
+   "QA forbidden",
+   "QA forbidden",
+   "QA forbidden"
+  ],
+  "external": [
+   "https://unpkg.com/htmx.org@1.9.12"
+  ]
+ },
+ "fr-FR": {
+  "calls": [
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/save",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "contract_number": "CT-901",
+     "issue_date": "",
+     "start_date": "2026-01-01",
+     "end_date": "2026-12-31",
+     "status": "pending_signature",
+     "contractor_name": "Empresa QA",
+     "contractor_legal_name": "Empresa QA Ltda",
+     "contractor_trade_name": "Empresa QA",
+     "contractor_cnpj": "11222333000181",
+     "contractor_address": "",
+     "contractor_representative": "",
+     "contractor_representative_role": "",
+     "contractor_email": "",
+     "contractor_phone": "",
+     "contractor_witness_1": "",
+     "contractor_witness_2": "",
+     "provider_name": "",
+     "provider_legal_name": "",
+     "provider_cnpj": "",
+     "provider_address": "",
+     "provider_representative": "",
+     "provider_representative_role": "",
+     "provider_email": "",
+     "provider_phone": "",
+     "provider_witnesses": "",
+     "clauses_text": "",
+     "notes": "QA"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/generate",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "contract_number": "CT-901",
+     "issue_date": "",
+     "start_date": "2026-01-01",
+     "end_date": "2026-12-31",
+     "status": "generated",
+     "contractor_name": "Empresa QA",
+     "contractor_legal_name": "Empresa QA Ltda",
+     "contractor_trade_name": "Empresa QA",
+     "contractor_cnpj": "11222333000181",
+     "contractor_address": "",
+     "contractor_representative": "",
+     "contractor_representative_role": "",
+     "contractor_email": "",
+     "contractor_phone": "",
+     "contractor_witness_1": "",
+     "contractor_witness_2": "",
+     "provider_name": "",
+     "provider_legal_name": "",
+     "provider_cnpj": "",
+     "provider_address": "",
+     "provider_representative": "",
+     "provider_representative_role": "",
+     "provider_email": "",
+     "provider_phone": "",
+     "provider_witnesses": "",
+     "clauses_text": "",
+     "notes": "QA"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/sign",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "signature_name": "Ana \"QA\" <b>",
+     "signature_data": "data:image/png;base64,QUJD"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/upload-signed",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "file_name": "assinado <1>.pdf",
+     "file_mime": "application/pdf",
+     "file_base64": "JVBERi0xLjQKJVFBCg=="
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/send-email",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "email_to": "cliente@exemplo.test",
+     "subject": "Contrato & aditivo",
+     "body": "Linha 1\nLinha \"2\""
+    }
+   },
+   {
+    "method": "PUT",
+    "path": "/api/companies/901",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "name": "Empresa QA",
+     "legal_name": "Empresa QA Ltda",
+     "cnpj": "11222333000181",
+     "logo_type": "",
+     "plan_name": "start",
+     "user_limit": 100,
+     "contract_start": "2026-01-01",
+     "contract_end": "2026-12-31",
+     "monthly_value": 500,
+     "addendum_enabled": 0,
+     "license_status": "suspended",
+     "active": 0,
+     "commercial_notes": "QA"
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/health",
+    "query": "",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/bootstrap",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/db-pool/status",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/low",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/requests",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/fichas",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-rules",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/module-visibility",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-framework",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/compliance",
+    "query": "company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-retention-policy",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/company-purchase-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-epi-audit",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/reports",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-archive",
+    "query": "company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "PUT",
+    "path": "/api/companies/901",
+    "query": "",
+    "body": {
+     "company_id": "901",
+     "plan_name": "start",
+     "user_limit": "100",
+     "contract_start": "2026-01-01",
+     "contract_end": "2026-12-31",
+     "unit_price_display": "42,00 R$",
+     "monthly_value": 500,
+     "projected_monthly_value": "4 200,00 R$",
+     "license_status": "suspended",
+     "active": "0",
+     "commercial_notes": "QA",
+     "actor_user_id": 7,
+     "name": "Empresa QA",
+     "legal_name": "Empresa QA Ltda",
+     "cnpj": "11222333000181",
+     "logo_type": "",
+     "addendum_enabled": 0
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/health",
+    "query": "",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/bootstrap",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/db-pool/status",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/low",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/requests",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/fichas",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-rules",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/module-visibility",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-framework",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/compliance",
+    "query": "company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-retention-policy",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/company-purchase-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-epi-audit",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/reports",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-archive",
+    "query": "company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-settings",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "unit_price": 42,
+     "plans": {
+      "individual": {
+       "label": "Individual",
+       "min_users": 1,
+       "max_users": 1
+      },
+      "start": {
+       "label": "Start",
+       "min_users": 1,
+       "max_users": 10
+      },
+      "business": {
+       "label": "Business",
+       "min_users": 11,
+       "max_users": 25
+      },
+      "corporate": {
+       "label": "Corporate",
+       "min_users": 26,
+       "max_users": 100
+      },
+      "enterprise": {
+       "label": "Enterprise",
+       "min_users": 101,
+       "max_users": null
+      }
+     }
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/health",
+    "query": "",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/bootstrap",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/db-pool/status",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/low",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/requests",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/fichas",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-rules",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/module-visibility",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-framework",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/compliance",
+    "query": "company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-retention-policy",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/company-purchase-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-epi-audit",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/reports",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-archive",
+    "query": "company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/save",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "contract_number": "CT-901",
+     "issue_date": "",
+     "start_date": "2026-01-01",
+     "end_date": "2026-12-31",
+     "status": "pending_signature",
+     "contractor_name": "Empresa QA",
+     "contractor_legal_name": "Empresa QA Ltda",
+     "contractor_trade_name": "Empresa QA",
+     "contractor_cnpj": "11222333000181",
+     "contractor_address": "",
+     "contractor_representative": "",
+     "contractor_representative_role": "",
+     "contractor_email": "",
+     "contractor_phone": "",
+     "contractor_witness_1": "",
+     "contractor_witness_2": "",
+     "provider_name": "",
+     "provider_legal_name": "",
+     "provider_cnpj": "",
+     "provider_address": "",
+     "provider_representative": "",
+     "provider_representative_role": "",
+     "provider_email": "",
+     "provider_phone": "",
+     "provider_witnesses": "",
+     "clauses_text": "",
+     "notes": "QA"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/generate",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "contract_number": "CT-901",
+     "issue_date": "",
+     "start_date": "2026-01-01",
+     "end_date": "2026-12-31",
+     "status": "pending_signature",
+     "contractor_name": "Empresa QA",
+     "contractor_legal_name": "Empresa QA Ltda",
+     "contractor_trade_name": "Empresa QA",
+     "contractor_cnpj": "11222333000181",
+     "contractor_address": "",
+     "contractor_representative": "",
+     "contractor_representative_role": "",
+     "contractor_email": "",
+     "contractor_phone": "",
+     "contractor_witness_1": "",
+     "contractor_witness_2": "",
+     "provider_name": "",
+     "provider_legal_name": "",
+     "provider_cnpj": "",
+     "provider_address": "",
+     "provider_representative": "",
+     "provider_representative_role": "",
+     "provider_email": "",
+     "provider_phone": "",
+     "provider_witnesses": "",
+     "clauses_text": "",
+     "notes": "QA"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/sign",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "signature_name": "Ana \"QA\" <b>",
+     "signature_data": "data:image/png;base64,QUJD"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/upload-signed",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "file_name": "assinado <1>.pdf",
+     "file_mime": "application/pdf",
+     "file_base64": "JVBERi0xLjQKJVFBCg=="
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/send-email",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "email_to": "cliente@exemplo.test",
+     "subject": "Contrato & aditivo",
+     "body": "Linha 1\nLinha \"2\""
+    }
+   },
+   {
+    "method": "PUT",
+    "path": "/api/companies/901",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "name": "Empresa QA",
+     "legal_name": "Empresa QA Ltda",
+     "cnpj": "11222333000181",
+     "logo_type": "",
+     "plan_name": "start",
+     "user_limit": "100",
+     "contract_start": "2026-01-01",
+     "contract_end": "2026-12-31",
+     "monthly_value": 500,
+     "addendum_enabled": 0,
+     "license_status": "active",
+     "active": 1,
+     "commercial_notes": "QA"
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/health",
+    "query": "",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/bootstrap",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/db-pool/status",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/low",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/requests",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/fichas",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-rules",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/module-visibility",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-framework",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/compliance",
+    "query": "company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-retention-policy",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/company-purchase-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-epi-audit",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/reports",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-archive",
+    "query": "company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "PUT",
+    "path": "/api/companies/901",
+    "query": "",
+    "body": {
+     "company_id": "901",
+     "plan_name": "start",
+     "user_limit": "100",
+     "contract_start": "2026-01-01",
+     "contract_end": "2026-12-31",
+     "unit_price_display": "42,00 R$",
+     "monthly_value": 500,
+     "projected_monthly_value": "4 200,00 R$",
+     "license_status": "active",
+     "active": "1",
+     "commercial_notes": "QA",
+     "actor_user_id": 7,
+     "name": "Empresa QA",
+     "legal_name": "Empresa QA Ltda",
+     "cnpj": "11222333000181",
+     "logo_type": "",
+     "addendum_enabled": 0
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/health",
+    "query": "",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/bootstrap",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/db-pool/status",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/low",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/requests",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/fichas",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-rules",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/module-visibility",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-framework",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/compliance",
+    "query": "company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-retention-policy",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/company-purchase-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-epi-audit",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/reports",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-archive",
+    "query": "company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-settings",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "unit_price": 42,
+     "plans": {
+      "individual": {
+       "label": "Individual",
+       "min_users": 1,
+       "max_users": 1
+      },
+      "start": {
+       "label": "Start",
+       "min_users": 1,
+       "max_users": 10
+      },
+      "business": {
+       "label": "Business",
+       "min_users": 11,
+       "max_users": 25
+      },
+      "corporate": {
+       "label": "Corporate",
+       "min_users": 26,
+       "max_users": 100
+      },
+      "enterprise": {
+       "label": "Enterprise",
+       "min_users": 101,
+       "max_users": null
+      }
+     }
+    }
+   }
+  ],
+  "opens": [
+   [
+    "/api/commercial-contract.pdf?actor_user_id=7&company_id=901",
+    "_blank"
+   ],
+   [
+    "/api/commercial-contract.pdf?actor_user_id=7&company_id=901",
+    "_blank"
+   ],
+   [
+    "/api/commercial-contract/file?actor_user_id=7&company_id=901&kind=generated",
+    "_blank"
+   ],
+   [
+    "/api/commercial-contract.pdf?actor_user_id=7&company_id=901",
+    "_blank"
+   ],
+   [
+    "/api/commercial-contract.pdf?actor_user_id=7&company_id=901",
+    "_blank"
+   ],
+   [
+    "/api/commercial-contract.pdf?actor_user_id=7&company_id=901",
+    "_blank"
+   ],
+   [
+    "/api/commercial-contract/file?actor_user_id=7&company_id=901&kind=generated",
+    "_blank"
+   ],
+   [
+    "/api/commercial-contract.pdf?actor_user_id=7&company_id=901",
+    "_blank"
+   ]
+  ],
+  "dialogs": [
+   "Contrat enregistré comme brouillon.",
+   "Contrat généré avec succès.",
+   "Signature électronique enregistrée.",
+   "Contrat signé envoyé avec succès.",
+   "Enregistrement de l'envoi par e-mail mis à jour.",
+   "QA forbidden",
+   "QA forbidden",
+   "QA forbidden",
+   "QA forbidden",
+   "QA forbidden",
+   "QA forbidden"
+  ],
+  "external": [
+   "https://unpkg.com/htmx.org@1.9.12"
+  ]
+ },
+ "nb-NO": {
+  "calls": [
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/save",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "contract_number": "CT-901",
+     "issue_date": "",
+     "start_date": "2026-01-01",
+     "end_date": "2026-12-31",
+     "status": "pending_signature",
+     "contractor_name": "Empresa QA",
+     "contractor_legal_name": "Empresa QA Ltda",
+     "contractor_trade_name": "Empresa QA",
+     "contractor_cnpj": "11222333000181",
+     "contractor_address": "",
+     "contractor_representative": "",
+     "contractor_representative_role": "",
+     "contractor_email": "",
+     "contractor_phone": "",
+     "contractor_witness_1": "",
+     "contractor_witness_2": "",
+     "provider_name": "",
+     "provider_legal_name": "",
+     "provider_cnpj": "",
+     "provider_address": "",
+     "provider_representative": "",
+     "provider_representative_role": "",
+     "provider_email": "",
+     "provider_phone": "",
+     "provider_witnesses": "",
+     "clauses_text": "",
+     "notes": "QA"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/generate",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "contract_number": "CT-901",
+     "issue_date": "",
+     "start_date": "2026-01-01",
+     "end_date": "2026-12-31",
+     "status": "generated",
+     "contractor_name": "Empresa QA",
+     "contractor_legal_name": "Empresa QA Ltda",
+     "contractor_trade_name": "Empresa QA",
+     "contractor_cnpj": "11222333000181",
+     "contractor_address": "",
+     "contractor_representative": "",
+     "contractor_representative_role": "",
+     "contractor_email": "",
+     "contractor_phone": "",
+     "contractor_witness_1": "",
+     "contractor_witness_2": "",
+     "provider_name": "",
+     "provider_legal_name": "",
+     "provider_cnpj": "",
+     "provider_address": "",
+     "provider_representative": "",
+     "provider_representative_role": "",
+     "provider_email": "",
+     "provider_phone": "",
+     "provider_witnesses": "",
+     "clauses_text": "",
+     "notes": "QA"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/sign",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "signature_name": "Ana \"QA\" <b>",
+     "signature_data": "data:image/png;base64,QUJD"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/upload-signed",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "file_name": "assinado <1>.pdf",
+     "file_mime": "application/pdf",
+     "file_base64": "JVBERi0xLjQKJVFBCg=="
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/send-email",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "email_to": "cliente@exemplo.test",
+     "subject": "Contrato & aditivo",
+     "body": "Linha 1\nLinha \"2\""
+    }
+   },
+   {
+    "method": "PUT",
+    "path": "/api/companies/901",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "name": "Empresa QA",
+     "legal_name": "Empresa QA Ltda",
+     "cnpj": "11222333000181",
+     "logo_type": "",
+     "plan_name": "start",
+     "user_limit": 100,
+     "contract_start": "2026-01-01",
+     "contract_end": "2026-12-31",
+     "monthly_value": 500,
+     "addendum_enabled": 0,
+     "license_status": "suspended",
+     "active": 0,
+     "commercial_notes": "QA"
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/health",
+    "query": "",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/bootstrap",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/db-pool/status",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/low",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/requests",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/fichas",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-rules",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/module-visibility",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-framework",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/compliance",
+    "query": "company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-retention-policy",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/company-purchase-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-epi-audit",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/reports",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-archive",
+    "query": "company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "PUT",
+    "path": "/api/companies/901",
+    "query": "",
+    "body": {
+     "company_id": "901",
+     "plan_name": "start",
+     "user_limit": "100",
+     "contract_start": "2026-01-01",
+     "contract_end": "2026-12-31",
+     "unit_price_display": "42,00 BRL",
+     "monthly_value": 500,
+     "projected_monthly_value": "4 200,00 BRL",
+     "license_status": "suspended",
+     "active": "0",
+     "commercial_notes": "QA",
+     "actor_user_id": 7,
+     "name": "Empresa QA",
+     "legal_name": "Empresa QA Ltda",
+     "cnpj": "11222333000181",
+     "logo_type": "",
+     "addendum_enabled": 0
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/health",
+    "query": "",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/bootstrap",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/db-pool/status",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/low",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/requests",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/fichas",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-rules",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/module-visibility",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-framework",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/compliance",
+    "query": "company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-retention-policy",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/company-purchase-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-epi-audit",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/reports",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-archive",
+    "query": "company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-settings",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "unit_price": 42,
+     "plans": {
+      "individual": {
+       "label": "Individual",
+       "min_users": 1,
+       "max_users": 1
+      },
+      "start": {
+       "label": "Start",
+       "min_users": 1,
+       "max_users": 10
+      },
+      "business": {
+       "label": "Business",
+       "min_users": 11,
+       "max_users": 25
+      },
+      "corporate": {
+       "label": "Corporate",
+       "min_users": 26,
+       "max_users": 100
+      },
+      "enterprise": {
+       "label": "Enterprise",
+       "min_users": 101,
+       "max_users": null
+      }
+     }
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/health",
+    "query": "",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/bootstrap",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/db-pool/status",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/low",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/requests",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/fichas",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-rules",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/module-visibility",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-framework",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/compliance",
+    "query": "company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-retention-policy",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/company-purchase-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-epi-audit",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/reports",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-archive",
+    "query": "company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/save",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "contract_number": "CT-901",
+     "issue_date": "",
+     "start_date": "2026-01-01",
+     "end_date": "2026-12-31",
+     "status": "pending_signature",
+     "contractor_name": "Empresa QA",
+     "contractor_legal_name": "Empresa QA Ltda",
+     "contractor_trade_name": "Empresa QA",
+     "contractor_cnpj": "11222333000181",
+     "contractor_address": "",
+     "contractor_representative": "",
+     "contractor_representative_role": "",
+     "contractor_email": "",
+     "contractor_phone": "",
+     "contractor_witness_1": "",
+     "contractor_witness_2": "",
+     "provider_name": "",
+     "provider_legal_name": "",
+     "provider_cnpj": "",
+     "provider_address": "",
+     "provider_representative": "",
+     "provider_representative_role": "",
+     "provider_email": "",
+     "provider_phone": "",
+     "provider_witnesses": "",
+     "clauses_text": "",
+     "notes": "QA"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/generate",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "contract_number": "CT-901",
+     "issue_date": "",
+     "start_date": "2026-01-01",
+     "end_date": "2026-12-31",
+     "status": "pending_signature",
+     "contractor_name": "Empresa QA",
+     "contractor_legal_name": "Empresa QA Ltda",
+     "contractor_trade_name": "Empresa QA",
+     "contractor_cnpj": "11222333000181",
+     "contractor_address": "",
+     "contractor_representative": "",
+     "contractor_representative_role": "",
+     "contractor_email": "",
+     "contractor_phone": "",
+     "contractor_witness_1": "",
+     "contractor_witness_2": "",
+     "provider_name": "",
+     "provider_legal_name": "",
+     "provider_cnpj": "",
+     "provider_address": "",
+     "provider_representative": "",
+     "provider_representative_role": "",
+     "provider_email": "",
+     "provider_phone": "",
+     "provider_witnesses": "",
+     "clauses_text": "",
+     "notes": "QA"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/sign",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "signature_name": "Ana \"QA\" <b>",
+     "signature_data": "data:image/png;base64,QUJD"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/upload-signed",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "file_name": "assinado <1>.pdf",
+     "file_mime": "application/pdf",
+     "file_base64": "JVBERi0xLjQKJVFBCg=="
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/send-email",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "email_to": "cliente@exemplo.test",
+     "subject": "Contrato & aditivo",
+     "body": "Linha 1\nLinha \"2\""
+    }
+   },
+   {
+    "method": "PUT",
+    "path": "/api/companies/901",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "name": "Empresa QA",
+     "legal_name": "Empresa QA Ltda",
+     "cnpj": "11222333000181",
+     "logo_type": "",
+     "plan_name": "start",
+     "user_limit": "100",
+     "contract_start": "2026-01-01",
+     "contract_end": "2026-12-31",
+     "monthly_value": 500,
+     "addendum_enabled": 0,
+     "license_status": "active",
+     "active": 1,
+     "commercial_notes": "QA"
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/health",
+    "query": "",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/bootstrap",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/db-pool/status",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/low",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/requests",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/fichas",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-rules",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/module-visibility",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-framework",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/compliance",
+    "query": "company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-retention-policy",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/company-purchase-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-epi-audit",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/reports",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-archive",
+    "query": "company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "PUT",
+    "path": "/api/companies/901",
+    "query": "",
+    "body": {
+     "company_id": "901",
+     "plan_name": "start",
+     "user_limit": "100",
+     "contract_start": "2026-01-01",
+     "contract_end": "2026-12-31",
+     "unit_price_display": "42,00 BRL",
+     "monthly_value": 500,
+     "projected_monthly_value": "4 200,00 BRL",
+     "license_status": "active",
+     "active": "1",
+     "commercial_notes": "QA",
+     "actor_user_id": 7,
+     "name": "Empresa QA",
+     "legal_name": "Empresa QA Ltda",
+     "cnpj": "11222333000181",
+     "logo_type": "",
+     "addendum_enabled": 0
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/health",
+    "query": "",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/bootstrap",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/db-pool/status",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/low",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/requests",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/fichas",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-rules",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/module-visibility",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/configuration-framework",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/compliance",
+    "query": "company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-retention-policy",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/company-purchase-config",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-epi-audit",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/reports",
+    "query": "actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/stock/epis",
+    "query": "actor_user_id=7&company_id=901&unit_id=5",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/ficha-archive",
+    "query": "company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7",
+    "body": null
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-settings",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "unit_price": 42,
+     "plans": {
+      "individual": {
+       "label": "Individual",
+       "min_users": 1,
+       "max_users": 1
+      },
+      "start": {
+       "label": "Start",
+       "min_users": 1,
+       "max_users": 10
+      },
+      "business": {
+       "label": "Business",
+       "min_users": 11,
+       "max_users": 25
+      },
+      "corporate": {
+       "label": "Corporate",
+       "min_users": 26,
+       "max_users": 100
+      },
+      "enterprise": {
+       "label": "Enterprise",
+       "min_users": 101,
+       "max_users": null
+      }
+     }
+    }
+   }
+  ],
+  "opens": [
+   [
+    "/api/commercial-contract.pdf?actor_user_id=7&company_id=901",
+    "_blank"
+   ],
+   [
+    "/api/commercial-contract.pdf?actor_user_id=7&company_id=901",
+    "_blank"
+   ],
+   [
+    "/api/commercial-contract/file?actor_user_id=7&company_id=901&kind=generated",
+    "_blank"
+   ],
+   [
+    "/api/commercial-contract.pdf?actor_user_id=7&company_id=901",
+    "_blank"
+   ],
+   [
+    "/api/commercial-contract.pdf?actor_user_id=7&company_id=901",
+    "_blank"
+   ],
+   [
+    "/api/commercial-contract.pdf?actor_user_id=7&company_id=901",
+    "_blank"
+   ],
+   [
+    "/api/commercial-contract/file?actor_user_id=7&company_id=901&kind=generated",
+    "_blank"
+   ],
+   [
+    "/api/commercial-contract.pdf?actor_user_id=7&company_id=901",
+    "_blank"
+   ]
+  ],
+  "dialogs": [
+   "Kontrakten er lagret som utkast.",
+   "Kontrakten er generert.",
+   "Digital signatur er registrert.",
+   "Den signerte kontrakten er lastet opp.",
+   "Registreringen av e-postutsendelsen er oppdatert.",
+   "QA forbidden",
+   "QA forbidden",
+   "QA forbidden",
+   "QA forbidden",
+   "QA forbidden",
+   "QA forbidden"
+  ],
+  "external": [
+   "https://unpkg.com/htmx.org@1.9.12"
+  ]
+ }
+}

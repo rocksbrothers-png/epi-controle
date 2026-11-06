@@ -287,7 +287,17 @@ Detalhes em [`UBX_APPJS_AUDITORIA.md` §18](UBX_APPJS_AUDITORIA.md#18-ubx-comerc
   detectadas e equivalência no Chromium nos cinco idiomas (`scripts/browser/ubx_commercial.py`).
 - Achado de segurança preexistente SEC-C1-1 (`planOptionMarkup`, P3) registrado na §18.5, para PR separado.
 
+## UBX Comercial — fatia C2 (2026-11-05): integrações comerciais
+
+Detalhes em [`UBX_APPJS_AUDITORIA.md` §19](UBX_APPJS_AUDITORIA.md#19-ubx-comercial--fatia-c2-2026-11-05-integrações-comerciais).
+
+- `modules/commercial/integrations/commercial-api.js`: os nove endpoints de `modules/commercial`, com caminho e
+  método literais; o PUT de empresas reaproveita `companies-api.js`.
+- `app.js` 16.975 → 16.959 linhas; 712 declarações (sem mudança); 104 → 94 endpoints.
+- 6.400 cenários × 5 idiomas e concorrência comparados com a cópia literal do app.js (0 divergências), 14
+  sabotagens detectadas e Chromium nos cinco idiomas contra a referência gravada da `main`.
+
 ## Próximo passo
-UBX Comercial C2 (`integrations/commercial-api.js`), C3 (`ui/commercial-view.js`) e C4 (`formatCompanyCurrency`,
-`updateTopbarCompanyBadge`, `renderMyCompanyDomains`), cada uma com autorização própria, e, por último, a Etapa 3
-(navegação/bootstrap) com os pré-requisitos de auditoria de autorização. Pagamentos ficam fora da UBX.
+UBX Comercial C3 (`ui/commercial-view.js`) e C4 (`formatCompanyCurrency`, `updateTopbarCompanyBadge`,
+`renderMyCompanyDomains`), cada uma com autorização própria, e, por último, a Etapa 3 (navegação/bootstrap) com os
+pré-requisitos de auditoria de autorização. Pagamentos ficam fora da UBX.

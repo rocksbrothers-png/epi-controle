@@ -6156,7 +6156,12 @@ test('PR3 A-6: onde o requisito de rascunho é REAL, ele já existe — e é ser
   // o que é POST. O nome da função é tão específico quanto, e não se disfarça.
   assert(appJs.includes('async function saveCommercialContractDraft('),
     'o rascunho server-side do contrato comercial sumiu: a comparação A/B/C precisa ser refeita');
-  assert(appJs.includes("commercial-contract/save"),
+  // UBX Comercial C2: a chamada saiu do app.js para a camada de integração; o
+  // caminho continua o mesmo, agora literal em commercial-api.js.
+  assert(appJs.includes('__EPI_COMMERCIAL_API__.saveContractDraft('),
+    'o rascunho do contrato comercial deixou de passar pela integração comercial');
+  const integracaoComercial = fs.readFileSync(path.join(JS_ROOT, 'modules', 'commercial', 'integrations', 'commercial-api.js'), 'utf-8');
+  assert(integracaoComercial.includes("commercial-contract/save"),
     'o endpoint do rascunho do contrato comercial mudou de caminho');
 
   // Compras: ciclo de vida de rascunho completo, no banco.
@@ -7804,6 +7809,7 @@ require('./extracted-globals-ownership-runtime')({ test, assert });
 require('./empresas-active-runtime')({ testAsync, test, assert, eq });
 require('./security-logo-xss-runtime')({ test, assert, eq });
 require('./commercial-presentation-runtime')({ test, assert, eq });
+require('./commercial-integrations-runtime')({ testAsync, test, assert, eq });
 require('./users-active-runtime')({ test, assert, eq });
 
 (async () => {

@@ -1428,3 +1428,124 @@ movido; nenhum armazenamento no navegador; nenhum achado novo.
 - Marca da plataforma: `modules/platform-brand/{integrations,ui}` com `savePlatformBrand` e `platformBrandDisplayName`.
 - `openAndPrintPopup` para `modules/shared/ui/` (consumidores: Comercial, Colaboradores, relatórios).
 - `updateTopbarCompanyBadge` num módulo de shell/topbar, junto com o restante do contexto do usuário.
+
+## 22. UBX Marca da plataforma (2026-11-06) — proposta da §21.7
+
+Implementada localmente nesta branch; **sem push, PR, merge ou deploy**. Não é uma C5.
+Bases: Corporate `68855d8f0aa6972a33022f761a3f6760ef2c9ea4` (C4 #1087) e SaaS
+`8551768723859a781d1802f371601048129e2e67` (C4 #461). No início: nenhuma PR aberta,
+13 checks pós-merge aprovados e 2 pulados em cada produto. Os pulados não são aprovações.
+
+### 22.1 Inventário e fronteiras
+
+| Função | Entrada → retorno | Chamadores | Dependências / efeitos | Destino |
+|---|---|---|---|---|
+| `renderPlatformLogoPreview` | `logoValue` → vazio | upload, render da marca, troca de idioma | `state`, `refs`, `tr`, `companyLogoMarkup`, escape; prévia HTML | UI |
+| `renderPlatformLoginLogoPreview` | `logoValue` → vazio | upload, render da marca, troca de idioma | `refs`, `tr`, logotipo seguro, escape; prévia HTML | UI |
+| `handlePlatformLogoUpload` | evento → Promise | listener `change` no `init` | MIME PNG/JPEG/SVG, `fileToJpegDataUrl`, formulário, prévia e alertas | UI, só namespace |
+| `handlePlatformLoginLogoUpload` | evento → Promise | listener `change` no `init` | MIME PNG/SVG, `fileToDataUrl`, formulário, prévia e alertas | UI, só namespace |
+| `renderPlatformBrand` | — → vazio | `renderAll`, salvar marca | estado, formulário, topo, bindings de tradução e precedência do tenant no login | UI |
+| `platformBrandDisplayName` | — → valor | exportações da interface Comercial | nome atual ou fallback, sem cache | UI, global legado |
+| `savePlatformBrand` | evento → Promise | listener `submit` no `init` | `preventDefault`, Master, FormData, ator, CNPJ, integração, estado, render e alerta | UI, só namespace |
+
+`modules/platform-brand/integrations/platform-brand-api.js` contém `saveBrand(values)`: mesmo
+`POST /api/platform-brand`, duas entradas na chamada do cliente canônico `globalThis.api`, mesmas
+opções e `JSON.stringify(values)`. Sem DOM, estado, permissões novas ou cliente paralelo.
+`modules/platform-brand/ui/platform-brand-view.js` contém as sete funções. Nenhuma camada business
+artificial foi criada. Os dois arquivos têm menos de 500 linhas e carregam após os helpers compartilhados,
+antes da interface Comercial e do `app.js`.
+
+### 22.2 Estado, padrão único e publicação
+
+- A definição literal de `DEFAULT_PLATFORM_BRAND` foi para a UI da Marca. O `app.js` mantém a declaração
+  existente como alias de `__EPI_PLATFORM_BRAND_UI__.DEFAULT_PLATFORM_BRAND`: **o mesmo objeto**,
+  não uma cópia. Inicializador do estado, bootstrap e mensagens de acesso continuam usando esse alias.
+  O objeto conserva a mutabilidade anterior; a fachada do módulo é congelada.
+- Cada função lê as pontes existentes de `state`/`refs` na chamada. Sem armazenamento ou cache novos.
+- As quatro síncronas preservam as globais legadas. As três async, anteriormente de bloco, permanecem
+  somente no namespace congelado. `init` só troca as três referências pelos membros desse namespace;
+  nenhum listener é movido, reordenado ou duplicado.
+- Preservados corpos/efeitos; as mudanças locais são pontes explícitas, delegação HTTP e chaves neutras
+  em condicionais, exigidas pelo lint vigente. Não foram alteradas mensagens ou regras.
+
+### 22.3 Métricas e escopo
+
+| Métrica | Base C4 | Esta branch |
+|---|---:|---:|
+| Linhas físicas do `app.js` | 16.394 | 16.292 |
+| Declarações de nível superior | 676 | 669 |
+| Funções de nível superior | 558 | 551 |
+| Entradas de endpoint segundo a guarda | 94 | 93 |
+| Ciclos entre scripts segundo a guarda | 0 | 0 |
+| Arquivos em `static/js/modules/` | 55 | 57 |
+
+Comparação AST com cada base: sete funções removidas; entre as declarações remanescentes, só
+`DEFAULT_PLATFORM_BRAND` e `init` mudam. Nas 667 demais, fonte idêntica. `init` difere somente
+nas três referências de listener. As 36 instruções de efeito no nível de composição são equivalentes.
+Os sete corpos, retirando pontes/delegação e normalizando chaves neutras, têm AST equivalente ao original.
+Baseline UBX reduzido pelo `--update`; adicionados apenas os registros das sete extrações, sem ampliar
+permissões de crescimento. Permanecem cinco ciclos internos do monólito; zero entre scripts não os elimina.
+
+### 22.4 Caracterização e validação
+
+- Fixture literal gerada separadamente de cada base: `fixtures/app-before-ubx-platform-brand.js.txt`.
+  Antes de mover: 815 comparações verdes por produto; depois, cinco comparações suplementares de
+  uploads paralelos elevam o total para **820**, sempre nos cinco idiomas, sem divergências.
+- `platform-brand-runtime.js` usa traduções, formatação, logotipo seguro e leitores compartilhados reais;
+  simula DOM, arquivo/imagem/canvas, API e diálogos. Compara retornos, exceções, payloads, campos,
+  estado, HTML, bindings e ordem dos efeitos. Cobre Master/demais perfis/sem sessão, troca de principal,
+  bootstrap, respostas vazias/nulas, 401/403/500/rede, uploads inválidos/erro/concorrência e tenant no login.
+- `node static/js/test/platform-brand-mutations.js`: **25/25** detectadas, exclusivamente em memória:
+  método/caminho/corpo/ator, permissão, CNPJ, await, ordem, estado copiado, tenant, bindings, HTML,
+  MIME/conversão, mensagens, fallback e publicação.
+- `scripts/browser/ubx_platform_brand.py`: **16 passos × 5 idiomas por produto**, comparados às
+  referências gravadas contra o `static/` da própria base antes de extrair. UI real, uploads de File,
+  submit único, falhas HTTP, sessão/tenant e idioma. API interceptada; não abre banco. Incluído no
+  workflow de Chromium, sem retirar ou flexibilizar passos existentes.
+- Suíte JS: **693** testes por produto. Python selecionado: **206 Corporate / 204 SaaS**, sem pulados,
+  cobrindo guarda UBX, contrato frontend/backend, build/assets, F4/F5B, segurança de logotipos,
+  escopo/gestão comercial e gate i18n. Lint e sintaxe dos arquivos novos, guarda e build também passam.
+- Bateria Python suplementar de CSP/saída XSS: **136 Corporate / 89 SaaS**, todos passaram, sem pulados.
+  A diferença inclui o teste de redação CSP existente somente no Corporate.
+- Regressões de Chromium C1–C4, SEC-C1-1, logotipos, saída XSS/CSP e i18n são executadas localmente;
+  resultados e eventuais limites ficam no relatório desta entrega. CI/CodeQL da mudança não são
+  executados remotamente porque esta etapa não autoriza push ou PR.
+- F4/F5B recalculados pelas funções oficiais `_digesto_dos_pareados()` de cada produto. Iguais entre
+  os produtos e validados pelos testes; nenhum gate enfraquecido. `index.html` regenerado por produto.
+
+### 22.5 Segurança, paridade e riscos residuais
+
+Backend, autorização (`require_master_actor`), autenticação, escopo de tenant/empresa/unidade,
+pagamentos, contratos comerciais, banco e infraestrutura não foram alterados. Permanecem escapes,
+validadores de logotipo e a precedência do tenant no login. Os módulos, `app.js`, scripts de carga,
+testes e digestos pareados coincidem; diferenças legítimas de cliente HTTP, Devoluções, pagamentos
+e HTML gerado permanecem. Fixtures e referências foram obtidas a partir de cada produto.
+
+Reexecuções de navegador: quatro cenários com `Page.goto` excedendo os 4 segundos originais
+(um de logotipo Corporate, dois de logotipo SaaS e um de saída XSS V1 Corporate) passaram na
+reexecução específica, sem mudar testes, limite ou referências. As falhas iniciais ficam nos logs.
+
+**Ressalva de regressão:** o Chromium existente da C3 reprova fotografias em ambos os produtos.
+O mesmo roteiro inalterado contra cada base original também reprova nos cinco idiomas. Há variação
+do número do contrato (`CT-901`/vazio) após recargas; os controles também registram variação de ordem
+de chamadas comerciais em alguns idiomas. O diferencial Node da C3 (2.715 cenários) passa.
+Não foram alterados código, teste ou golden da C3 para obter verde. Exige diagnóstico separado.
+
+Comportamentos preexistentes preservados, sem correção silenciosa:
+- O alerta de MIME inválido do upload da marca permanece em português (o de login usa `tr`).
+- Gravações concorrentes não têm cancelamento/controle de resposta obsoleta: a última resposta a
+  chegar pode substituir a marca em memória, inclusive após troca de principal. O teste diferencial
+  fixa o comportamento existente; uma mudança exige proposta de comportamento/segurança separada.
+- Se o módulo obrigatório da Marca não carregar, o alias não pode ser resolvido. A ordem e a carga
+  única são guardadas e exercitadas no navegador; não foi introduzido fallback com estado duplicado.
+
+Rollback: descartar/reverter exclusivamente o diff desta fatia e regenerar os artefatos a partir da
+base correspondente. Nenhuma alteração de dados ou infraestrutura a desfazer.
+
+### 22.6 Continuidade do plano completo
+
+Marca está implementada localmente, pendente de revisão e autorização para publicação/integração.
+Próximas propostas separadas: impressão compartilhada (`openAndPrintPopup`) e shell/topbar.
+Continuam pendentes fluxos de Compras, Entregas, Estoque, Migração e resíduos de outros domínios;
+Migração por último entre os domínios. Navegação/bootstrap e limpeza dos shims permanecem no final,
+com auditoria de autorização e estado. Não há percentual global documentado para reportar.

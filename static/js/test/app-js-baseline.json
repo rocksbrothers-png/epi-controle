@@ -293,6 +293,15 @@
       "formatCommercialAuditDetails",
       "renderCommercialHistoryItem",
       "formatCommercialDetails"
+    ],
+    "js/modules/platform-brand/ui/platform-brand-view.js": [
+      "renderPlatformLogoPreview",
+      "renderPlatformLoginLogoPreview",
+      "handlePlatformLogoUpload",
+      "handlePlatformLoginLogoUpload",
+      "renderPlatformBrand",
+      "platformBrandDisplayName",
+      "savePlatformBrand"
     ]
   },
   "declarations": [
@@ -583,8 +592,6 @@
     "handleFormReset",
     "handleLogin",
     "handlePasswordChangeAfterLogin",
-    "handlePlatformLoginLogoUpload",
-    "handlePlatformLogoUpload",
     "handleStockManufactureCameraCapture",
     "handleStockMovementSubmit",
     "handleViewTabKeydown",
@@ -709,7 +716,6 @@
     "pendingRegularizationGroupLabel",
     "pendingRegularizationProof",
     "persistJoinventures",
-    "platformBrandDisplayName",
     "poStatusLabel",
     "populateDeliveryEmployeeField",
     "populateDeliveryEpiField",
@@ -784,9 +790,6 @@
     "renderModuleVisibilityDefaultPanel",
     "renderPerfHud",
     "renderPhase3SummaryCards",
-    "renderPlatformBrand",
-    "renderPlatformLoginLogoPreview",
-    "renderPlatformLogoPreview",
     "renderPoReceiveItems",
     "renderPrStatusActions",
     "renderPurchaseFunctionControls",
@@ -846,7 +849,6 @@
     "saveEditSupplier",
     "saveEmployeeMovement",
     "saveFichaConfig",
-    "savePlatformBrand",
     "savePurchaseFunctionLinks",
     "saveSelectedEpiAlertEnabled",
     "saveSelectedEpiAttentionPercentage",
@@ -1029,7 +1031,6 @@
     "/api/my-company",
     "/api/my-company/onboarding-complete",
     "/api/outsourced-companies",
-    "/api/platform-brand",
     "/api/ppe-test-suggestions",
     "/api/ppe-test-suggestions/",
     "/api/ppe-tests",

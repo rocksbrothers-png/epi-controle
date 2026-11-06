@@ -1,6 +1,6 @@
 'use strict';
 /* global tr, hasPermission, requirePermission, filterByUserCompany, renderBadge, formatDate, planLabel,
-   canAccessCommercialArea, companyLogoMarkup, formatCompanyCurrency, formatCompanyAvailabilityText, formatCnpj,
+   canAccessCommercialArea, companyLogoMarkup, formatCurrency, formatCompanyAvailabilityText, formatCnpj,
    fileToJpegDataUrl, bindAppListener, loadBootstrap --
    globais do app.js, de shared/*, de modules/auth e de views/*, resolvidos na chamada */
 
@@ -8,10 +8,10 @@
 // logotipo por suporte auditado (Refatoração UBX-V5, Etapa 2 — extraído de static/app.js).
 //
 // Regras puras e corpos de gravação em ../business/company-rules.js; HTTP em
-// ../integrations/companies-api.js. Ficam no app.js, por serem compartilhados
-// ou de outro domínio: formatCompanyCurrency (alterado pelo I18N-FULL-V1) e os
-// filtros do Comercial; companyLogoSrc/companyLogoMarkup estão em
-// ../../shared/ui/company-logo.js. Eram globais do app.js (Annex B), exceto saveCompany e
+// ../integrations/companies-api.js. formatCompanyCurrency (moeda no idioma ativo,
+// sobre o formatCurrency oficial de shared/business/value-format.js) veio do app.js
+// na UBX Comercial C4. Os filtros do Comercial estão em modules/commercial/ui/;
+// companyLogoSrc/companyLogoMarkup estão em ../../shared/ui/company-logo.js. Eram globais do app.js (Annex B), exceto saveCompany e
 // toggleCompany (async de bloco); continuam publicadas com os mesmos nomes.
 (function () {
   if (globalThis.__EPI_MODULE_COMPANIES_UI_LOADED__) { return; }
@@ -69,6 +69,11 @@
     if (risk === 'atLimit') {badges.push(renderBadge('status', 'inactive', tr('commercial.risk.atLimit', 'No limite')));}
     else if (risk === 'nearLimit') {badges.push(renderBadge('status', 'warning', tr('commercial.risk.nearLimit', 'Próxima do limite')));}
     return badges.join(' ');
+  }
+
+  // UBX Comercial C4: corpo idêntico ao do app.js; era global (Annex B) e continua publicada.
+  function formatCompanyCurrency(value) {
+    return formatCurrency(value || 0, globalThis.EpiI18n?.lang);
   }
 
   // Sem chamador interno; mantida publicada (global do app.js pelo Annex B).
@@ -276,6 +281,7 @@
   // ── Exports ───────────────────────────────────────────────────────────────
 
   const exportsMap = {
+    formatCompanyCurrency,
     getCompanyFormField,
     setCompanyFieldValue,
     readCompanyFieldValue,

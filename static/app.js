@@ -4826,11 +4826,7 @@ function syncDeliveriesOptions() {
 }
 
 // renderCompaniesSummary, companyStatusBadges, companyUsageText e renderCompanyDetails:
-// static/js/modules/companies/ui/ (UBX-V5, Etapa 2). formatCompanyCurrency fica aqui (I18N-FULL-V1 a altera).
-
-function formatCompanyCurrency(value) {
-  return formatCurrency(value || 0, globalThis.EpiI18n?.lang);
-}
+// static/js/modules/companies/ui/ (UBX-V5, Etapa 2). formatCompanyCurrency também (UBX Comercial C4).
 
 // Interface do Comercial (formulários de empresa, contrato e parâmetros, prévia, painéis, filtros,
 // exportação/impressão, ações de contrato, suspender/reativar e salvar — 33 funções):
@@ -4890,17 +4886,7 @@ async function savePlatformBrand(event) {
   } catch (error) { alert(error.message); }
 }
 
-function fileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const full = String(reader.result || '');
-      resolve(full.includes(',') ? full.split(',')[1] : full);
-    };
-    reader.onerror = () => reject(new Error(tr('commercial.panel.fileReadFailed', 'Falha ao ler arquivo.')));
-    reader.readAsDataURL(file);
-  });
-}
+// fileToBase64 (leitura de arquivo em base64): static/js/modules/shared/ui/file-data-url.js (UBX Comercial C4).
 
 // Tela de Empresas (formatCompanyRow, renderCompanies, resetCompanyForm, startEditCompany,
 // openCompanyLogoEditor, saveCompany, toggleCompany): static/js/modules/companies/{business,integrations,ui}/
@@ -10849,7 +10835,7 @@ async function saveEmployeeMovement(event) {
 
 // Minha Empresa (configurações, imagens, tema, leitura, gravação) e as ações de domínio:
 // static/js/modules/my-company/{business,integrations,ui}/ (UBX-V5, Etapa 2). canConfigureMyCompany: modules/auth/
-// (UBX-V4, Etapa C). renderMyCompanyDomains fica abaixo (alterada pelo PR pendente I18N-FULL-V1).
+// (UBX-V4, Etapa C). renderMyCompanyDomains também está em modules/my-company/ui/ (UBX Comercial C4).
 
 // ── Assistente de implantação (primeiro acesso do Administrador Geral) ───────
 
@@ -10963,40 +10949,7 @@ async function confirmOnboarding2fa() {
 
 // ── Domínios da tenant (Minha Empresa) ───────────────────────────────────────
 // loadMyCompanyDomains, domainStatusLabel, addMyCompanyDomain e handleMyCompanyDomainAction:
-// static/js/modules/my-company/ui/ (UBX-V5, Etapa 2).
-
-function renderMyCompanyDomains(domains) {
-  const table = document.getElementById('my-company-domains-table');
-  const instructions = document.getElementById('my-company-domain-instructions');
-  if (!table) return;
-  table.innerHTML = domains.map((item) => {
-    const primaryMark = Number(item.is_primary) === 1 ? ` <strong data-i18n="myCompany.domains.primary">${escapeHtml(tr('myCompany.domains.primary', '(principal)'))}</strong>` : '';
-    const actions = [];
-    if (item.verification_status !== 'verified') {
-      actions.push(`<button class="ghost" type="button" data-domain-verify="${escapeHtml(item.id)}" data-i18n="myCompany.domains.verify">${escapeHtml(tr('myCompany.domains.verify', 'Verificar'))}</button>`);
-    } else if (Number(item.is_primary) !== 1) {
-      actions.push(`<button class="ghost" type="button" data-domain-primary="${escapeHtml(item.id)}" data-i18n="myCompany.domains.makePrimary">${escapeHtml(tr('myCompany.domains.makePrimary', 'Tornar principal'))}</button>`);
-    }
-    actions.push(`<button class="ghost" type="button" data-domain-delete="${escapeHtml(item.id)}" data-i18n="user.remove">Remover</button>`);
-    return `<tr><td>${escapeHtml(item.full_host)}${primaryMark}</td><td>${escapeHtml(item.type_label)}</td>` +
-      `<td>${escapeHtml(domainStatusLabel(item.verification_status))}</td><td>${escapeHtml(domainStatusLabel(item.ssl_status))}</td>` +
-      `<td><div class="action-group">${actions.join('')}</div></td></tr>`;
-  }).join('') || `<tr><td colspan="5" data-i18n="myCompany.domains.none">${escapeHtml(tr('myCompany.domains.none', 'Nenhum domínio registrado.'))}</td></tr>`;
-
-  const pending = domains.find((item) => item.verification_status !== 'verified' && item.domain_type !== 'platform_subdomain');
-  if (instructions) {
-    // O texto vem do catálogo (sem marcação); só os valores DNS, escapados, recebem <strong>/<code>.
-    instructions.innerHTML = pending
-      ? escapeHtml(tr('myCompany.domains.instructions', 'Para ativar {host}: crie um CNAME apontando para {cname} e um registro TXT em {txt} com o valor {token}, depois clique em Verificar.', {
-        host: '\u0000host\u0000', cname: '\u0000cname\u0000', txt: '\u0000txt\u0000', token: '\u0000token\u0000'
-      }))
-        .replace('\u0000host\u0000', () => `<strong>${escapeHtml(pending.full_host)}</strong>`)
-        .replace('\u0000cname\u0000', () => `<code>${escapeHtml(pending.cname_target)}</code>`)
-        .replace('\u0000txt\u0000', () => `<code>${escapeHtml(pending.txt_record)}</code>`)
-        .replace('\u0000token\u0000', () => `<code>${escapeHtml(pending.verification_token)}</code>`)
-      : '';
-  }
-}
+// static/js/modules/my-company/ui/ (UBX-V5, Etapa 2); renderMyCompanyDomains também (UBX Comercial C4).
 
 async function advanceOnboardingStep() {
   const modal = onboardingModal();

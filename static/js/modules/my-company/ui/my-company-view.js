@@ -1,6 +1,6 @@
 'use strict';
 /* global canConfigureMyCompany, actorQuery, normalizeHexColor, companyLogoMarkup, fileToJpegDataUrl, fileToDataUrl,
-   bindAppListener, loadBootstrap, renderMyCompanyDomains --
+   bindAppListener, loadBootstrap, tr, escapeHtml --
    globais do app.js, de shared/* e de modules/auth, resolvidos na chamada */
 
 // UI: Minha Empresa (Configurações) e domínios da tenant
@@ -9,8 +9,8 @@
 // A empresa contratante é configurada pelo Administrador Geral (Owner da
 // tenant); o backend a deriva do usuário autenticado. Regras puras em
 // ../business/my-company-rules.js; HTTP em ../integrations/my-company-api.js.
-// Fica no app.js renderMyCompanyDomains (alterada pelo PR pendente I18N-FULL-V1), chamada
-// aqui pelo nome global. O assistente de implantação (app.js) usa
+// renderMyCompanyDomains (tabela e instruções DNS dos domínios) veio do app.js na
+// UBX Comercial C4, com o corpo idêntico. O assistente de implantação (app.js) usa
 // loadMyCompany, fillMyCompanyFields, wireMyCompanyImageInputs e
 // collectMyCompanyFields. As funções async eram de bloco no app.js; agora são
 // globais com os mesmos nomes.
@@ -157,6 +157,39 @@
     }
   }
 
+  function renderMyCompanyDomains(domains) {
+    const table = document.getElementById('my-company-domains-table');
+    const instructions = document.getElementById('my-company-domain-instructions');
+    if (!table) return;
+    table.innerHTML = domains.map((item) => {
+      const primaryMark = Number(item.is_primary) === 1 ? ` <strong data-i18n="myCompany.domains.primary">${escapeHtml(tr('myCompany.domains.primary', '(principal)'))}</strong>` : '';
+      const actions = [];
+      if (item.verification_status !== 'verified') {
+        actions.push(`<button class="ghost" type="button" data-domain-verify="${escapeHtml(item.id)}" data-i18n="myCompany.domains.verify">${escapeHtml(tr('myCompany.domains.verify', 'Verificar'))}</button>`);
+      } else if (Number(item.is_primary) !== 1) {
+        actions.push(`<button class="ghost" type="button" data-domain-primary="${escapeHtml(item.id)}" data-i18n="myCompany.domains.makePrimary">${escapeHtml(tr('myCompany.domains.makePrimary', 'Tornar principal'))}</button>`);
+      }
+      actions.push(`<button class="ghost" type="button" data-domain-delete="${escapeHtml(item.id)}" data-i18n="user.remove">Remover</button>`);
+      return `<tr><td>${escapeHtml(item.full_host)}${primaryMark}</td><td>${escapeHtml(item.type_label)}</td>` +
+        `<td>${escapeHtml(domainStatusLabel(item.verification_status))}</td><td>${escapeHtml(domainStatusLabel(item.ssl_status))}</td>` +
+        `<td><div class="action-group">${actions.join('')}</div></td></tr>`;
+    }).join('') || `<tr><td colspan="5" data-i18n="myCompany.domains.none">${escapeHtml(tr('myCompany.domains.none', 'Nenhum domínio registrado.'))}</td></tr>`;
+
+    const pending = domains.find((item) => item.verification_status !== 'verified' && item.domain_type !== 'platform_subdomain');
+    if (instructions) {
+      // O texto vem do catálogo (sem marcação); só os valores DNS, escapados, recebem <strong>/<code>.
+      instructions.innerHTML = pending
+        ? escapeHtml(tr('myCompany.domains.instructions', 'Para ativar {host}: crie um CNAME apontando para {cname} e um registro TXT em {txt} com o valor {token}, depois clique em Verificar.', {
+          host: '\u0000host\u0000', cname: '\u0000cname\u0000', txt: '\u0000txt\u0000', token: '\u0000token\u0000'
+        }))
+          .replace('\u0000host\u0000', () => `<strong>${escapeHtml(pending.full_host)}</strong>`)
+          .replace('\u0000cname\u0000', () => `<code>${escapeHtml(pending.cname_target)}</code>`)
+          .replace('\u0000txt\u0000', () => `<code>${escapeHtml(pending.txt_record)}</code>`)
+          .replace('\u0000token\u0000', () => `<code>${escapeHtml(pending.verification_token)}</code>`)
+        : '';
+    }
+  }
+
   function domainStatusLabel(status) {
     return rules().domainStatusLabel(status);
   }
@@ -216,6 +249,7 @@
     loadMyCompanyCard,
     saveMyCompany,
     loadMyCompanyDomains,
+    renderMyCompanyDomains,
     domainStatusLabel,
     addMyCompanyDomain,
     handleMyCompanyDomainAction

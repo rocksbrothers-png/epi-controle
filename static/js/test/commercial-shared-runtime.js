@@ -80,10 +80,9 @@ function buildContext(lang, impl) {
   if (impl === 'original') {
     // As três funções da cópia literal sobrescrevem as globais (como o app.js fazia).
     vm.runInContext(read(FIXTURE), ctx);
-  } else {
-    // Antes da extração, a implementação "atual" ainda é o próprio app.js.
-    vm.runInContext(NAMES.map((n) => extractFunction(read('app.js'), n)).join('\n\n'), ctx);
   }
+  // "Atual": as funções publicadas pelos módulos carregados acima (companies-view,
+  // my-company-view e shared/ui/file-data-url).
   env.ctx = ctx;
   env.reset = (opts = {}) => {
     env.log = [];
@@ -118,6 +117,11 @@ const DOMAINS = [
     is_primary: '1', cname_target: '$&$1', txt_record: "a'b", verification_token: '\u0000host\u0000' }],
   [{ id: 5, domain_type: 'platform_subdomain', verification_status: 'pending' }, { id: 6, verification_status: 'unknown_status', ssl_status: null, is_primary: null }],
   [{}],
+  // Subdomínio da plataforma pendente ANTES de um domínio próprio pendente: só o segundo ganha instruções.
+  [{ id: 7, full_host: 'sub.plataforma.test', domain_type: 'platform_subdomain', verification_status: 'pending', cname_target: 'plat', txt_record: 'p', verification_token: 'p' },
+    { id: 8, full_host: 'proprio.test', domain_type: 'custom_domain', verification_status: 'pending', cname_target: 'own', txt_record: 'o', verification_token: 'o' }],
+  // Valores DNS com padrões especiais de String.prototype.replace ($&, $1, $$, $`, $').
+  [{ id: 9, full_host: '$&.test', domain_type: 'custom_domain', verification_status: 'pending', cname_target: '$&$1$$', txt_record: "$`x$'", verification_token: '$<n>' }],
   null,
   [null]
 ];
@@ -205,6 +209,7 @@ module.exports = function ({ testAsync, test, assert, eq }) {
   testAsync('UBX Comercial C4: funções atuais × app.js de antes — mesmo valor, exceção, HTML e leituras, nos cinco idiomas', async () => {
     const compared = await compareAll();
     assert(compared >= 1600, `cobertura da comparação: ${compared}`);
+    console.log(`    C4: ${compared} comparações`);
   });
 
   testAsync('UBX Comercial C4: valores de referência (moeda BRL no idioma ativo, escape, base64)', async () => {
@@ -217,5 +222,39 @@ module.exports = function ({ testAsync, test, assert, eq }) {
     assert(html[2]['my-company-domain-instructions'].includes('<code>cname.&lt;b&gt;x&lt;/b&gt;</code>'), 'valor DNS escapado');
     const file = await invoke(load('current', 'pt-BR').reset({ reader: { result: 'data:application/pdf;base64,JVBERi0=' } }), 'fileToBase64', [{ name: 'x' }]);
     eq(JSON.stringify(file[0]), JSON.stringify(['resolved', 'JVBERi0=']), 'base64 sem o prefixo');
+  });
+
+  test('UBX Comercial C4: cada função vive no seu módulo dono, publicada com o mesmo nome, uma vez e antes do app.js', () => {
+    const owners = { formatCompanyCurrency: ['js/modules/companies/ui/companies-view.js', '__EPI_COMPANIES_UI__'],
+      renderMyCompanyDomains: ['js/modules/my-company/ui/my-company-view.js', '__EPI_MY_COMPANY_UI__'],
+      fileToBase64: ['js/modules/shared/ui/file-data-url.js', '__EPI_SHARED_FILE_DATA_URL__'] };
+    const ctx = { Object, Set, Map, JSON, Promise };
+    ctx.globalThis = ctx;
+    vm.createContext(ctx);
+    for (const [name, [rel, ns]] of Object.entries(owners)) {
+      vm.runInContext(read(rel), ctx);
+      eq(typeof ctx[name], 'function', `${name} global`);
+      assert(Object.isFrozen(ctx[ns]) && ctx[ns][name] === ctx[name], `${name}: ${ns}.${name} === global`);
+      for (const [other] of Object.values(owners).filter(([r]) => r !== rel)) {
+        assert(!new RegExp(`function ${name}\\(`).test(read(other)), `${name} não está duplicada em ${other}`);
+      }
+    }
+    const app = read('app.js');
+    for (const name of NAMES) { assert(!new RegExp(`^\\s*(?:async\\s+)?function ${name}\\(`, 'm').test(app), `${name} saiu do app.js`); }
+    const order = [...read('views/_scripts.html').matchAll(/<script[^>]+src="([^"?]+)/g)].map((m) => m[1]);
+    for (const [rel] of Object.values(owners)) {
+      const i = order.indexOf(`/${rel}`);
+      assert(i >= 0 && i < order.indexOf('/app.js'), `${rel} carregado antes do app.js`);
+      eq(order.filter((src) => src === `/${rel}`).length, 1, `${rel} carregado uma vez`);
+    }
+    assert(order.indexOf('/js/modules/shared/ui/file-data-url.js') < order.indexOf('/js/modules/commercial/ui/commercial-contract-view.js'),
+      'leitura de arquivo antes do contrato comercial que a usa');
+    assert(order.indexOf('/js/modules/shared/business/value-format.js') < order.indexOf('/js/modules/companies/ui/companies-view.js'),
+      'formatCurrency antes de Empresas');
+    // Sem HTTP, estado nem armazenamento nos trechos movidos.
+    for (const name of NAMES) {
+      const src = extractFunction(read(owners[name][0]), name);
+      assert(!/\bapi\(|fetch\(|__EPI_APP_STATE__|localStorage|sessionStorage/.test(src), `${name}: sem HTTP, estado ou armazenamento`);
+    }
   });
 };

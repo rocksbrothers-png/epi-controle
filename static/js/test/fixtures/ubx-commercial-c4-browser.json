@@ -1,0 +1,1797 @@
+{
+ "pt-BR": {
+  "steps": [
+   {
+    "label": "Empresas",
+    "snapshot": {
+     "summary": "<div class=\"summary-chip\"><strong>2</strong><span>Empresas</span></div><div class=\"summary-chip\"><strong>2</strong><span>Ativas</span></div><div class=\"summary-chip\"><strong>1</strong><span>Próximas do limite</span></div><div class=\"summary-chip\"><strong>0</strong><span>Bloqueadas</span></div>",
+     "table": "\n      <tr class=\"selected-row\">\n        <td><div class=\"company-cell\"><strong>Empresa QA</strong><span>Empresa QA Ltda</span></div></td>\n        <td><div class=\"company-cell\"><strong>11222333000181</strong><span>start</span></div></td>\n        <td><div class=\"company-cell\"><span class=\"badge badge-status-active\">Empresa ativa</span> <span class=\"badge badge-status-active\">Ativa</span><span>Vigência: 01/01/2026 até 31/12/2026</span></div></td>\n        <td><div class=\"company-logo-slot\"><img class=\"company-logo company-logo-sm\" src=\"data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2080%2080%22%3E%3Crect%20width%3D%2280%22%20height%3D%2280%22%20rx%3D%2220%22%20fill%3D%22%23f6d8c8%22%2F%3E%3Cpath%20d%3D%22M20%2056h40M26%2048V26h28v22%22%20fill%3D%22none%22%20stroke%3D%22%2396401c%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E\" alt=\"Logotipo de Empresa QA\"></div></td>\n        <td><div class=\"company-cell\"><strong>3</strong><span>97 vaga(s) disponíveis</span></div></td>\n        <td><div class=\"company-cell\"><strong>100</strong><span>R$&nbsp;1.234.567,89</span></div></td>\n        <td><div class=\"action-group\"><button class=\"ghost\" data-company-details=\"901\">Visualizar detalhes</button><button class=\"ghost\" data-company-edit=\"901\">Editar</button><button class=\"ghost\" data-company-logo=\"901\">Logotipo (suporte)</button><button class=\"ghost\" data-company-commercial=\"901\">Configurar licença</button><button class=\"ghost\" data-company-toggle=\"901\" data-company-active=\"0\">Inativar</button></div></td>\n      </tr>\n      <tr class=\"\">\n        <td><div class=\"company-cell\"><strong>Cliente Dois &lt;img src=x onerror=window.__xss=1&gt;</strong><span>Cliente Dois SA</span></div></td>\n        <td><div class=\"company-cell\"><strong>22333444000155</strong><span>pro</span></div></td>\n        <td><div class=\"company-cell\"><span class=\"badge badge-status-active\">Empresa ativa</span> <span class=\"badge badge-status-warning\">Avaliação</span> <span class=\"badge badge-status-warning\">Próxima do limite</span><span>Vigência: - até -</span></div></td>\n        <td><div class=\"company-logo-slot\"><img class=\"company-logo company-logo-sm\" src=\"data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2080%2080%22%3E%3Crect%20width%3D%2280%22%20height%3D%2280%22%20rx%3D%2220%22%20fill%3D%22%23f6d8c8%22%2F%3E%3Cpath%20d%3D%22M20%2056h40M26%2048V26h28v22%22%20fill%3D%22none%22%20stroke%3D%22%2396401c%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E\" alt=\"Logotipo de Cliente Dois &lt;img src=x onerror=window.__xss=1&gt;\"></div></td>\n        <td><div class=\"company-cell\"><strong>9</strong><span>1 vaga(s) disponíveis</span></div></td>\n        <td><div class=\"company-cell\"><strong>10</strong><span>R$&nbsp;0,00</span></div></td>\n        <td><div class=\"action-group\"><button class=\"ghost\" data-company-details=\"902\">Visualizar detalhes</button><button class=\"ghost\" data-company-edit=\"902\">Editar</button><button class=\"ghost\" data-company-logo=\"902\">Logotipo (suporte)</button><button class=\"ghost\" data-company-commercial=\"902\">Configurar licença</button><button class=\"ghost\" data-company-toggle=\"902\" data-company-active=\"0\">Inativar</button></div></td>\n      </tr>",
+     "details": "\n    <div class=\"company-detail-hero\">\n      <img class=\"company-logo company-logo-lg\" src=\"data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2080%2080%22%3E%3Crect%20width%3D%2280%22%20height%3D%2280%22%20rx%3D%2220%22%20fill%3D%22%23f6d8c8%22%2F%3E%3Cpath%20d%3D%22M20%2056h40M26%2048V26h28v22%22%20fill%3D%22none%22%20stroke%3D%22%2396401c%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E\" alt=\"Logotipo de Empresa QA\">\n      <div>\n        <strong>Empresa QA</strong>\n        <span>Empresa QA Ltda</span>\n        <span>CNPJ: 11222333000181</span>\n      </div>\n    </div>\n    <div class=\"company-detail-badges\"><span class=\"badge badge-status-active\">Empresa ativa</span> <span class=\"badge badge-status-active\">Ativa</span></div>\n    <div class=\"company-detail-grid\">\n      <div class=\"summary-chip\"><strong>3</strong><span>Usuários possíveis</span></div>\n      <div class=\"summary-chip\"><strong>100</strong><span>Limite contratado</span></div>\n      <div class=\"summary-chip\"><strong>R$&nbsp;1.234.567,89</strong><span>Valor mensal atual</span></div>\n      <div class=\"summary-chip\"><strong>-R$&nbsp;12,35</strong><span>Valor projetado</span></div>\n      <div class=\"summary-chip\"><strong>97</strong><span>Vagas disponíveis</span></div>\n    </div>\n    <div class=\"company-detail-list\">\n      <div class=\"summary-item\"><strong>Plano / licença:</strong> Start</div>\n      <div class=\"summary-item\"><strong>Valor unitário:</strong> R$&nbsp;0,01</div>\n      <div class=\"summary-item\"><strong>Vigência:</strong> 01/01/2026 até 31/12/2026</div>\n      <div class=\"summary-item\"><strong>Aditivo contratual:</strong> Inativo</div>\n      <div class=\"summary-item\"><strong>Observações comerciais:</strong> QA</div>\n    </div>\n    <div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-company-view-contract=\"901\">Visualizar contrato</button></div>",
+     "domains": "",
+     "instructions": "",
+     "xss": 0
+    }
+   },
+   {
+    "label": "funções",
+    "result": {
+     "currency": [
+      [
+       "ok",
+       "R$ 0,00"
+      ],
+      [
+       "ok",
+       "R$ 0,00"
+      ],
+      [
+       "ok",
+       "R$ 1,00"
+      ],
+      [
+       "ok",
+       "-R$ 1,00"
+      ],
+      [
+       "ok",
+       "R$ 0,01"
+      ],
+      [
+       "ok",
+       "R$ 0,02"
+      ],
+      [
+       "ok",
+       "R$ 1,01"
+      ],
+      [
+       "ok",
+       "R$ 12,35"
+      ],
+      [
+       "ok",
+       "-R$ 12,35"
+      ],
+      [
+       "ok",
+       "R$ 1.234,50"
+      ],
+      [
+       "ok",
+       "R$ 1.234.567,89"
+      ],
+      [
+       "ok",
+       "-R$ 9.876.543,21"
+      ],
+      [
+       "ok",
+       "R$ 1.000.000.000.000.000,00"
+      ],
+      [
+       "ok",
+       "R$ 1.000.000.000.000.000.000.000,00"
+      ],
+      [
+       "ok",
+       "R$ 0,00"
+      ],
+      [
+       "ok",
+       "R$ ∞"
+      ],
+      [
+       "ok",
+       "-R$ ∞"
+      ],
+      [
+       "ok",
+       "R$ 0,00"
+      ],
+      [
+       "ok",
+       "R$ 0,00"
+      ],
+      [
+       "ok",
+       "R$ 0,00"
+      ],
+      [
+       "ok",
+       "R$ 0,00"
+      ],
+      [
+       "ok",
+       "R$ 42,50"
+      ],
+      [
+       "ok",
+       "R$ NaN"
+      ],
+      [
+       "ok",
+       "R$ 1.000,00"
+      ],
+      [
+       "ok",
+       "R$ NaN"
+      ],
+      [
+       "ok",
+       "R$ 1,00"
+      ],
+      [
+       "ok",
+       "R$ 0,00"
+      ],
+      [
+       "ok",
+       "R$ 0,00"
+      ],
+      [
+       "ok",
+       "R$ 5,00"
+      ],
+      [
+       "ok",
+       "R$ NaN"
+      ]
+     ],
+     "currencyNoArg": "R$ 0,00",
+     "domains": [
+      [
+       "<tr><td colspan=\"5\" data-i18n=\"myCompany.domains.none\">Nenhum domínio registrado.</td></tr>",
+       ""
+      ],
+      [
+       "<tr><td>app.empresa.test <strong data-i18n=\"myCompany.domains.primary\">(principal)</strong></td><td>Subdomínio</td><td>Verificado</td><td>Ativo</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-delete=\"1\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>sub.plataforma.test</td><td></td><td>Pendente</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"7\" data-i18n=\"myCompany.domains.verify\">Verificar</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"7\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>epi.cliente.test</td><td>Próprio</td><td>Pendente</td><td>Pendente</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"2\" data-i18n=\"myCompany.domains.verify\">Verificar</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"2\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>b.test</td><td>Próprio</td><td>Verificado</td><td>Falhou</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-primary=\"3\" data-i18n=\"myCompany.domains.makePrimary\">Tornar principal</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"3\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>&lt;img src=x onerror=window.__xss=(window.__xss||0)+1&gt; <strong data-i18n=\"myCompany.domains.primary\">(principal)</strong></td><td>&lt;i&gt;t&lt;/i&gt;</td><td>Falhou</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"4\" data-i18n=\"myCompany.domains.verify\">Verificar</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"4\" data-i18n=\"user.remove\">Remover</button></div></td></tr>",
+       "Para ativar <strong>epi.cliente.test</strong>: crie um CNAME apontando para <code>cname.&lt;b&gt;x&lt;/b&gt; $&amp;$1</code> e um registro TXT em <code>_epi$'</code> com o valor <code>tok \"1\" $$</code>, depois clique em Verificar."
+      ],
+      [
+       "<tr><td>sub.plataforma.test</td><td></td><td>Pendente</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"7\" data-i18n=\"myCompany.domains.verify\">Verificar</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"7\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>epi.cliente.test</td><td>Próprio</td><td>Pendente</td><td>Pendente</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"2\" data-i18n=\"myCompany.domains.verify\">Verificar</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"2\" data-i18n=\"user.remove\">Remover</button></div></td></tr>",
+       "Para ativar <strong>epi.cliente.test</strong>: crie um CNAME apontando para <code>cname.&lt;b&gt;x&lt;/b&gt; $&amp;$1</code> e um registro TXT em <code>_epi$'</code> com o valor <code>tok \"1\" $$</code>, depois clique em Verificar."
+      ],
+      [
+       "<tr><td></td><td></td><td>-</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"\" data-i18n=\"myCompany.domains.verify\">Verificar</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"\" data-i18n=\"user.remove\">Remover</button></div></td></tr>",
+       "Para ativar <strong></strong>: crie um CNAME apontando para <code></code> e um registro TXT em <code></code> com o valor <code></code>, depois clique em Verificar."
+      ],
+      [
+       "<tr><td>&lt;img src=x onerror=window.__xss=(window.__xss||0)+1&gt; <strong data-i18n=\"myCompany.domains.primary\">(principal)</strong></td><td>&lt;i&gt;t&lt;/i&gt;</td><td>Falhou</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"4\" data-i18n=\"myCompany.domains.verify\">Verificar</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"4\" data-i18n=\"user.remove\">Remover</button></div></td></tr>",
+       "Para ativar <strong>&lt;img src=x onerror=window.__xss=(window.__xss||0)+1&gt;</strong>: crie um CNAME apontando para <code></code> e um registro TXT em <code></code> com o valor <code></code>, depois clique em Verificar."
+      ]
+     ],
+     "base64": [
+      [
+       "ok",
+       "JVBERi0xLjQKJVFBCg=="
+      ],
+      [
+       "ok",
+       "T2zDoSwgbXVuZG8gIsOnw6MiIDxiPg=="
+      ],
+      [
+       "ok",
+       ""
+      ],
+      [
+       "ok",
+       "AAEC+vv8/f7/"
+      ]
+     ]
+    }
+   },
+   {
+    "label": "troca de idioma (fr-FR)",
+    "snapshot": {
+     "summary": "<div class=\"summary-chip\"><strong>2</strong><span>Entreprises</span></div><div class=\"summary-chip\"><strong>2</strong><span>Actives</span></div><div class=\"summary-chip\"><strong>1</strong><span>Près de la limite</span></div><div class=\"summary-chip\"><strong>0</strong><span>Bloquées</span></div>",
+     "table": "\n      <tr class=\"selected-row\">\n        <td><div class=\"company-cell\"><strong>Empresa QA</strong><span>Empresa QA Ltda</span></div></td>\n        <td><div class=\"company-cell\"><strong>11222333000181</strong><span>start</span></div></td>\n        <td><div class=\"company-cell\"><span class=\"badge badge-status-active\">Entreprise active</span> <span class=\"badge badge-status-active\">Active</span><span>Validité: Du 01/01/2026 au 31/12/2026</span></div></td>\n        <td><div class=\"company-logo-slot\"><img class=\"company-logo company-logo-sm\" src=\"data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2080%2080%22%3E%3Crect%20width%3D%2280%22%20height%3D%2280%22%20rx%3D%2220%22%20fill%3D%22%23f6d8c8%22%2F%3E%3Cpath%20d%3D%22M20%2056h40M26%2048V26h28v22%22%20fill%3D%22none%22%20stroke%3D%22%2396401c%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E\" alt=\"Logotipo de Empresa QA\"></div></td>\n        <td><div class=\"company-cell\"><strong>3</strong><span>97 place(s) disponible(s)</span></div></td>\n        <td><div class=\"company-cell\"><strong>100</strong><span>1 234 567,89&nbsp;R$</span></div></td>\n        <td><div class=\"action-group\"><button class=\"ghost\" data-company-details=\"901\">Voir les détails</button><button class=\"ghost\" data-company-edit=\"901\">Modifier</button><button class=\"ghost\" data-company-logo=\"901\">Logotipo (suporte)</button><button class=\"ghost\" data-company-commercial=\"901\">Configurer la licence</button><button class=\"ghost\" data-company-toggle=\"901\" data-company-active=\"0\">Désactiver</button></div></td>\n      </tr>\n      <tr class=\"\">\n        <td><div class=\"company-cell\"><strong>Cliente Dois &lt;img src=x onerror=window.__xss=1&gt;</strong><span>Cliente Dois SA</span></div></td>\n        <td><div class=\"company-cell\"><strong>22333444000155</strong><span>pro</span></div></td>\n        <td><div class=\"company-cell\"><span class=\"badge badge-status-active\">Entreprise active</span> <span class=\"badge badge-status-warning\">Essai</span> <span class=\"badge badge-status-warning\">Proche de la limite</span><span>Validité: Du - au -</span></div></td>\n        <td><div class=\"company-logo-slot\"><img class=\"company-logo company-logo-sm\" src=\"data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2080%2080%22%3E%3Crect%20width%3D%2280%22%20height%3D%2280%22%20rx%3D%2220%22%20fill%3D%22%23f6d8c8%22%2F%3E%3Cpath%20d%3D%22M20%2056h40M26%2048V26h28v22%22%20fill%3D%22none%22%20stroke%3D%22%2396401c%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E\" alt=\"Logotipo de Cliente Dois &lt;img src=x onerror=window.__xss=1&gt;\"></div></td>\n        <td><div class=\"company-cell\"><strong>9</strong><span>1 place(s) disponible(s)</span></div></td>\n        <td><div class=\"company-cell\"><strong>10</strong><span>0,00&nbsp;R$</span></div></td>\n        <td><div class=\"action-group\"><button class=\"ghost\" data-company-details=\"902\">Voir les détails</button><button class=\"ghost\" data-company-edit=\"902\">Modifier</button><button class=\"ghost\" data-company-logo=\"902\">Logotipo (suporte)</button><button class=\"ghost\" data-company-commercial=\"902\">Configurer la licence</button><button class=\"ghost\" data-company-toggle=\"902\" data-company-active=\"0\">Désactiver</button></div></td>\n      </tr>",
+     "details": "\n    <div class=\"company-detail-hero\">\n      <img class=\"company-logo company-logo-lg\" src=\"data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2080%2080%22%3E%3Crect%20width%3D%2280%22%20height%3D%2280%22%20rx%3D%2220%22%20fill%3D%22%23f6d8c8%22%2F%3E%3Cpath%20d%3D%22M20%2056h40M26%2048V26h28v22%22%20fill%3D%22none%22%20stroke%3D%22%2396401c%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E\" alt=\"Logotipo de Empresa QA\">\n      <div>\n        <strong>Empresa QA</strong>\n        <span>Empresa QA Ltda</span>\n        <span>N° Fiscal: 11222333000181</span>\n      </div>\n    </div>\n    <div class=\"company-detail-badges\"><span class=\"badge badge-status-active\">Entreprise active</span> <span class=\"badge badge-status-active\">Active</span></div>\n    <div class=\"company-detail-grid\">\n      <div class=\"summary-chip\"><strong>3</strong><span>Utilisateurs possibles</span></div>\n      <div class=\"summary-chip\"><strong>100</strong><span>Limite contracté</span></div>\n      <div class=\"summary-chip\"><strong>1 234 567,89&nbsp;R$</strong><span>Valeur mensuelle actuelle</span></div>\n      <div class=\"summary-chip\"><strong>-12,35&nbsp;R$</strong><span>Valeur projetée</span></div>\n      <div class=\"summary-chip\"><strong>97</strong><span>Places disponibles</span></div>\n    </div>\n    <div class=\"company-detail-list\">\n      <div class=\"summary-item\"><strong>Plan / licence:</strong> Start</div>\n      <div class=\"summary-item\"><strong>Valeur unitaire:</strong> 0,01&nbsp;R$</div>\n      <div class=\"summary-item\"><strong>Validité:</strong> Du 01/01/2026 au 31/12/2026</div>\n      <div class=\"summary-item\"><strong>Avenant contractuel:</strong> Inactif</div>\n      <div class=\"summary-item\"><strong>Notes commerciales:</strong> QA</div>\n    </div>\n    <div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-company-view-contract=\"901\">Voir le contrat</button></div>",
+     "domains": "<tr><td>&lt;img src=x onerror=window.__xss=(window.__xss||0)+1&gt; <strong data-i18n=\"myCompany.domains.primary\">(principal)</strong></td><td>&lt;i&gt;t&lt;/i&gt;</td><td>Falhou</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"4\" data-i18n=\"myCompany.domains.verify\">Vérifier</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"4\" data-i18n=\"user.remove\">Supprimer</button></div></td></tr>",
+     "instructions": "Para ativar <strong>&lt;img src=x onerror=window.__xss=(window.__xss||0)+1&gt;</strong>: crie um CNAME apontando para <code></code> e um registro TXT em <code></code> com o valor <code></code>, depois clique em Verificar.",
+     "xss": 0
+    },
+    "result": {
+     "currency": [
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "1,00 R$"
+      ],
+      [
+       "ok",
+       "-1,00 R$"
+      ],
+      [
+       "ok",
+       "0,01 R$"
+      ],
+      [
+       "ok",
+       "0,02 R$"
+      ],
+      [
+       "ok",
+       "1,01 R$"
+      ],
+      [
+       "ok",
+       "12,35 R$"
+      ],
+      [
+       "ok",
+       "-12,35 R$"
+      ],
+      [
+       "ok",
+       "1 234,50 R$"
+      ],
+      [
+       "ok",
+       "1 234 567,89 R$"
+      ],
+      [
+       "ok",
+       "-9 876 543,21 R$"
+      ],
+      [
+       "ok",
+       "1 000 000 000 000 000,00 R$"
+      ],
+      [
+       "ok",
+       "1 000 000 000 000 000 000 000,00 R$"
+      ],
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "∞ R$"
+      ],
+      [
+       "ok",
+       "-∞ R$"
+      ],
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "42,50 R$"
+      ],
+      [
+       "ok",
+       "NaN R$"
+      ],
+      [
+       "ok",
+       "1 000,00 R$"
+      ],
+      [
+       "ok",
+       "NaN R$"
+      ],
+      [
+       "ok",
+       "1,00 R$"
+      ],
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "5,00 R$"
+      ],
+      [
+       "ok",
+       "NaN R$"
+      ]
+     ],
+     "currencyNoArg": "0,00 R$",
+     "domains": [
+      [
+       "<tr><td colspan=\"5\" data-i18n=\"myCompany.domains.none\">Aucun domaine enregistré.</td></tr>",
+       ""
+      ],
+      [
+       "<tr><td>app.empresa.test <strong data-i18n=\"myCompany.domains.primary\">(principal)</strong></td><td>Subdomínio</td><td>Verificado</td><td>Ativo</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-delete=\"1\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>sub.plataforma.test</td><td></td><td>Pendente</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"7\" data-i18n=\"myCompany.domains.verify\">Vérifier</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"7\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>epi.cliente.test</td><td>Próprio</td><td>Pendente</td><td>Pendente</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"2\" data-i18n=\"myCompany.domains.verify\">Vérifier</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"2\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>b.test</td><td>Próprio</td><td>Verificado</td><td>Falhou</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-primary=\"3\" data-i18n=\"myCompany.domains.makePrimary\">Définir comme principal</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"3\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>&lt;img src=x onerror=window.__xss=(window.__xss||0)+1&gt; <strong data-i18n=\"myCompany.domains.primary\">(principal)</strong></td><td>&lt;i&gt;t&lt;/i&gt;</td><td>Falhou</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"4\" data-i18n=\"myCompany.domains.verify\">Vérifier</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"4\" data-i18n=\"user.remove\">Remover</button></div></td></tr>",
+       "Pour activer <strong>epi.cliente.test</strong> : créez un CNAME pointant vers <code>cname.&lt;b&gt;x&lt;/b&gt; $&amp;$1</code> et un enregistrement TXT sur <code>_epi$'</code> avec la valeur <code>tok \"1\" $$</code>, puis cliquez sur Vérifier."
+      ],
+      [
+       "<tr><td>sub.plataforma.test</td><td></td><td>Pendente</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"7\" data-i18n=\"myCompany.domains.verify\">Vérifier</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"7\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>epi.cliente.test</td><td>Próprio</td><td>Pendente</td><td>Pendente</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"2\" data-i18n=\"myCompany.domains.verify\">Vérifier</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"2\" data-i18n=\"user.remove\">Remover</button></div></td></tr>",
+       "Pour activer <strong>epi.cliente.test</strong> : créez un CNAME pointant vers <code>cname.&lt;b&gt;x&lt;/b&gt; $&amp;$1</code> et un enregistrement TXT sur <code>_epi$'</code> avec la valeur <code>tok \"1\" $$</code>, puis cliquez sur Vérifier."
+      ],
+      [
+       "<tr><td></td><td></td><td>-</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"\" data-i18n=\"myCompany.domains.verify\">Vérifier</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"\" data-i18n=\"user.remove\">Remover</button></div></td></tr>",
+       "Pour activer <strong></strong> : créez un CNAME pointant vers <code></code> et un enregistrement TXT sur <code></code> avec la valeur <code></code>, puis cliquez sur Vérifier."
+      ],
+      [
+       "<tr><td>&lt;img src=x onerror=window.__xss=(window.__xss||0)+1&gt; <strong data-i18n=\"myCompany.domains.primary\">(principal)</strong></td><td>&lt;i&gt;t&lt;/i&gt;</td><td>Falhou</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"4\" data-i18n=\"myCompany.domains.verify\">Vérifier</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"4\" data-i18n=\"user.remove\">Remover</button></div></td></tr>",
+       "Pour activer <strong>&lt;img src=x onerror=window.__xss=(window.__xss||0)+1&gt;</strong> : créez un CNAME pointant vers <code></code> et un enregistrement TXT sur <code></code> avec la valeur <code></code>, puis cliquez sur Vérifier."
+      ]
+     ],
+     "base64": [
+      [
+       "ok",
+       "JVBERi0xLjQKJVFBCg=="
+      ],
+      [
+       "ok",
+       "T2zDoSwgbXVuZG8gIsOnw6MiIDxiPg=="
+      ],
+      [
+       "ok",
+       ""
+      ],
+      [
+       "ok",
+       "AAEC+vv8/f7/"
+      ]
+     ]
+    }
+   }
+  ]
+ },
+ "en-GB": {
+  "steps": [
+   {
+    "label": "Empresas",
+    "snapshot": {
+     "summary": "<div class=\"summary-chip\"><strong>2</strong><span>Companies</span></div><div class=\"summary-chip\"><strong>2</strong><span>Active</span></div><div class=\"summary-chip\"><strong>1</strong><span>Near limit</span></div><div class=\"summary-chip\"><strong>0</strong><span>Blocked</span></div>",
+     "table": "\n      <tr class=\"selected-row\">\n        <td><div class=\"company-cell\"><strong>Empresa QA</strong><span>Empresa QA Ltda</span></div></td>\n        <td><div class=\"company-cell\"><strong>11222333000181</strong><span>start</span></div></td>\n        <td><div class=\"company-cell\"><span class=\"badge badge-status-active\">Active company</span> <span class=\"badge badge-status-active\">Active</span><span>Validity period: 01/01/2026 to 31/12/2026</span></div></td>\n        <td><div class=\"company-logo-slot\"><img class=\"company-logo company-logo-sm\" src=\"data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2080%2080%22%3E%3Crect%20width%3D%2280%22%20height%3D%2280%22%20rx%3D%2220%22%20fill%3D%22%23f6d8c8%22%2F%3E%3Cpath%20d%3D%22M20%2056h40M26%2048V26h28v22%22%20fill%3D%22none%22%20stroke%3D%22%2396401c%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E\" alt=\"Logotipo de Empresa QA\"></div></td>\n        <td><div class=\"company-cell\"><strong>3</strong><span>97 slot(s) available</span></div></td>\n        <td><div class=\"company-cell\"><strong>100</strong><span>R$1,234,567.89</span></div></td>\n        <td><div class=\"action-group\"><button class=\"ghost\" data-company-details=\"901\">View details</button><button class=\"ghost\" data-company-edit=\"901\">Edit</button><button class=\"ghost\" data-company-logo=\"901\">Logotipo (suporte)</button><button class=\"ghost\" data-company-commercial=\"901\">Configure licence</button><button class=\"ghost\" data-company-toggle=\"901\" data-company-active=\"0\">Deactivate</button></div></td>\n      </tr>\n      <tr class=\"\">\n        <td><div class=\"company-cell\"><strong>Cliente Dois &lt;img src=x onerror=window.__xss=1&gt;</strong><span>Cliente Dois SA</span></div></td>\n        <td><div class=\"company-cell\"><strong>22333444000155</strong><span>pro</span></div></td>\n        <td><div class=\"company-cell\"><span class=\"badge badge-status-active\">Active company</span> <span class=\"badge badge-status-warning\">Trial</span> <span class=\"badge badge-status-warning\">Near limit</span><span>Validity period: - to -</span></div></td>\n        <td><div class=\"company-logo-slot\"><img class=\"company-logo company-logo-sm\" src=\"data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2080%2080%22%3E%3Crect%20width%3D%2280%22%20height%3D%2280%22%20rx%3D%2220%22%20fill%3D%22%23f6d8c8%22%2F%3E%3Cpath%20d%3D%22M20%2056h40M26%2048V26h28v22%22%20fill%3D%22none%22%20stroke%3D%22%2396401c%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E\" alt=\"Logotipo de Cliente Dois &lt;img src=x onerror=window.__xss=1&gt;\"></div></td>\n        <td><div class=\"company-cell\"><strong>9</strong><span>1 slot(s) available</span></div></td>\n        <td><div class=\"company-cell\"><strong>10</strong><span>R$0.00</span></div></td>\n        <td><div class=\"action-group\"><button class=\"ghost\" data-company-details=\"902\">View details</button><button class=\"ghost\" data-company-edit=\"902\">Edit</button><button class=\"ghost\" data-company-logo=\"902\">Logotipo (suporte)</button><button class=\"ghost\" data-company-commercial=\"902\">Configure licence</button><button class=\"ghost\" data-company-toggle=\"902\" data-company-active=\"0\">Deactivate</button></div></td>\n      </tr>",
+     "details": "\n    <div class=\"company-detail-hero\">\n      <img class=\"company-logo company-logo-lg\" src=\"data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2080%2080%22%3E%3Crect%20width%3D%2280%22%20height%3D%2280%22%20rx%3D%2220%22%20fill%3D%22%23f6d8c8%22%2F%3E%3Cpath%20d%3D%22M20%2056h40M26%2048V26h28v22%22%20fill%3D%22none%22%20stroke%3D%22%2396401c%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E\" alt=\"Logotipo de Empresa QA\">\n      <div>\n        <strong>Empresa QA</strong>\n        <span>Empresa QA Ltda</span>\n        <span>Tax ID: 11222333000181</span>\n      </div>\n    </div>\n    <div class=\"company-detail-badges\"><span class=\"badge badge-status-active\">Active company</span> <span class=\"badge badge-status-active\">Active</span></div>\n    <div class=\"company-detail-grid\">\n      <div class=\"summary-chip\"><strong>3</strong><span>Possible users</span></div>\n      <div class=\"summary-chip\"><strong>100</strong><span>Contracted limit</span></div>\n      <div class=\"summary-chip\"><strong>R$1,234,567.89</strong><span>Current monthly value</span></div>\n      <div class=\"summary-chip\"><strong>-R$12.35</strong><span>Projected value</span></div>\n      <div class=\"summary-chip\"><strong>97</strong><span>Available slots</span></div>\n    </div>\n    <div class=\"company-detail-list\">\n      <div class=\"summary-item\"><strong>Plan / licence:</strong> Start</div>\n      <div class=\"summary-item\"><strong>Unit price:</strong> R$0.01</div>\n      <div class=\"summary-item\"><strong>Validity period:</strong> 01/01/2026 to 31/12/2026</div>\n      <div class=\"summary-item\"><strong>Contract addendum:</strong> Inactive</div>\n      <div class=\"summary-item\"><strong>Commercial notes:</strong> QA</div>\n    </div>\n    <div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-company-view-contract=\"901\">View contract</button></div>",
+     "domains": "",
+     "instructions": "",
+     "xss": 0
+    }
+   },
+   {
+    "label": "funções",
+    "result": {
+     "currency": [
+      [
+       "ok",
+       "R$0.00"
+      ],
+      [
+       "ok",
+       "R$0.00"
+      ],
+      [
+       "ok",
+       "R$1.00"
+      ],
+      [
+       "ok",
+       "-R$1.00"
+      ],
+      [
+       "ok",
+       "R$0.01"
+      ],
+      [
+       "ok",
+       "R$0.02"
+      ],
+      [
+       "ok",
+       "R$1.01"
+      ],
+      [
+       "ok",
+       "R$12.35"
+      ],
+      [
+       "ok",
+       "-R$12.35"
+      ],
+      [
+       "ok",
+       "R$1,234.50"
+      ],
+      [
+       "ok",
+       "R$1,234,567.89"
+      ],
+      [
+       "ok",
+       "-R$9,876,543.21"
+      ],
+      [
+       "ok",
+       "R$1,000,000,000,000,000.00"
+      ],
+      [
+       "ok",
+       "R$1,000,000,000,000,000,000,000.00"
+      ],
+      [
+       "ok",
+       "R$0.00"
+      ],
+      [
+       "ok",
+       "R$∞"
+      ],
+      [
+       "ok",
+       "-R$∞"
+      ],
+      [
+       "ok",
+       "R$0.00"
+      ],
+      [
+       "ok",
+       "R$0.00"
+      ],
+      [
+       "ok",
+       "R$0.00"
+      ],
+      [
+       "ok",
+       "R$0.00"
+      ],
+      [
+       "ok",
+       "R$42.50"
+      ],
+      [
+       "ok",
+       "R$NaN"
+      ],
+      [
+       "ok",
+       "R$1,000.00"
+      ],
+      [
+       "ok",
+       "R$NaN"
+      ],
+      [
+       "ok",
+       "R$1.00"
+      ],
+      [
+       "ok",
+       "R$0.00"
+      ],
+      [
+       "ok",
+       "R$0.00"
+      ],
+      [
+       "ok",
+       "R$5.00"
+      ],
+      [
+       "ok",
+       "R$NaN"
+      ]
+     ],
+     "currencyNoArg": "R$0.00",
+     "domains": [
+      [
+       "<tr><td colspan=\"5\" data-i18n=\"myCompany.domains.none\">No domains registered.</td></tr>",
+       ""
+      ],
+      [
+       "<tr><td>app.empresa.test <strong data-i18n=\"myCompany.domains.primary\">(primary)</strong></td><td>Subdomínio</td><td>Verificado</td><td>Ativo</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-delete=\"1\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>sub.plataforma.test</td><td></td><td>Pendente</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"7\" data-i18n=\"myCompany.domains.verify\">Verify</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"7\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>epi.cliente.test</td><td>Próprio</td><td>Pendente</td><td>Pendente</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"2\" data-i18n=\"myCompany.domains.verify\">Verify</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"2\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>b.test</td><td>Próprio</td><td>Verificado</td><td>Falhou</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-primary=\"3\" data-i18n=\"myCompany.domains.makePrimary\">Make primary</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"3\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>&lt;img src=x onerror=window.__xss=(window.__xss||0)+1&gt; <strong data-i18n=\"myCompany.domains.primary\">(primary)</strong></td><td>&lt;i&gt;t&lt;/i&gt;</td><td>Falhou</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"4\" data-i18n=\"myCompany.domains.verify\">Verify</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"4\" data-i18n=\"user.remove\">Remover</button></div></td></tr>",
+       "To activate <strong>epi.cliente.test</strong>: create a CNAME pointing to <code>cname.&lt;b&gt;x&lt;/b&gt; $&amp;$1</code> and a TXT record at <code>_epi$'</code> with the value <code>tok \"1\" $$</code>, then click Verify."
+      ],
+      [
+       "<tr><td>sub.plataforma.test</td><td></td><td>Pendente</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"7\" data-i18n=\"myCompany.domains.verify\">Verify</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"7\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>epi.cliente.test</td><td>Próprio</td><td>Pendente</td><td>Pendente</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"2\" data-i18n=\"myCompany.domains.verify\">Verify</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"2\" data-i18n=\"user.remove\">Remover</button></div></td></tr>",
+       "To activate <strong>epi.cliente.test</strong>: create a CNAME pointing to <code>cname.&lt;b&gt;x&lt;/b&gt; $&amp;$1</code> and a TXT record at <code>_epi$'</code> with the value <code>tok \"1\" $$</code>, then click Verify."
+      ],
+      [
+       "<tr><td></td><td></td><td>-</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"\" data-i18n=\"myCompany.domains.verify\">Verify</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"\" data-i18n=\"user.remove\">Remover</button></div></td></tr>",
+       "To activate <strong></strong>: create a CNAME pointing to <code></code> and a TXT record at <code></code> with the value <code></code>, then click Verify."
+      ],
+      [
+       "<tr><td>&lt;img src=x onerror=window.__xss=(window.__xss||0)+1&gt; <strong data-i18n=\"myCompany.domains.primary\">(primary)</strong></td><td>&lt;i&gt;t&lt;/i&gt;</td><td>Falhou</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"4\" data-i18n=\"myCompany.domains.verify\">Verify</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"4\" data-i18n=\"user.remove\">Remover</button></div></td></tr>",
+       "To activate <strong>&lt;img src=x onerror=window.__xss=(window.__xss||0)+1&gt;</strong>: create a CNAME pointing to <code></code> and a TXT record at <code></code> with the value <code></code>, then click Verify."
+      ]
+     ],
+     "base64": [
+      [
+       "ok",
+       "JVBERi0xLjQKJVFBCg=="
+      ],
+      [
+       "ok",
+       "T2zDoSwgbXVuZG8gIsOnw6MiIDxiPg=="
+      ],
+      [
+       "ok",
+       ""
+      ],
+      [
+       "ok",
+       "AAEC+vv8/f7/"
+      ]
+     ]
+    }
+   },
+   {
+    "label": "troca de idioma (fr-FR)",
+    "snapshot": {
+     "summary": "<div class=\"summary-chip\"><strong>2</strong><span>Entreprises</span></div><div class=\"summary-chip\"><strong>2</strong><span>Actives</span></div><div class=\"summary-chip\"><strong>1</strong><span>Près de la limite</span></div><div class=\"summary-chip\"><strong>0</strong><span>Bloquées</span></div>",
+     "table": "\n      <tr class=\"selected-row\">\n        <td><div class=\"company-cell\"><strong>Empresa QA</strong><span>Empresa QA Ltda</span></div></td>\n        <td><div class=\"company-cell\"><strong>11222333000181</strong><span>start</span></div></td>\n        <td><div class=\"company-cell\"><span class=\"badge badge-status-active\">Entreprise active</span> <span class=\"badge badge-status-active\">Active</span><span>Validité: Du 01/01/2026 au 31/12/2026</span></div></td>\n        <td><div class=\"company-logo-slot\"><img class=\"company-logo company-logo-sm\" src=\"data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2080%2080%22%3E%3Crect%20width%3D%2280%22%20height%3D%2280%22%20rx%3D%2220%22%20fill%3D%22%23f6d8c8%22%2F%3E%3Cpath%20d%3D%22M20%2056h40M26%2048V26h28v22%22%20fill%3D%22none%22%20stroke%3D%22%2396401c%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E\" alt=\"Logotipo de Empresa QA\"></div></td>\n        <td><div class=\"company-cell\"><strong>3</strong><span>97 place(s) disponible(s)</span></div></td>\n        <td><div class=\"company-cell\"><strong>100</strong><span>1 234 567,89&nbsp;R$</span></div></td>\n        <td><div class=\"action-group\"><button class=\"ghost\" data-company-details=\"901\">Voir les détails</button><button class=\"ghost\" data-company-edit=\"901\">Modifier</button><button class=\"ghost\" data-company-logo=\"901\">Logotipo (suporte)</button><button class=\"ghost\" data-company-commercial=\"901\">Configurer la licence</button><button class=\"ghost\" data-company-toggle=\"901\" data-company-active=\"0\">Désactiver</button></div></td>\n      </tr>\n      <tr class=\"\">\n        <td><div class=\"company-cell\"><strong>Cliente Dois &lt;img src=x onerror=window.__xss=1&gt;</strong><span>Cliente Dois SA</span></div></td>\n        <td><div class=\"company-cell\"><strong>22333444000155</strong><span>pro</span></div></td>\n        <td><div class=\"company-cell\"><span class=\"badge badge-status-active\">Entreprise active</span> <span class=\"badge badge-status-warning\">Essai</span> <span class=\"badge badge-status-warning\">Proche de la limite</span><span>Validité: Du - au -</span></div></td>\n        <td><div class=\"company-logo-slot\"><img class=\"company-logo company-logo-sm\" src=\"data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2080%2080%22%3E%3Crect%20width%3D%2280%22%20height%3D%2280%22%20rx%3D%2220%22%20fill%3D%22%23f6d8c8%22%2F%3E%3Cpath%20d%3D%22M20%2056h40M26%2048V26h28v22%22%20fill%3D%22none%22%20stroke%3D%22%2396401c%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E\" alt=\"Logotipo de Cliente Dois &lt;img src=x onerror=window.__xss=1&gt;\"></div></td>\n        <td><div class=\"company-cell\"><strong>9</strong><span>1 place(s) disponible(s)</span></div></td>\n        <td><div class=\"company-cell\"><strong>10</strong><span>0,00&nbsp;R$</span></div></td>\n        <td><div class=\"action-group\"><button class=\"ghost\" data-company-details=\"902\">Voir les détails</button><button class=\"ghost\" data-company-edit=\"902\">Modifier</button><button class=\"ghost\" data-company-logo=\"902\">Logotipo (suporte)</button><button class=\"ghost\" data-company-commercial=\"902\">Configurer la licence</button><button class=\"ghost\" data-company-toggle=\"902\" data-company-active=\"0\">Désactiver</button></div></td>\n      </tr>",
+     "details": "\n    <div class=\"company-detail-hero\">\n      <img class=\"company-logo company-logo-lg\" src=\"data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2080%2080%22%3E%3Crect%20width%3D%2280%22%20height%3D%2280%22%20rx%3D%2220%22%20fill%3D%22%23f6d8c8%22%2F%3E%3Cpath%20d%3D%22M20%2056h40M26%2048V26h28v22%22%20fill%3D%22none%22%20stroke%3D%22%2396401c%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E\" alt=\"Logotipo de Empresa QA\">\n      <div>\n        <strong>Empresa QA</strong>\n        <span>Empresa QA Ltda</span>\n        <span>N° Fiscal: 11222333000181</span>\n      </div>\n    </div>\n    <div class=\"company-detail-badges\"><span class=\"badge badge-status-active\">Entreprise active</span> <span class=\"badge badge-status-active\">Active</span></div>\n    <div class=\"company-detail-grid\">\n      <div class=\"summary-chip\"><strong>3</strong><span>Utilisateurs possibles</span></div>\n      <div class=\"summary-chip\"><strong>100</strong><span>Limite contracté</span></div>\n      <div class=\"summary-chip\"><strong>1 234 567,89&nbsp;R$</strong><span>Valeur mensuelle actuelle</span></div>\n      <div class=\"summary-chip\"><strong>-12,35&nbsp;R$</strong><span>Valeur projetée</span></div>\n      <div class=\"summary-chip\"><strong>97</strong><span>Places disponibles</span></div>\n    </div>\n    <div class=\"company-detail-list\">\n      <div class=\"summary-item\"><strong>Plan / licence:</strong> Start</div>\n      <div class=\"summary-item\"><strong>Valeur unitaire:</strong> 0,01&nbsp;R$</div>\n      <div class=\"summary-item\"><strong>Validité:</strong> Du 01/01/2026 au 31/12/2026</div>\n      <div class=\"summary-item\"><strong>Avenant contractuel:</strong> Inactif</div>\n      <div class=\"summary-item\"><strong>Notes commerciales:</strong> QA</div>\n    </div>\n    <div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-company-view-contract=\"901\">Voir le contrat</button></div>",
+     "domains": "<tr><td>&lt;img src=x onerror=window.__xss=(window.__xss||0)+1&gt; <strong data-i18n=\"myCompany.domains.primary\">(principal)</strong></td><td>&lt;i&gt;t&lt;/i&gt;</td><td>Falhou</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"4\" data-i18n=\"myCompany.domains.verify\">Vérifier</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"4\" data-i18n=\"user.remove\">Supprimer</button></div></td></tr>",
+     "instructions": "To activate <strong>&lt;img src=x onerror=window.__xss=(window.__xss||0)+1&gt;</strong>: create a CNAME pointing to <code></code> and a TXT record at <code></code> with the value <code></code>, then click Verify.",
+     "xss": 0
+    },
+    "result": {
+     "currency": [
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "1,00 R$"
+      ],
+      [
+       "ok",
+       "-1,00 R$"
+      ],
+      [
+       "ok",
+       "0,01 R$"
+      ],
+      [
+       "ok",
+       "0,02 R$"
+      ],
+      [
+       "ok",
+       "1,01 R$"
+      ],
+      [
+       "ok",
+       "12,35 R$"
+      ],
+      [
+       "ok",
+       "-12,35 R$"
+      ],
+      [
+       "ok",
+       "1 234,50 R$"
+      ],
+      [
+       "ok",
+       "1 234 567,89 R$"
+      ],
+      [
+       "ok",
+       "-9 876 543,21 R$"
+      ],
+      [
+       "ok",
+       "1 000 000 000 000 000,00 R$"
+      ],
+      [
+       "ok",
+       "1 000 000 000 000 000 000 000,00 R$"
+      ],
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "∞ R$"
+      ],
+      [
+       "ok",
+       "-∞ R$"
+      ],
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "42,50 R$"
+      ],
+      [
+       "ok",
+       "NaN R$"
+      ],
+      [
+       "ok",
+       "1 000,00 R$"
+      ],
+      [
+       "ok",
+       "NaN R$"
+      ],
+      [
+       "ok",
+       "1,00 R$"
+      ],
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "5,00 R$"
+      ],
+      [
+       "ok",
+       "NaN R$"
+      ]
+     ],
+     "currencyNoArg": "0,00 R$",
+     "domains": [
+      [
+       "<tr><td colspan=\"5\" data-i18n=\"myCompany.domains.none\">Aucun domaine enregistré.</td></tr>",
+       ""
+      ],
+      [
+       "<tr><td>app.empresa.test <strong data-i18n=\"myCompany.domains.primary\">(principal)</strong></td><td>Subdomínio</td><td>Verificado</td><td>Ativo</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-delete=\"1\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>sub.plataforma.test</td><td></td><td>Pendente</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"7\" data-i18n=\"myCompany.domains.verify\">Vérifier</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"7\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>epi.cliente.test</td><td>Próprio</td><td>Pendente</td><td>Pendente</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"2\" data-i18n=\"myCompany.domains.verify\">Vérifier</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"2\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>b.test</td><td>Próprio</td><td>Verificado</td><td>Falhou</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-primary=\"3\" data-i18n=\"myCompany.domains.makePrimary\">Définir comme principal</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"3\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>&lt;img src=x onerror=window.__xss=(window.__xss||0)+1&gt; <strong data-i18n=\"myCompany.domains.primary\">(principal)</strong></td><td>&lt;i&gt;t&lt;/i&gt;</td><td>Falhou</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"4\" data-i18n=\"myCompany.domains.verify\">Vérifier</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"4\" data-i18n=\"user.remove\">Remover</button></div></td></tr>",
+       "Pour activer <strong>epi.cliente.test</strong> : créez un CNAME pointant vers <code>cname.&lt;b&gt;x&lt;/b&gt; $&amp;$1</code> et un enregistrement TXT sur <code>_epi$'</code> avec la valeur <code>tok \"1\" $$</code>, puis cliquez sur Vérifier."
+      ],
+      [
+       "<tr><td>sub.plataforma.test</td><td></td><td>Pendente</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"7\" data-i18n=\"myCompany.domains.verify\">Vérifier</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"7\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>epi.cliente.test</td><td>Próprio</td><td>Pendente</td><td>Pendente</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"2\" data-i18n=\"myCompany.domains.verify\">Vérifier</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"2\" data-i18n=\"user.remove\">Remover</button></div></td></tr>",
+       "Pour activer <strong>epi.cliente.test</strong> : créez un CNAME pointant vers <code>cname.&lt;b&gt;x&lt;/b&gt; $&amp;$1</code> et un enregistrement TXT sur <code>_epi$'</code> avec la valeur <code>tok \"1\" $$</code>, puis cliquez sur Vérifier."
+      ],
+      [
+       "<tr><td></td><td></td><td>-</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"\" data-i18n=\"myCompany.domains.verify\">Vérifier</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"\" data-i18n=\"user.remove\">Remover</button></div></td></tr>",
+       "Pour activer <strong></strong> : créez un CNAME pointant vers <code></code> et un enregistrement TXT sur <code></code> avec la valeur <code></code>, puis cliquez sur Vérifier."
+      ],
+      [
+       "<tr><td>&lt;img src=x onerror=window.__xss=(window.__xss||0)+1&gt; <strong data-i18n=\"myCompany.domains.primary\">(principal)</strong></td><td>&lt;i&gt;t&lt;/i&gt;</td><td>Falhou</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"4\" data-i18n=\"myCompany.domains.verify\">Vérifier</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"4\" data-i18n=\"user.remove\">Remover</button></div></td></tr>",
+       "Pour activer <strong>&lt;img src=x onerror=window.__xss=(window.__xss||0)+1&gt;</strong> : créez un CNAME pointant vers <code></code> et un enregistrement TXT sur <code></code> avec la valeur <code></code>, puis cliquez sur Vérifier."
+      ]
+     ],
+     "base64": [
+      [
+       "ok",
+       "JVBERi0xLjQKJVFBCg=="
+      ],
+      [
+       "ok",
+       "T2zDoSwgbXVuZG8gIsOnw6MiIDxiPg=="
+      ],
+      [
+       "ok",
+       ""
+      ],
+      [
+       "ok",
+       "AAEC+vv8/f7/"
+      ]
+     ]
+    }
+   }
+  ]
+ },
+ "es-ES": {
+  "steps": [
+   {
+    "label": "Empresas",
+    "snapshot": {
+     "summary": "<div class=\"summary-chip\"><strong>2</strong><span>Empresas</span></div><div class=\"summary-chip\"><strong>2</strong><span>Activas</span></div><div class=\"summary-chip\"><strong>1</strong><span>Cerca del límite</span></div><div class=\"summary-chip\"><strong>0</strong><span>Bloqueadas</span></div>",
+     "table": "\n      <tr class=\"selected-row\">\n        <td><div class=\"company-cell\"><strong>Empresa QA</strong><span>Empresa QA Ltda</span></div></td>\n        <td><div class=\"company-cell\"><strong>11222333000181</strong><span>start</span></div></td>\n        <td><div class=\"company-cell\"><span class=\"badge badge-status-active\">Empresa activa</span> <span class=\"badge badge-status-active\">Activa</span><span>Vigencia: 1/1/2026 hasta 31/12/2026</span></div></td>\n        <td><div class=\"company-logo-slot\"><img class=\"company-logo company-logo-sm\" src=\"data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2080%2080%22%3E%3Crect%20width%3D%2280%22%20height%3D%2280%22%20rx%3D%2220%22%20fill%3D%22%23f6d8c8%22%2F%3E%3Cpath%20d%3D%22M20%2056h40M26%2048V26h28v22%22%20fill%3D%22none%22%20stroke%3D%22%2396401c%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E\" alt=\"Logotipo de Empresa QA\"></div></td>\n        <td><div class=\"company-cell\"><strong>3</strong><span>97 plaza(s) disponible(s)</span></div></td>\n        <td><div class=\"company-cell\"><strong>100</strong><span>1.234.567,89&nbsp;BRL</span></div></td>\n        <td><div class=\"action-group\"><button class=\"ghost\" data-company-details=\"901\">Ver detalles</button><button class=\"ghost\" data-company-edit=\"901\">Editar</button><button class=\"ghost\" data-company-logo=\"901\">Logotipo (suporte)</button><button class=\"ghost\" data-company-commercial=\"901\">Configurar licencia</button><button class=\"ghost\" data-company-toggle=\"901\" data-company-active=\"0\">Desactivar</button></div></td>\n      </tr>\n      <tr class=\"\">\n        <td><div class=\"company-cell\"><strong>Cliente Dois &lt;img src=x onerror=window.__xss=1&gt;</strong><span>Cliente Dois SA</span></div></td>\n        <td><div class=\"company-cell\"><strong>22333444000155</strong><span>pro</span></div></td>\n        <td><div class=\"company-cell\"><span class=\"badge badge-status-active\">Empresa activa</span> <span class=\"badge badge-status-warning\">Prueba</span> <span class=\"badge badge-status-warning\">Cerca del límite</span><span>Vigencia: - hasta -</span></div></td>\n        <td><div class=\"company-logo-slot\"><img class=\"company-logo company-logo-sm\" src=\"data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2080%2080%22%3E%3Crect%20width%3D%2280%22%20height%3D%2280%22%20rx%3D%2220%22%20fill%3D%22%23f6d8c8%22%2F%3E%3Cpath%20d%3D%22M20%2056h40M26%2048V26h28v22%22%20fill%3D%22none%22%20stroke%3D%22%2396401c%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E\" alt=\"Logotipo de Cliente Dois &lt;img src=x onerror=window.__xss=1&gt;\"></div></td>\n        <td><div class=\"company-cell\"><strong>9</strong><span>1 plaza(s) disponible(s)</span></div></td>\n        <td><div class=\"company-cell\"><strong>10</strong><span>0,00&nbsp;BRL</span></div></td>\n        <td><div class=\"action-group\"><button class=\"ghost\" data-company-details=\"902\">Ver detalles</button><button class=\"ghost\" data-company-edit=\"902\">Editar</button><button class=\"ghost\" data-company-logo=\"902\">Logotipo (suporte)</button><button class=\"ghost\" data-company-commercial=\"902\">Configurar licencia</button><button class=\"ghost\" data-company-toggle=\"902\" data-company-active=\"0\">Desactivar</button></div></td>\n      </tr>",
+     "details": "\n    <div class=\"company-detail-hero\">\n      <img class=\"company-logo company-logo-lg\" src=\"data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2080%2080%22%3E%3Crect%20width%3D%2280%22%20height%3D%2280%22%20rx%3D%2220%22%20fill%3D%22%23f6d8c8%22%2F%3E%3Cpath%20d%3D%22M20%2056h40M26%2048V26h28v22%22%20fill%3D%22none%22%20stroke%3D%22%2396401c%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E\" alt=\"Logotipo de Empresa QA\">\n      <div>\n        <strong>Empresa QA</strong>\n        <span>Empresa QA Ltda</span>\n        <span>ID Fiscal: 11222333000181</span>\n      </div>\n    </div>\n    <div class=\"company-detail-badges\"><span class=\"badge badge-status-active\">Empresa activa</span> <span class=\"badge badge-status-active\">Activa</span></div>\n    <div class=\"company-detail-grid\">\n      <div class=\"summary-chip\"><strong>3</strong><span>Usuarios posibles</span></div>\n      <div class=\"summary-chip\"><strong>100</strong><span>Límite contratado</span></div>\n      <div class=\"summary-chip\"><strong>1.234.567,89&nbsp;BRL</strong><span>Valor mensual actual</span></div>\n      <div class=\"summary-chip\"><strong>-12,35&nbsp;BRL</strong><span>Valor proyectado</span></div>\n      <div class=\"summary-chip\"><strong>97</strong><span>Plazas disponibles</span></div>\n    </div>\n    <div class=\"company-detail-list\">\n      <div class=\"summary-item\"><strong>Plan / licencia:</strong> Start</div>\n      <div class=\"summary-item\"><strong>Valor unitario:</strong> 0,01&nbsp;BRL</div>\n      <div class=\"summary-item\"><strong>Vigencia:</strong> 1/1/2026 hasta 31/12/2026</div>\n      <div class=\"summary-item\"><strong>Adenda contractual:</strong> Inactivo</div>\n      <div class=\"summary-item\"><strong>Observaciones comerciales:</strong> QA</div>\n    </div>\n    <div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-company-view-contract=\"901\">Ver contrato</button></div>",
+     "domains": "",
+     "instructions": "",
+     "xss": 0
+    }
+   },
+   {
+    "label": "funções",
+    "result": {
+     "currency": [
+      [
+       "ok",
+       "0,00 BRL"
+      ],
+      [
+       "ok",
+       "0,00 BRL"
+      ],
+      [
+       "ok",
+       "1,00 BRL"
+      ],
+      [
+       "ok",
+       "-1,00 BRL"
+      ],
+      [
+       "ok",
+       "0,01 BRL"
+      ],
+      [
+       "ok",
+       "0,02 BRL"
+      ],
+      [
+       "ok",
+       "1,01 BRL"
+      ],
+      [
+       "ok",
+       "12,35 BRL"
+      ],
+      [
+       "ok",
+       "-12,35 BRL"
+      ],
+      [
+       "ok",
+       "1234,50 BRL"
+      ],
+      [
+       "ok",
+       "1.234.567,89 BRL"
+      ],
+      [
+       "ok",
+       "-9.876.543,21 BRL"
+      ],
+      [
+       "ok",
+       "1.000.000.000.000.000,00 BRL"
+      ],
+      [
+       "ok",
+       "1.000.000.000.000.000.000.000,00 BRL"
+      ],
+      [
+       "ok",
+       "0,00 BRL"
+      ],
+      [
+       "ok",
+       "∞ BRL"
+      ],
+      [
+       "ok",
+       "-∞ BRL"
+      ],
+      [
+       "ok",
+       "0,00 BRL"
+      ],
+      [
+       "ok",
+       "0,00 BRL"
+      ],
+      [
+       "ok",
+       "0,00 BRL"
+      ],
+      [
+       "ok",
+       "0,00 BRL"
+      ],
+      [
+       "ok",
+       "42,50 BRL"
+      ],
+      [
+       "ok",
+       "NaN BRL"
+      ],
+      [
+       "ok",
+       "1000,00 BRL"
+      ],
+      [
+       "ok",
+       "NaN BRL"
+      ],
+      [
+       "ok",
+       "1,00 BRL"
+      ],
+      [
+       "ok",
+       "0,00 BRL"
+      ],
+      [
+       "ok",
+       "0,00 BRL"
+      ],
+      [
+       "ok",
+       "5,00 BRL"
+      ],
+      [
+       "ok",
+       "NaN BRL"
+      ]
+     ],
+     "currencyNoArg": "0,00 BRL",
+     "domains": [
+      [
+       "<tr><td colspan=\"5\" data-i18n=\"myCompany.domains.none\">No hay dominios registrados.</td></tr>",
+       ""
+      ],
+      [
+       "<tr><td>app.empresa.test <strong data-i18n=\"myCompany.domains.primary\">(principal)</strong></td><td>Subdomínio</td><td>Verificado</td><td>Ativo</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-delete=\"1\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>sub.plataforma.test</td><td></td><td>Pendente</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"7\" data-i18n=\"myCompany.domains.verify\">Verificar</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"7\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>epi.cliente.test</td><td>Próprio</td><td>Pendente</td><td>Pendente</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"2\" data-i18n=\"myCompany.domains.verify\">Verificar</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"2\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>b.test</td><td>Próprio</td><td>Verificado</td><td>Falhou</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-primary=\"3\" data-i18n=\"myCompany.domains.makePrimary\">Establecer como principal</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"3\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>&lt;img src=x onerror=window.__xss=(window.__xss||0)+1&gt; <strong data-i18n=\"myCompany.domains.primary\">(principal)</strong></td><td>&lt;i&gt;t&lt;/i&gt;</td><td>Falhou</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"4\" data-i18n=\"myCompany.domains.verify\">Verificar</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"4\" data-i18n=\"user.remove\">Remover</button></div></td></tr>",
+       "Para activar <strong>epi.cliente.test</strong>: cree un CNAME que apunte a <code>cname.&lt;b&gt;x&lt;/b&gt; $&amp;$1</code> y un registro TXT en <code>_epi$'</code> con el valor <code>tok \"1\" $$</code>; después haga clic en Verificar."
+      ],
+      [
+       "<tr><td>sub.plataforma.test</td><td></td><td>Pendente</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"7\" data-i18n=\"myCompany.domains.verify\">Verificar</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"7\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>epi.cliente.test</td><td>Próprio</td><td>Pendente</td><td>Pendente</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"2\" data-i18n=\"myCompany.domains.verify\">Verificar</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"2\" data-i18n=\"user.remove\">Remover</button></div></td></tr>",
+       "Para activar <strong>epi.cliente.test</strong>: cree un CNAME que apunte a <code>cname.&lt;b&gt;x&lt;/b&gt; $&amp;$1</code> y un registro TXT en <code>_epi$'</code> con el valor <code>tok \"1\" $$</code>; después haga clic en Verificar."
+      ],
+      [
+       "<tr><td></td><td></td><td>-</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"\" data-i18n=\"myCompany.domains.verify\">Verificar</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"\" data-i18n=\"user.remove\">Remover</button></div></td></tr>",
+       "Para activar <strong></strong>: cree un CNAME que apunte a <code></code> y un registro TXT en <code></code> con el valor <code></code>; después haga clic en Verificar."
+      ],
+      [
+       "<tr><td>&lt;img src=x onerror=window.__xss=(window.__xss||0)+1&gt; <strong data-i18n=\"myCompany.domains.primary\">(principal)</strong></td><td>&lt;i&gt;t&lt;/i&gt;</td><td>Falhou</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"4\" data-i18n=\"myCompany.domains.verify\">Verificar</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"4\" data-i18n=\"user.remove\">Remover</button></div></td></tr>",
+       "Para activar <strong>&lt;img src=x onerror=window.__xss=(window.__xss||0)+1&gt;</strong>: cree un CNAME que apunte a <code></code> y un registro TXT en <code></code> con el valor <code></code>; después haga clic en Verificar."
+      ]
+     ],
+     "base64": [
+      [
+       "ok",
+       "JVBERi0xLjQKJVFBCg=="
+      ],
+      [
+       "ok",
+       "T2zDoSwgbXVuZG8gIsOnw6MiIDxiPg=="
+      ],
+      [
+       "ok",
+       ""
+      ],
+      [
+       "ok",
+       "AAEC+vv8/f7/"
+      ]
+     ]
+    }
+   },
+   {
+    "label": "troca de idioma (fr-FR)",
+    "snapshot": {
+     "summary": "<div class=\"summary-chip\"><strong>2</strong><span>Entreprises</span></div><div class=\"summary-chip\"><strong>2</strong><span>Actives</span></div><div class=\"summary-chip\"><strong>1</strong><span>Près de la limite</span></div><div class=\"summary-chip\"><strong>0</strong><span>Bloquées</span></div>",
+     "table": "\n      <tr class=\"selected-row\">\n        <td><div class=\"company-cell\"><strong>Empresa QA</strong><span>Empresa QA Ltda</span></div></td>\n        <td><div class=\"company-cell\"><strong>11222333000181</strong><span>start</span></div></td>\n        <td><div class=\"company-cell\"><span class=\"badge badge-status-active\">Entreprise active</span> <span class=\"badge badge-status-active\">Active</span><span>Validité: Du 01/01/2026 au 31/12/2026</span></div></td>\n        <td><div class=\"company-logo-slot\"><img class=\"company-logo company-logo-sm\" src=\"data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2080%2080%22%3E%3Crect%20width%3D%2280%22%20height%3D%2280%22%20rx%3D%2220%22%20fill%3D%22%23f6d8c8%22%2F%3E%3Cpath%20d%3D%22M20%2056h40M26%2048V26h28v22%22%20fill%3D%22none%22%20stroke%3D%22%2396401c%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E\" alt=\"Logotipo de Empresa QA\"></div></td>\n        <td><div class=\"company-cell\"><strong>3</strong><span>97 place(s) disponible(s)</span></div></td>\n        <td><div class=\"company-cell\"><strong>100</strong><span>1 234 567,89&nbsp;R$</span></div></td>\n        <td><div class=\"action-group\"><button class=\"ghost\" data-company-details=\"901\">Voir les détails</button><button class=\"ghost\" data-company-edit=\"901\">Modifier</button><button class=\"ghost\" data-company-logo=\"901\">Logotipo (suporte)</button><button class=\"ghost\" data-company-commercial=\"901\">Configurer la licence</button><button class=\"ghost\" data-company-toggle=\"901\" data-company-active=\"0\">Désactiver</button></div></td>\n      </tr>\n      <tr class=\"\">\n        <td><div class=\"company-cell\"><strong>Cliente Dois &lt;img src=x onerror=window.__xss=1&gt;</strong><span>Cliente Dois SA</span></div></td>\n        <td><div class=\"company-cell\"><strong>22333444000155</strong><span>pro</span></div></td>\n        <td><div class=\"company-cell\"><span class=\"badge badge-status-active\">Entreprise active</span> <span class=\"badge badge-status-warning\">Essai</span> <span class=\"badge badge-status-warning\">Proche de la limite</span><span>Validité: Du - au -</span></div></td>\n        <td><div class=\"company-logo-slot\"><img class=\"company-logo company-logo-sm\" src=\"data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2080%2080%22%3E%3Crect%20width%3D%2280%22%20height%3D%2280%22%20rx%3D%2220%22%20fill%3D%22%23f6d8c8%22%2F%3E%3Cpath%20d%3D%22M20%2056h40M26%2048V26h28v22%22%20fill%3D%22none%22%20stroke%3D%22%2396401c%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E\" alt=\"Logotipo de Cliente Dois &lt;img src=x onerror=window.__xss=1&gt;\"></div></td>\n        <td><div class=\"company-cell\"><strong>9</strong><span>1 place(s) disponible(s)</span></div></td>\n        <td><div class=\"company-cell\"><strong>10</strong><span>0,00&nbsp;R$</span></div></td>\n        <td><div class=\"action-group\"><button class=\"ghost\" data-company-details=\"902\">Voir les détails</button><button class=\"ghost\" data-company-edit=\"902\">Modifier</button><button class=\"ghost\" data-company-logo=\"902\">Logotipo (suporte)</button><button class=\"ghost\" data-company-commercial=\"902\">Configurer la licence</button><button class=\"ghost\" data-company-toggle=\"902\" data-company-active=\"0\">Désactiver</button></div></td>\n      </tr>",
+     "details": "\n    <div class=\"company-detail-hero\">\n      <img class=\"company-logo company-logo-lg\" src=\"data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2080%2080%22%3E%3Crect%20width%3D%2280%22%20height%3D%2280%22%20rx%3D%2220%22%20fill%3D%22%23f6d8c8%22%2F%3E%3Cpath%20d%3D%22M20%2056h40M26%2048V26h28v22%22%20fill%3D%22none%22%20stroke%3D%22%2396401c%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E\" alt=\"Logotipo de Empresa QA\">\n      <div>\n        <strong>Empresa QA</strong>\n        <span>Empresa QA Ltda</span>\n        <span>N° Fiscal: 11222333000181</span>\n      </div>\n    </div>\n    <div class=\"company-detail-badges\"><span class=\"badge badge-status-active\">Entreprise active</span> <span class=\"badge badge-status-active\">Active</span></div>\n    <div class=\"company-detail-grid\">\n      <div class=\"summary-chip\"><strong>3</strong><span>Utilisateurs possibles</span></div>\n      <div class=\"summary-chip\"><strong>100</strong><span>Limite contracté</span></div>\n      <div class=\"summary-chip\"><strong>1 234 567,89&nbsp;R$</strong><span>Valeur mensuelle actuelle</span></div>\n      <div class=\"summary-chip\"><strong>-12,35&nbsp;R$</strong><span>Valeur projetée</span></div>\n      <div class=\"summary-chip\"><strong>97</strong><span>Places disponibles</span></div>\n    </div>\n    <div class=\"company-detail-list\">\n      <div class=\"summary-item\"><strong>Plan / licence:</strong> Start</div>\n      <div class=\"summary-item\"><strong>Valeur unitaire:</strong> 0,01&nbsp;R$</div>\n      <div class=\"summary-item\"><strong>Validité:</strong> Du 01/01/2026 au 31/12/2026</div>\n      <div class=\"summary-item\"><strong>Avenant contractuel:</strong> Inactif</div>\n      <div class=\"summary-item\"><strong>Notes commerciales:</strong> QA</div>\n    </div>\n    <div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-company-view-contract=\"901\">Voir le contrat</button></div>",
+     "domains": "<tr><td>&lt;img src=x onerror=window.__xss=(window.__xss||0)+1&gt; <strong data-i18n=\"myCompany.domains.primary\">(principal)</strong></td><td>&lt;i&gt;t&lt;/i&gt;</td><td>Falhou</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"4\" data-i18n=\"myCompany.domains.verify\">Vérifier</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"4\" data-i18n=\"user.remove\">Supprimer</button></div></td></tr>",
+     "instructions": "Para activar <strong>&lt;img src=x onerror=window.__xss=(window.__xss||0)+1&gt;</strong>: cree un CNAME que apunte a <code></code> y un registro TXT en <code></code> con el valor <code></code>; después haga clic en Verificar.",
+     "xss": 0
+    },
+    "result": {
+     "currency": [
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "1,00 R$"
+      ],
+      [
+       "ok",
+       "-1,00 R$"
+      ],
+      [
+       "ok",
+       "0,01 R$"
+      ],
+      [
+       "ok",
+       "0,02 R$"
+      ],
+      [
+       "ok",
+       "1,01 R$"
+      ],
+      [
+       "ok",
+       "12,35 R$"
+      ],
+      [
+       "ok",
+       "-12,35 R$"
+      ],
+      [
+       "ok",
+       "1 234,50 R$"
+      ],
+      [
+       "ok",
+       "1 234 567,89 R$"
+      ],
+      [
+       "ok",
+       "-9 876 543,21 R$"
+      ],
+      [
+       "ok",
+       "1 000 000 000 000 000,00 R$"
+      ],
+      [
+       "ok",
+       "1 000 000 000 000 000 000 000,00 R$"
+      ],
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "∞ R$"
+      ],
+      [
+       "ok",
+       "-∞ R$"
+      ],
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "42,50 R$"
+      ],
+      [
+       "ok",
+       "NaN R$"
+      ],
+      [
+       "ok",
+       "1 000,00 R$"
+      ],
+      [
+       "ok",
+       "NaN R$"
+      ],
+      [
+       "ok",
+       "1,00 R$"
+      ],
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "5,00 R$"
+      ],
+      [
+       "ok",
+       "NaN R$"
+      ]
+     ],
+     "currencyNoArg": "0,00 R$",
+     "domains": [
+      [
+       "<tr><td colspan=\"5\" data-i18n=\"myCompany.domains.none\">Aucun domaine enregistré.</td></tr>",
+       ""
+      ],
+      [
+       "<tr><td>app.empresa.test <strong data-i18n=\"myCompany.domains.primary\">(principal)</strong></td><td>Subdomínio</td><td>Verificado</td><td>Ativo</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-delete=\"1\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>sub.plataforma.test</td><td></td><td>Pendente</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"7\" data-i18n=\"myCompany.domains.verify\">Vérifier</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"7\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>epi.cliente.test</td><td>Próprio</td><td>Pendente</td><td>Pendente</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"2\" data-i18n=\"myCompany.domains.verify\">Vérifier</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"2\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>b.test</td><td>Próprio</td><td>Verificado</td><td>Falhou</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-primary=\"3\" data-i18n=\"myCompany.domains.makePrimary\">Définir comme principal</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"3\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>&lt;img src=x onerror=window.__xss=(window.__xss||0)+1&gt; <strong data-i18n=\"myCompany.domains.primary\">(principal)</strong></td><td>&lt;i&gt;t&lt;/i&gt;</td><td>Falhou</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"4\" data-i18n=\"myCompany.domains.verify\">Vérifier</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"4\" data-i18n=\"user.remove\">Remover</button></div></td></tr>",
+       "Pour activer <strong>epi.cliente.test</strong> : créez un CNAME pointant vers <code>cname.&lt;b&gt;x&lt;/b&gt; $&amp;$1</code> et un enregistrement TXT sur <code>_epi$'</code> avec la valeur <code>tok \"1\" $$</code>, puis cliquez sur Vérifier."
+      ],
+      [
+       "<tr><td>sub.plataforma.test</td><td></td><td>Pendente</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"7\" data-i18n=\"myCompany.domains.verify\">Vérifier</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"7\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>epi.cliente.test</td><td>Próprio</td><td>Pendente</td><td>Pendente</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"2\" data-i18n=\"myCompany.domains.verify\">Vérifier</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"2\" data-i18n=\"user.remove\">Remover</button></div></td></tr>",
+       "Pour activer <strong>epi.cliente.test</strong> : créez un CNAME pointant vers <code>cname.&lt;b&gt;x&lt;/b&gt; $&amp;$1</code> et un enregistrement TXT sur <code>_epi$'</code> avec la valeur <code>tok \"1\" $$</code>, puis cliquez sur Vérifier."
+      ],
+      [
+       "<tr><td></td><td></td><td>-</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"\" data-i18n=\"myCompany.domains.verify\">Vérifier</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"\" data-i18n=\"user.remove\">Remover</button></div></td></tr>",
+       "Pour activer <strong></strong> : créez un CNAME pointant vers <code></code> et un enregistrement TXT sur <code></code> avec la valeur <code></code>, puis cliquez sur Vérifier."
+      ],
+      [
+       "<tr><td>&lt;img src=x onerror=window.__xss=(window.__xss||0)+1&gt; <strong data-i18n=\"myCompany.domains.primary\">(principal)</strong></td><td>&lt;i&gt;t&lt;/i&gt;</td><td>Falhou</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"4\" data-i18n=\"myCompany.domains.verify\">Vérifier</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"4\" data-i18n=\"user.remove\">Remover</button></div></td></tr>",
+       "Pour activer <strong>&lt;img src=x onerror=window.__xss=(window.__xss||0)+1&gt;</strong> : créez un CNAME pointant vers <code></code> et un enregistrement TXT sur <code></code> avec la valeur <code></code>, puis cliquez sur Vérifier."
+      ]
+     ],
+     "base64": [
+      [
+       "ok",
+       "JVBERi0xLjQKJVFBCg=="
+      ],
+      [
+       "ok",
+       "T2zDoSwgbXVuZG8gIsOnw6MiIDxiPg=="
+      ],
+      [
+       "ok",
+       ""
+      ],
+      [
+       "ok",
+       "AAEC+vv8/f7/"
+      ]
+     ]
+    }
+   }
+  ]
+ },
+ "fr-FR": {
+  "steps": [
+   {
+    "label": "Empresas",
+    "snapshot": {
+     "summary": "<div class=\"summary-chip\"><strong>2</strong><span>Entreprises</span></div><div class=\"summary-chip\"><strong>2</strong><span>Actives</span></div><div class=\"summary-chip\"><strong>1</strong><span>Près de la limite</span></div><div class=\"summary-chip\"><strong>0</strong><span>Bloquées</span></div>",
+     "table": "\n      <tr class=\"selected-row\">\n        <td><div class=\"company-cell\"><strong>Empresa QA</strong><span>Empresa QA Ltda</span></div></td>\n        <td><div class=\"company-cell\"><strong>11222333000181</strong><span>start</span></div></td>\n        <td><div class=\"company-cell\"><span class=\"badge badge-status-active\">Entreprise active</span> <span class=\"badge badge-status-active\">Active</span><span>Validité: Du 01/01/2026 au 31/12/2026</span></div></td>\n        <td><div class=\"company-logo-slot\"><img class=\"company-logo company-logo-sm\" src=\"data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2080%2080%22%3E%3Crect%20width%3D%2280%22%20height%3D%2280%22%20rx%3D%2220%22%20fill%3D%22%23f6d8c8%22%2F%3E%3Cpath%20d%3D%22M20%2056h40M26%2048V26h28v22%22%20fill%3D%22none%22%20stroke%3D%22%2396401c%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E\" alt=\"Logotipo de Empresa QA\"></div></td>\n        <td><div class=\"company-cell\"><strong>3</strong><span>97 place(s) disponible(s)</span></div></td>\n        <td><div class=\"company-cell\"><strong>100</strong><span>1 234 567,89&nbsp;R$</span></div></td>\n        <td><div class=\"action-group\"><button class=\"ghost\" data-company-details=\"901\">Voir les détails</button><button class=\"ghost\" data-company-edit=\"901\">Modifier</button><button class=\"ghost\" data-company-logo=\"901\">Logotipo (suporte)</button><button class=\"ghost\" data-company-commercial=\"901\">Configurer la licence</button><button class=\"ghost\" data-company-toggle=\"901\" data-company-active=\"0\">Désactiver</button></div></td>\n      </tr>\n      <tr class=\"\">\n        <td><div class=\"company-cell\"><strong>Cliente Dois &lt;img src=x onerror=window.__xss=1&gt;</strong><span>Cliente Dois SA</span></div></td>\n        <td><div class=\"company-cell\"><strong>22333444000155</strong><span>pro</span></div></td>\n        <td><div class=\"company-cell\"><span class=\"badge badge-status-active\">Entreprise active</span> <span class=\"badge badge-status-warning\">Essai</span> <span class=\"badge badge-status-warning\">Proche de la limite</span><span>Validité: Du - au -</span></div></td>\n        <td><div class=\"company-logo-slot\"><img class=\"company-logo company-logo-sm\" src=\"data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2080%2080%22%3E%3Crect%20width%3D%2280%22%20height%3D%2280%22%20rx%3D%2220%22%20fill%3D%22%23f6d8c8%22%2F%3E%3Cpath%20d%3D%22M20%2056h40M26%2048V26h28v22%22%20fill%3D%22none%22%20stroke%3D%22%2396401c%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E\" alt=\"Logotipo de Cliente Dois &lt;img src=x onerror=window.__xss=1&gt;\"></div></td>\n        <td><div class=\"company-cell\"><strong>9</strong><span>1 place(s) disponible(s)</span></div></td>\n        <td><div class=\"company-cell\"><strong>10</strong><span>0,00&nbsp;R$</span></div></td>\n        <td><div class=\"action-group\"><button class=\"ghost\" data-company-details=\"902\">Voir les détails</button><button class=\"ghost\" data-company-edit=\"902\">Modifier</button><button class=\"ghost\" data-company-logo=\"902\">Logotipo (suporte)</button><button class=\"ghost\" data-company-commercial=\"902\">Configurer la licence</button><button class=\"ghost\" data-company-toggle=\"902\" data-company-active=\"0\">Désactiver</button></div></td>\n      </tr>",
+     "details": "\n    <div class=\"company-detail-hero\">\n      <img class=\"company-logo company-logo-lg\" src=\"data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2080%2080%22%3E%3Crect%20width%3D%2280%22%20height%3D%2280%22%20rx%3D%2220%22%20fill%3D%22%23f6d8c8%22%2F%3E%3Cpath%20d%3D%22M20%2056h40M26%2048V26h28v22%22%20fill%3D%22none%22%20stroke%3D%22%2396401c%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E\" alt=\"Logotipo de Empresa QA\">\n      <div>\n        <strong>Empresa QA</strong>\n        <span>Empresa QA Ltda</span>\n        <span>N° Fiscal: 11222333000181</span>\n      </div>\n    </div>\n    <div class=\"company-detail-badges\"><span class=\"badge badge-status-active\">Entreprise active</span> <span class=\"badge badge-status-active\">Active</span></div>\n    <div class=\"company-detail-grid\">\n      <div class=\"summary-chip\"><strong>3</strong><span>Utilisateurs possibles</span></div>\n      <div class=\"summary-chip\"><strong>100</strong><span>Limite contracté</span></div>\n      <div class=\"summary-chip\"><strong>1 234 567,89&nbsp;R$</strong><span>Valeur mensuelle actuelle</span></div>\n      <div class=\"summary-chip\"><strong>-12,35&nbsp;R$</strong><span>Valeur projetée</span></div>\n      <div class=\"summary-chip\"><strong>97</strong><span>Places disponibles</span></div>\n    </div>\n    <div class=\"company-detail-list\">\n      <div class=\"summary-item\"><strong>Plan / licence:</strong> Start</div>\n      <div class=\"summary-item\"><strong>Valeur unitaire:</strong> 0,01&nbsp;R$</div>\n      <div class=\"summary-item\"><strong>Validité:</strong> Du 01/01/2026 au 31/12/2026</div>\n      <div class=\"summary-item\"><strong>Avenant contractuel:</strong> Inactif</div>\n      <div class=\"summary-item\"><strong>Notes commerciales:</strong> QA</div>\n    </div>\n    <div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-company-view-contract=\"901\">Voir le contrat</button></div>",
+     "domains": "",
+     "instructions": "",
+     "xss": 0
+    }
+   },
+   {
+    "label": "funções",
+    "result": {
+     "currency": [
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "1,00 R$"
+      ],
+      [
+       "ok",
+       "-1,00 R$"
+      ],
+      [
+       "ok",
+       "0,01 R$"
+      ],
+      [
+       "ok",
+       "0,02 R$"
+      ],
+      [
+       "ok",
+       "1,01 R$"
+      ],
+      [
+       "ok",
+       "12,35 R$"
+      ],
+      [
+       "ok",
+       "-12,35 R$"
+      ],
+      [
+       "ok",
+       "1 234,50 R$"
+      ],
+      [
+       "ok",
+       "1 234 567,89 R$"
+      ],
+      [
+       "ok",
+       "-9 876 543,21 R$"
+      ],
+      [
+       "ok",
+       "1 000 000 000 000 000,00 R$"
+      ],
+      [
+       "ok",
+       "1 000 000 000 000 000 000 000,00 R$"
+      ],
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "∞ R$"
+      ],
+      [
+       "ok",
+       "-∞ R$"
+      ],
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "42,50 R$"
+      ],
+      [
+       "ok",
+       "NaN R$"
+      ],
+      [
+       "ok",
+       "1 000,00 R$"
+      ],
+      [
+       "ok",
+       "NaN R$"
+      ],
+      [
+       "ok",
+       "1,00 R$"
+      ],
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "5,00 R$"
+      ],
+      [
+       "ok",
+       "NaN R$"
+      ]
+     ],
+     "currencyNoArg": "0,00 R$",
+     "domains": [
+      [
+       "<tr><td colspan=\"5\" data-i18n=\"myCompany.domains.none\">Aucun domaine enregistré.</td></tr>",
+       ""
+      ],
+      [
+       "<tr><td>app.empresa.test <strong data-i18n=\"myCompany.domains.primary\">(principal)</strong></td><td>Subdomínio</td><td>Verificado</td><td>Ativo</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-delete=\"1\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>sub.plataforma.test</td><td></td><td>Pendente</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"7\" data-i18n=\"myCompany.domains.verify\">Vérifier</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"7\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>epi.cliente.test</td><td>Próprio</td><td>Pendente</td><td>Pendente</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"2\" data-i18n=\"myCompany.domains.verify\">Vérifier</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"2\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>b.test</td><td>Próprio</td><td>Verificado</td><td>Falhou</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-primary=\"3\" data-i18n=\"myCompany.domains.makePrimary\">Définir comme principal</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"3\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>&lt;img src=x onerror=window.__xss=(window.__xss||0)+1&gt; <strong data-i18n=\"myCompany.domains.primary\">(principal)</strong></td><td>&lt;i&gt;t&lt;/i&gt;</td><td>Falhou</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"4\" data-i18n=\"myCompany.domains.verify\">Vérifier</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"4\" data-i18n=\"user.remove\">Remover</button></div></td></tr>",
+       "Pour activer <strong>epi.cliente.test</strong> : créez un CNAME pointant vers <code>cname.&lt;b&gt;x&lt;/b&gt; $&amp;$1</code> et un enregistrement TXT sur <code>_epi$'</code> avec la valeur <code>tok \"1\" $$</code>, puis cliquez sur Vérifier."
+      ],
+      [
+       "<tr><td>sub.plataforma.test</td><td></td><td>Pendente</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"7\" data-i18n=\"myCompany.domains.verify\">Vérifier</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"7\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>epi.cliente.test</td><td>Próprio</td><td>Pendente</td><td>Pendente</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"2\" data-i18n=\"myCompany.domains.verify\">Vérifier</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"2\" data-i18n=\"user.remove\">Remover</button></div></td></tr>",
+       "Pour activer <strong>epi.cliente.test</strong> : créez un CNAME pointant vers <code>cname.&lt;b&gt;x&lt;/b&gt; $&amp;$1</code> et un enregistrement TXT sur <code>_epi$'</code> avec la valeur <code>tok \"1\" $$</code>, puis cliquez sur Vérifier."
+      ],
+      [
+       "<tr><td></td><td></td><td>-</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"\" data-i18n=\"myCompany.domains.verify\">Vérifier</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"\" data-i18n=\"user.remove\">Remover</button></div></td></tr>",
+       "Pour activer <strong></strong> : créez un CNAME pointant vers <code></code> et un enregistrement TXT sur <code></code> avec la valeur <code></code>, puis cliquez sur Vérifier."
+      ],
+      [
+       "<tr><td>&lt;img src=x onerror=window.__xss=(window.__xss||0)+1&gt; <strong data-i18n=\"myCompany.domains.primary\">(principal)</strong></td><td>&lt;i&gt;t&lt;/i&gt;</td><td>Falhou</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"4\" data-i18n=\"myCompany.domains.verify\">Vérifier</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"4\" data-i18n=\"user.remove\">Remover</button></div></td></tr>",
+       "Pour activer <strong>&lt;img src=x onerror=window.__xss=(window.__xss||0)+1&gt;</strong> : créez un CNAME pointant vers <code></code> et un enregistrement TXT sur <code></code> avec la valeur <code></code>, puis cliquez sur Vérifier."
+      ]
+     ],
+     "base64": [
+      [
+       "ok",
+       "JVBERi0xLjQKJVFBCg=="
+      ],
+      [
+       "ok",
+       "T2zDoSwgbXVuZG8gIsOnw6MiIDxiPg=="
+      ],
+      [
+       "ok",
+       ""
+      ],
+      [
+       "ok",
+       "AAEC+vv8/f7/"
+      ]
+     ]
+    }
+   },
+   {
+    "label": "troca de idioma (nb-NO)",
+    "snapshot": {
+     "summary": "<div class=\"summary-chip\"><strong>2</strong><span>Selskaper</span></div><div class=\"summary-chip\"><strong>2</strong><span>Aktive</span></div><div class=\"summary-chip\"><strong>1</strong><span>Nær grensen</span></div><div class=\"summary-chip\"><strong>0</strong><span>Blokkert</span></div>",
+     "table": "\n      <tr class=\"selected-row\">\n        <td><div class=\"company-cell\"><strong>Empresa QA</strong><span>Empresa QA Ltda</span></div></td>\n        <td><div class=\"company-cell\"><strong>11222333000181</strong><span>start</span></div></td>\n        <td><div class=\"company-cell\"><span class=\"badge badge-status-active\">Aktivt selskap</span> <span class=\"badge badge-status-active\">Aktiv</span><span>Gyldighetsperiode: 1.1.2026 til 31.12.2026</span></div></td>\n        <td><div class=\"company-logo-slot\"><img class=\"company-logo company-logo-sm\" src=\"data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2080%2080%22%3E%3Crect%20width%3D%2280%22%20height%3D%2280%22%20rx%3D%2220%22%20fill%3D%22%23f6d8c8%22%2F%3E%3Cpath%20d%3D%22M20%2056h40M26%2048V26h28v22%22%20fill%3D%22none%22%20stroke%3D%22%2396401c%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E\" alt=\"Logotipo de Empresa QA\"></div></td>\n        <td><div class=\"company-cell\"><strong>3</strong><span>97 ledig(e) plass(er)</span></div></td>\n        <td><div class=\"company-cell\"><strong>100</strong><span>1&nbsp;234&nbsp;567,89&nbsp;BRL</span></div></td>\n        <td><div class=\"action-group\"><button class=\"ghost\" data-company-details=\"901\">Se detaljer</button><button class=\"ghost\" data-company-edit=\"901\">Rediger</button><button class=\"ghost\" data-company-logo=\"901\">Logotipo (suporte)</button><button class=\"ghost\" data-company-commercial=\"901\">Konfigurer lisens</button><button class=\"ghost\" data-company-toggle=\"901\" data-company-active=\"0\">Deaktiver</button></div></td>\n      </tr>\n      <tr class=\"\">\n        <td><div class=\"company-cell\"><strong>Cliente Dois &lt;img src=x onerror=window.__xss=1&gt;</strong><span>Cliente Dois SA</span></div></td>\n        <td><div class=\"company-cell\"><strong>22333444000155</strong><span>pro</span></div></td>\n        <td><div class=\"company-cell\"><span class=\"badge badge-status-active\">Aktivt selskap</span> <span class=\"badge badge-status-warning\">Prøveperiode</span> <span class=\"badge badge-status-warning\">Nær grensen</span><span>Gyldighetsperiode: - til -</span></div></td>\n        <td><div class=\"company-logo-slot\"><img class=\"company-logo company-logo-sm\" src=\"data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2080%2080%22%3E%3Crect%20width%3D%2280%22%20height%3D%2280%22%20rx%3D%2220%22%20fill%3D%22%23f6d8c8%22%2F%3E%3Cpath%20d%3D%22M20%2056h40M26%2048V26h28v22%22%20fill%3D%22none%22%20stroke%3D%22%2396401c%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E\" alt=\"Logotipo de Cliente Dois &lt;img src=x onerror=window.__xss=1&gt;\"></div></td>\n        <td><div class=\"company-cell\"><strong>9</strong><span>1 ledig(e) plass(er)</span></div></td>\n        <td><div class=\"company-cell\"><strong>10</strong><span>0,00&nbsp;BRL</span></div></td>\n        <td><div class=\"action-group\"><button class=\"ghost\" data-company-details=\"902\">Se detaljer</button><button class=\"ghost\" data-company-edit=\"902\">Rediger</button><button class=\"ghost\" data-company-logo=\"902\">Logotipo (suporte)</button><button class=\"ghost\" data-company-commercial=\"902\">Konfigurer lisens</button><button class=\"ghost\" data-company-toggle=\"902\" data-company-active=\"0\">Deaktiver</button></div></td>\n      </tr>",
+     "details": "\n    <div class=\"company-detail-hero\">\n      <img class=\"company-logo company-logo-lg\" src=\"data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2080%2080%22%3E%3Crect%20width%3D%2280%22%20height%3D%2280%22%20rx%3D%2220%22%20fill%3D%22%23f6d8c8%22%2F%3E%3Cpath%20d%3D%22M20%2056h40M26%2048V26h28v22%22%20fill%3D%22none%22%20stroke%3D%22%2396401c%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E\" alt=\"Logotipo de Empresa QA\">\n      <div>\n        <strong>Empresa QA</strong>\n        <span>Empresa QA Ltda</span>\n        <span>Org.nr.: 11222333000181</span>\n      </div>\n    </div>\n    <div class=\"company-detail-badges\"><span class=\"badge badge-status-active\">Aktivt selskap</span> <span class=\"badge badge-status-active\">Aktiv</span></div>\n    <div class=\"company-detail-grid\">\n      <div class=\"summary-chip\"><strong>3</strong><span>Mulige brukere</span></div>\n      <div class=\"summary-chip\"><strong>100</strong><span>Kontraktert grense</span></div>\n      <div class=\"summary-chip\"><strong>1&nbsp;234&nbsp;567,89&nbsp;BRL</strong><span>Aktuell månedlig verdi</span></div>\n      <div class=\"summary-chip\"><strong>−12,35&nbsp;BRL</strong><span>Prosjektert verdi</span></div>\n      <div class=\"summary-chip\"><strong>97</strong><span>Ledige plasser</span></div>\n    </div>\n    <div class=\"company-detail-list\">\n      <div class=\"summary-item\"><strong>Plan / lisens:</strong> Start</div>\n      <div class=\"summary-item\"><strong>Enhetspris:</strong> 0,01&nbsp;BRL</div>\n      <div class=\"summary-item\"><strong>Gyldighetsperiode:</strong> 1.1.2026 til 31.12.2026</div>\n      <div class=\"summary-item\"><strong>Kontraktstillegg:</strong> Inaktiv</div>\n      <div class=\"summary-item\"><strong>Kommersielle merknader:</strong> QA</div>\n    </div>\n    <div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-company-view-contract=\"901\">Se kontrakt</button></div>",
+     "domains": "<tr><td>&lt;img src=x onerror=window.__xss=(window.__xss||0)+1&gt; <strong data-i18n=\"myCompany.domains.primary\">(primær)</strong></td><td>&lt;i&gt;t&lt;/i&gt;</td><td>Falhou</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"4\" data-i18n=\"myCompany.domains.verify\">Verifiser</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"4\" data-i18n=\"user.remove\">Fjern</button></div></td></tr>",
+     "instructions": "Pour activer <strong>&lt;img src=x onerror=window.__xss=(window.__xss||0)+1&gt;</strong> : créez un CNAME pointant vers <code></code> et un enregistrement TXT sur <code></code> avec la valeur <code></code>, puis cliquez sur Vérifier.",
+     "xss": 0
+    },
+    "result": {
+     "currency": [
+      [
+       "ok",
+       "0,00 BRL"
+      ],
+      [
+       "ok",
+       "0,00 BRL"
+      ],
+      [
+       "ok",
+       "1,00 BRL"
+      ],
+      [
+       "ok",
+       "−1,00 BRL"
+      ],
+      [
+       "ok",
+       "0,01 BRL"
+      ],
+      [
+       "ok",
+       "0,02 BRL"
+      ],
+      [
+       "ok",
+       "1,01 BRL"
+      ],
+      [
+       "ok",
+       "12,35 BRL"
+      ],
+      [
+       "ok",
+       "−12,35 BRL"
+      ],
+      [
+       "ok",
+       "1 234,50 BRL"
+      ],
+      [
+       "ok",
+       "1 234 567,89 BRL"
+      ],
+      [
+       "ok",
+       "−9 876 543,21 BRL"
+      ],
+      [
+       "ok",
+       "1 000 000 000 000 000,00 BRL"
+      ],
+      [
+       "ok",
+       "1 000 000 000 000 000 000 000,00 BRL"
+      ],
+      [
+       "ok",
+       "0,00 BRL"
+      ],
+      [
+       "ok",
+       "∞ BRL"
+      ],
+      [
+       "ok",
+       "−∞ BRL"
+      ],
+      [
+       "ok",
+       "0,00 BRL"
+      ],
+      [
+       "ok",
+       "0,00 BRL"
+      ],
+      [
+       "ok",
+       "0,00 BRL"
+      ],
+      [
+       "ok",
+       "0,00 BRL"
+      ],
+      [
+       "ok",
+       "42,50 BRL"
+      ],
+      [
+       "ok",
+       "NaN BRL"
+      ],
+      [
+       "ok",
+       "1 000,00 BRL"
+      ],
+      [
+       "ok",
+       "NaN BRL"
+      ],
+      [
+       "ok",
+       "1,00 BRL"
+      ],
+      [
+       "ok",
+       "0,00 BRL"
+      ],
+      [
+       "ok",
+       "0,00 BRL"
+      ],
+      [
+       "ok",
+       "5,00 BRL"
+      ],
+      [
+       "ok",
+       "NaN BRL"
+      ]
+     ],
+     "currencyNoArg": "0,00 BRL",
+     "domains": [
+      [
+       "<tr><td colspan=\"5\" data-i18n=\"myCompany.domains.none\">Ingen domener registrert.</td></tr>",
+       ""
+      ],
+      [
+       "<tr><td>app.empresa.test <strong data-i18n=\"myCompany.domains.primary\">(primær)</strong></td><td>Subdomínio</td><td>Verificado</td><td>Ativo</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-delete=\"1\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>sub.plataforma.test</td><td></td><td>Pendente</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"7\" data-i18n=\"myCompany.domains.verify\">Verifiser</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"7\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>epi.cliente.test</td><td>Próprio</td><td>Pendente</td><td>Pendente</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"2\" data-i18n=\"myCompany.domains.verify\">Verifiser</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"2\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>b.test</td><td>Próprio</td><td>Verificado</td><td>Falhou</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-primary=\"3\" data-i18n=\"myCompany.domains.makePrimary\">Gjør til primær</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"3\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>&lt;img src=x onerror=window.__xss=(window.__xss||0)+1&gt; <strong data-i18n=\"myCompany.domains.primary\">(primær)</strong></td><td>&lt;i&gt;t&lt;/i&gt;</td><td>Falhou</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"4\" data-i18n=\"myCompany.domains.verify\">Verifiser</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"4\" data-i18n=\"user.remove\">Remover</button></div></td></tr>",
+       "For å aktivere <strong>epi.cliente.test</strong>: opprett en CNAME som peker til <code>cname.&lt;b&gt;x&lt;/b&gt; $&amp;$1</code> og en TXT-post på <code>_epi$'</code> med verdien <code>tok \"1\" $$</code>, og klikk deretter på Verifiser."
+      ],
+      [
+       "<tr><td>sub.plataforma.test</td><td></td><td>Pendente</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"7\" data-i18n=\"myCompany.domains.verify\">Verifiser</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"7\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>epi.cliente.test</td><td>Próprio</td><td>Pendente</td><td>Pendente</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"2\" data-i18n=\"myCompany.domains.verify\">Verifiser</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"2\" data-i18n=\"user.remove\">Remover</button></div></td></tr>",
+       "For å aktivere <strong>epi.cliente.test</strong>: opprett en CNAME som peker til <code>cname.&lt;b&gt;x&lt;/b&gt; $&amp;$1</code> og en TXT-post på <code>_epi$'</code> med verdien <code>tok \"1\" $$</code>, og klikk deretter på Verifiser."
+      ],
+      [
+       "<tr><td></td><td></td><td>-</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"\" data-i18n=\"myCompany.domains.verify\">Verifiser</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"\" data-i18n=\"user.remove\">Remover</button></div></td></tr>",
+       "For å aktivere <strong></strong>: opprett en CNAME som peker til <code></code> og en TXT-post på <code></code> med verdien <code></code>, og klikk deretter på Verifiser."
+      ],
+      [
+       "<tr><td>&lt;img src=x onerror=window.__xss=(window.__xss||0)+1&gt; <strong data-i18n=\"myCompany.domains.primary\">(primær)</strong></td><td>&lt;i&gt;t&lt;/i&gt;</td><td>Falhou</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"4\" data-i18n=\"myCompany.domains.verify\">Verifiser</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"4\" data-i18n=\"user.remove\">Remover</button></div></td></tr>",
+       "For å aktivere <strong>&lt;img src=x onerror=window.__xss=(window.__xss||0)+1&gt;</strong>: opprett en CNAME som peker til <code></code> og en TXT-post på <code></code> med verdien <code></code>, og klikk deretter på Verifiser."
+      ]
+     ],
+     "base64": [
+      [
+       "ok",
+       "JVBERi0xLjQKJVFBCg=="
+      ],
+      [
+       "ok",
+       "T2zDoSwgbXVuZG8gIsOnw6MiIDxiPg=="
+      ],
+      [
+       "ok",
+       ""
+      ],
+      [
+       "ok",
+       "AAEC+vv8/f7/"
+      ]
+     ]
+    }
+   }
+  ]
+ },
+ "nb-NO": {
+  "steps": [
+   {
+    "label": "Empresas",
+    "snapshot": {
+     "summary": "<div class=\"summary-chip\"><strong>2</strong><span>Selskaper</span></div><div class=\"summary-chip\"><strong>2</strong><span>Aktive</span></div><div class=\"summary-chip\"><strong>1</strong><span>Nær grensen</span></div><div class=\"summary-chip\"><strong>0</strong><span>Blokkert</span></div>",
+     "table": "\n      <tr class=\"selected-row\">\n        <td><div class=\"company-cell\"><strong>Empresa QA</strong><span>Empresa QA Ltda</span></div></td>\n        <td><div class=\"company-cell\"><strong>11222333000181</strong><span>start</span></div></td>\n        <td><div class=\"company-cell\"><span class=\"badge badge-status-active\">Aktivt selskap</span> <span class=\"badge badge-status-active\">Aktiv</span><span>Gyldighetsperiode: 1.1.2026 til 31.12.2026</span></div></td>\n        <td><div class=\"company-logo-slot\"><img class=\"company-logo company-logo-sm\" src=\"data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2080%2080%22%3E%3Crect%20width%3D%2280%22%20height%3D%2280%22%20rx%3D%2220%22%20fill%3D%22%23f6d8c8%22%2F%3E%3Cpath%20d%3D%22M20%2056h40M26%2048V26h28v22%22%20fill%3D%22none%22%20stroke%3D%22%2396401c%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E\" alt=\"Logotipo de Empresa QA\"></div></td>\n        <td><div class=\"company-cell\"><strong>3</strong><span>97 ledig(e) plass(er)</span></div></td>\n        <td><div class=\"company-cell\"><strong>100</strong><span>1&nbsp;234&nbsp;567,89&nbsp;BRL</span></div></td>\n        <td><div class=\"action-group\"><button class=\"ghost\" data-company-details=\"901\">Se detaljer</button><button class=\"ghost\" data-company-edit=\"901\">Rediger</button><button class=\"ghost\" data-company-logo=\"901\">Logotipo (suporte)</button><button class=\"ghost\" data-company-commercial=\"901\">Konfigurer lisens</button><button class=\"ghost\" data-company-toggle=\"901\" data-company-active=\"0\">Deaktiver</button></div></td>\n      </tr>\n      <tr class=\"\">\n        <td><div class=\"company-cell\"><strong>Cliente Dois &lt;img src=x onerror=window.__xss=1&gt;</strong><span>Cliente Dois SA</span></div></td>\n        <td><div class=\"company-cell\"><strong>22333444000155</strong><span>pro</span></div></td>\n        <td><div class=\"company-cell\"><span class=\"badge badge-status-active\">Aktivt selskap</span> <span class=\"badge badge-status-warning\">Prøveperiode</span> <span class=\"badge badge-status-warning\">Nær grensen</span><span>Gyldighetsperiode: - til -</span></div></td>\n        <td><div class=\"company-logo-slot\"><img class=\"company-logo company-logo-sm\" src=\"data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2080%2080%22%3E%3Crect%20width%3D%2280%22%20height%3D%2280%22%20rx%3D%2220%22%20fill%3D%22%23f6d8c8%22%2F%3E%3Cpath%20d%3D%22M20%2056h40M26%2048V26h28v22%22%20fill%3D%22none%22%20stroke%3D%22%2396401c%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E\" alt=\"Logotipo de Cliente Dois &lt;img src=x onerror=window.__xss=1&gt;\"></div></td>\n        <td><div class=\"company-cell\"><strong>9</strong><span>1 ledig(e) plass(er)</span></div></td>\n        <td><div class=\"company-cell\"><strong>10</strong><span>0,00&nbsp;BRL</span></div></td>\n        <td><div class=\"action-group\"><button class=\"ghost\" data-company-details=\"902\">Se detaljer</button><button class=\"ghost\" data-company-edit=\"902\">Rediger</button><button class=\"ghost\" data-company-logo=\"902\">Logotipo (suporte)</button><button class=\"ghost\" data-company-commercial=\"902\">Konfigurer lisens</button><button class=\"ghost\" data-company-toggle=\"902\" data-company-active=\"0\">Deaktiver</button></div></td>\n      </tr>",
+     "details": "\n    <div class=\"company-detail-hero\">\n      <img class=\"company-logo company-logo-lg\" src=\"data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2080%2080%22%3E%3Crect%20width%3D%2280%22%20height%3D%2280%22%20rx%3D%2220%22%20fill%3D%22%23f6d8c8%22%2F%3E%3Cpath%20d%3D%22M20%2056h40M26%2048V26h28v22%22%20fill%3D%22none%22%20stroke%3D%22%2396401c%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E\" alt=\"Logotipo de Empresa QA\">\n      <div>\n        <strong>Empresa QA</strong>\n        <span>Empresa QA Ltda</span>\n        <span>Org.nr.: 11222333000181</span>\n      </div>\n    </div>\n    <div class=\"company-detail-badges\"><span class=\"badge badge-status-active\">Aktivt selskap</span> <span class=\"badge badge-status-active\">Aktiv</span></div>\n    <div class=\"company-detail-grid\">\n      <div class=\"summary-chip\"><strong>3</strong><span>Mulige brukere</span></div>\n      <div class=\"summary-chip\"><strong>100</strong><span>Kontraktert grense</span></div>\n      <div class=\"summary-chip\"><strong>1&nbsp;234&nbsp;567,89&nbsp;BRL</strong><span>Aktuell månedlig verdi</span></div>\n      <div class=\"summary-chip\"><strong>−12,35&nbsp;BRL</strong><span>Prosjektert verdi</span></div>\n      <div class=\"summary-chip\"><strong>97</strong><span>Ledige plasser</span></div>\n    </div>\n    <div class=\"company-detail-list\">\n      <div class=\"summary-item\"><strong>Plan / lisens:</strong> Start</div>\n      <div class=\"summary-item\"><strong>Enhetspris:</strong> 0,01&nbsp;BRL</div>\n      <div class=\"summary-item\"><strong>Gyldighetsperiode:</strong> 1.1.2026 til 31.12.2026</div>\n      <div class=\"summary-item\"><strong>Kontraktstillegg:</strong> Inaktiv</div>\n      <div class=\"summary-item\"><strong>Kommersielle merknader:</strong> QA</div>\n    </div>\n    <div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-company-view-contract=\"901\">Se kontrakt</button></div>",
+     "domains": "",
+     "instructions": "",
+     "xss": 0
+    }
+   },
+   {
+    "label": "funções",
+    "result": {
+     "currency": [
+      [
+       "ok",
+       "0,00 BRL"
+      ],
+      [
+       "ok",
+       "0,00 BRL"
+      ],
+      [
+       "ok",
+       "1,00 BRL"
+      ],
+      [
+       "ok",
+       "−1,00 BRL"
+      ],
+      [
+       "ok",
+       "0,01 BRL"
+      ],
+      [
+       "ok",
+       "0,02 BRL"
+      ],
+      [
+       "ok",
+       "1,01 BRL"
+      ],
+      [
+       "ok",
+       "12,35 BRL"
+      ],
+      [
+       "ok",
+       "−12,35 BRL"
+      ],
+      [
+       "ok",
+       "1 234,50 BRL"
+      ],
+      [
+       "ok",
+       "1 234 567,89 BRL"
+      ],
+      [
+       "ok",
+       "−9 876 543,21 BRL"
+      ],
+      [
+       "ok",
+       "1 000 000 000 000 000,00 BRL"
+      ],
+      [
+       "ok",
+       "1 000 000 000 000 000 000 000,00 BRL"
+      ],
+      [
+       "ok",
+       "0,00 BRL"
+      ],
+      [
+       "ok",
+       "∞ BRL"
+      ],
+      [
+       "ok",
+       "−∞ BRL"
+      ],
+      [
+       "ok",
+       "0,00 BRL"
+      ],
+      [
+       "ok",
+       "0,00 BRL"
+      ],
+      [
+       "ok",
+       "0,00 BRL"
+      ],
+      [
+       "ok",
+       "0,00 BRL"
+      ],
+      [
+       "ok",
+       "42,50 BRL"
+      ],
+      [
+       "ok",
+       "NaN BRL"
+      ],
+      [
+       "ok",
+       "1 000,00 BRL"
+      ],
+      [
+       "ok",
+       "NaN BRL"
+      ],
+      [
+       "ok",
+       "1,00 BRL"
+      ],
+      [
+       "ok",
+       "0,00 BRL"
+      ],
+      [
+       "ok",
+       "0,00 BRL"
+      ],
+      [
+       "ok",
+       "5,00 BRL"
+      ],
+      [
+       "ok",
+       "NaN BRL"
+      ]
+     ],
+     "currencyNoArg": "0,00 BRL",
+     "domains": [
+      [
+       "<tr><td colspan=\"5\" data-i18n=\"myCompany.domains.none\">Ingen domener registrert.</td></tr>",
+       ""
+      ],
+      [
+       "<tr><td>app.empresa.test <strong data-i18n=\"myCompany.domains.primary\">(primær)</strong></td><td>Subdomínio</td><td>Verificado</td><td>Ativo</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-delete=\"1\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>sub.plataforma.test</td><td></td><td>Pendente</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"7\" data-i18n=\"myCompany.domains.verify\">Verifiser</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"7\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>epi.cliente.test</td><td>Próprio</td><td>Pendente</td><td>Pendente</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"2\" data-i18n=\"myCompany.domains.verify\">Verifiser</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"2\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>b.test</td><td>Próprio</td><td>Verificado</td><td>Falhou</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-primary=\"3\" data-i18n=\"myCompany.domains.makePrimary\">Gjør til primær</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"3\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>&lt;img src=x onerror=window.__xss=(window.__xss||0)+1&gt; <strong data-i18n=\"myCompany.domains.primary\">(primær)</strong></td><td>&lt;i&gt;t&lt;/i&gt;</td><td>Falhou</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"4\" data-i18n=\"myCompany.domains.verify\">Verifiser</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"4\" data-i18n=\"user.remove\">Remover</button></div></td></tr>",
+       "For å aktivere <strong>epi.cliente.test</strong>: opprett en CNAME som peker til <code>cname.&lt;b&gt;x&lt;/b&gt; $&amp;$1</code> og en TXT-post på <code>_epi$'</code> med verdien <code>tok \"1\" $$</code>, og klikk deretter på Verifiser."
+      ],
+      [
+       "<tr><td>sub.plataforma.test</td><td></td><td>Pendente</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"7\" data-i18n=\"myCompany.domains.verify\">Verifiser</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"7\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>epi.cliente.test</td><td>Próprio</td><td>Pendente</td><td>Pendente</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"2\" data-i18n=\"myCompany.domains.verify\">Verifiser</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"2\" data-i18n=\"user.remove\">Remover</button></div></td></tr>",
+       "For å aktivere <strong>epi.cliente.test</strong>: opprett en CNAME som peker til <code>cname.&lt;b&gt;x&lt;/b&gt; $&amp;$1</code> og en TXT-post på <code>_epi$'</code> med verdien <code>tok \"1\" $$</code>, og klikk deretter på Verifiser."
+      ],
+      [
+       "<tr><td></td><td></td><td>-</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"\" data-i18n=\"myCompany.domains.verify\">Verifiser</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"\" data-i18n=\"user.remove\">Remover</button></div></td></tr>",
+       "For å aktivere <strong></strong>: opprett en CNAME som peker til <code></code> og en TXT-post på <code></code> med verdien <code></code>, og klikk deretter på Verifiser."
+      ],
+      [
+       "<tr><td>&lt;img src=x onerror=window.__xss=(window.__xss||0)+1&gt; <strong data-i18n=\"myCompany.domains.primary\">(primær)</strong></td><td>&lt;i&gt;t&lt;/i&gt;</td><td>Falhou</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"4\" data-i18n=\"myCompany.domains.verify\">Verifiser</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"4\" data-i18n=\"user.remove\">Remover</button></div></td></tr>",
+       "For å aktivere <strong>&lt;img src=x onerror=window.__xss=(window.__xss||0)+1&gt;</strong>: opprett en CNAME som peker til <code></code> og en TXT-post på <code></code> med verdien <code></code>, og klikk deretter på Verifiser."
+      ]
+     ],
+     "base64": [
+      [
+       "ok",
+       "JVBERi0xLjQKJVFBCg=="
+      ],
+      [
+       "ok",
+       "T2zDoSwgbXVuZG8gIsOnw6MiIDxiPg=="
+      ],
+      [
+       "ok",
+       ""
+      ],
+      [
+       "ok",
+       "AAEC+vv8/f7/"
+      ]
+     ]
+    }
+   },
+   {
+    "label": "troca de idioma (fr-FR)",
+    "snapshot": {
+     "summary": "<div class=\"summary-chip\"><strong>2</strong><span>Entreprises</span></div><div class=\"summary-chip\"><strong>2</strong><span>Actives</span></div><div class=\"summary-chip\"><strong>1</strong><span>Près de la limite</span></div><div class=\"summary-chip\"><strong>0</strong><span>Bloquées</span></div>",
+     "table": "\n      <tr class=\"selected-row\">\n        <td><div class=\"company-cell\"><strong>Empresa QA</strong><span>Empresa QA Ltda</span></div></td>\n        <td><div class=\"company-cell\"><strong>11222333000181</strong><span>start</span></div></td>\n        <td><div class=\"company-cell\"><span class=\"badge badge-status-active\">Entreprise active</span> <span class=\"badge badge-status-active\">Active</span><span>Validité: Du 01/01/2026 au 31/12/2026</span></div></td>\n        <td><div class=\"company-logo-slot\"><img class=\"company-logo company-logo-sm\" src=\"data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2080%2080%22%3E%3Crect%20width%3D%2280%22%20height%3D%2280%22%20rx%3D%2220%22%20fill%3D%22%23f6d8c8%22%2F%3E%3Cpath%20d%3D%22M20%2056h40M26%2048V26h28v22%22%20fill%3D%22none%22%20stroke%3D%22%2396401c%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E\" alt=\"Logotipo de Empresa QA\"></div></td>\n        <td><div class=\"company-cell\"><strong>3</strong><span>97 place(s) disponible(s)</span></div></td>\n        <td><div class=\"company-cell\"><strong>100</strong><span>1 234 567,89&nbsp;R$</span></div></td>\n        <td><div class=\"action-group\"><button class=\"ghost\" data-company-details=\"901\">Voir les détails</button><button class=\"ghost\" data-company-edit=\"901\">Modifier</button><button class=\"ghost\" data-company-logo=\"901\">Logotipo (suporte)</button><button class=\"ghost\" data-company-commercial=\"901\">Configurer la licence</button><button class=\"ghost\" data-company-toggle=\"901\" data-company-active=\"0\">Désactiver</button></div></td>\n      </tr>\n      <tr class=\"\">\n        <td><div class=\"company-cell\"><strong>Cliente Dois &lt;img src=x onerror=window.__xss=1&gt;</strong><span>Cliente Dois SA</span></div></td>\n        <td><div class=\"company-cell\"><strong>22333444000155</strong><span>pro</span></div></td>\n        <td><div class=\"company-cell\"><span class=\"badge badge-status-active\">Entreprise active</span> <span class=\"badge badge-status-warning\">Essai</span> <span class=\"badge badge-status-warning\">Proche de la limite</span><span>Validité: Du - au -</span></div></td>\n        <td><div class=\"company-logo-slot\"><img class=\"company-logo company-logo-sm\" src=\"data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2080%2080%22%3E%3Crect%20width%3D%2280%22%20height%3D%2280%22%20rx%3D%2220%22%20fill%3D%22%23f6d8c8%22%2F%3E%3Cpath%20d%3D%22M20%2056h40M26%2048V26h28v22%22%20fill%3D%22none%22%20stroke%3D%22%2396401c%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E\" alt=\"Logotipo de Cliente Dois &lt;img src=x onerror=window.__xss=1&gt;\"></div></td>\n        <td><div class=\"company-cell\"><strong>9</strong><span>1 place(s) disponible(s)</span></div></td>\n        <td><div class=\"company-cell\"><strong>10</strong><span>0,00&nbsp;R$</span></div></td>\n        <td><div class=\"action-group\"><button class=\"ghost\" data-company-details=\"902\">Voir les détails</button><button class=\"ghost\" data-company-edit=\"902\">Modifier</button><button class=\"ghost\" data-company-logo=\"902\">Logotipo (suporte)</button><button class=\"ghost\" data-company-commercial=\"902\">Configurer la licence</button><button class=\"ghost\" data-company-toggle=\"902\" data-company-active=\"0\">Désactiver</button></div></td>\n      </tr>",
+     "details": "\n    <div class=\"company-detail-hero\">\n      <img class=\"company-logo company-logo-lg\" src=\"data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2080%2080%22%3E%3Crect%20width%3D%2280%22%20height%3D%2280%22%20rx%3D%2220%22%20fill%3D%22%23f6d8c8%22%2F%3E%3Cpath%20d%3D%22M20%2056h40M26%2048V26h28v22%22%20fill%3D%22none%22%20stroke%3D%22%2396401c%22%20stroke-width%3D%224%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E\" alt=\"Logotipo de Empresa QA\">\n      <div>\n        <strong>Empresa QA</strong>\n        <span>Empresa QA Ltda</span>\n        <span>N° Fiscal: 11222333000181</span>\n      </div>\n    </div>\n    <div class=\"company-detail-badges\"><span class=\"badge badge-status-active\">Entreprise active</span> <span class=\"badge badge-status-active\">Active</span></div>\n    <div class=\"company-detail-grid\">\n      <div class=\"summary-chip\"><strong>3</strong><span>Utilisateurs possibles</span></div>\n      <div class=\"summary-chip\"><strong>100</strong><span>Limite contracté</span></div>\n      <div class=\"summary-chip\"><strong>1 234 567,89&nbsp;R$</strong><span>Valeur mensuelle actuelle</span></div>\n      <div class=\"summary-chip\"><strong>-12,35&nbsp;R$</strong><span>Valeur projetée</span></div>\n      <div class=\"summary-chip\"><strong>97</strong><span>Places disponibles</span></div>\n    </div>\n    <div class=\"company-detail-list\">\n      <div class=\"summary-item\"><strong>Plan / licence:</strong> Start</div>\n      <div class=\"summary-item\"><strong>Valeur unitaire:</strong> 0,01&nbsp;R$</div>\n      <div class=\"summary-item\"><strong>Validité:</strong> Du 01/01/2026 au 31/12/2026</div>\n      <div class=\"summary-item\"><strong>Avenant contractuel:</strong> Inactif</div>\n      <div class=\"summary-item\"><strong>Notes commerciales:</strong> QA</div>\n    </div>\n    <div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-company-view-contract=\"901\">Voir le contrat</button></div>",
+     "domains": "<tr><td>&lt;img src=x onerror=window.__xss=(window.__xss||0)+1&gt; <strong data-i18n=\"myCompany.domains.primary\">(principal)</strong></td><td>&lt;i&gt;t&lt;/i&gt;</td><td>Falhou</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"4\" data-i18n=\"myCompany.domains.verify\">Vérifier</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"4\" data-i18n=\"user.remove\">Supprimer</button></div></td></tr>",
+     "instructions": "For å aktivere <strong>&lt;img src=x onerror=window.__xss=(window.__xss||0)+1&gt;</strong>: opprett en CNAME som peker til <code></code> og en TXT-post på <code></code> med verdien <code></code>, og klikk deretter på Verifiser.",
+     "xss": 0
+    },
+    "result": {
+     "currency": [
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "1,00 R$"
+      ],
+      [
+       "ok",
+       "-1,00 R$"
+      ],
+      [
+       "ok",
+       "0,01 R$"
+      ],
+      [
+       "ok",
+       "0,02 R$"
+      ],
+      [
+       "ok",
+       "1,01 R$"
+      ],
+      [
+       "ok",
+       "12,35 R$"
+      ],
+      [
+       "ok",
+       "-12,35 R$"
+      ],
+      [
+       "ok",
+       "1 234,50 R$"
+      ],
+      [
+       "ok",
+       "1 234 567,89 R$"
+      ],
+      [
+       "ok",
+       "-9 876 543,21 R$"
+      ],
+      [
+       "ok",
+       "1 000 000 000 000 000,00 R$"
+      ],
+      [
+       "ok",
+       "1 000 000 000 000 000 000 000,00 R$"
+      ],
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "∞ R$"
+      ],
+      [
+       "ok",
+       "-∞ R$"
+      ],
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "42,50 R$"
+      ],
+      [
+       "ok",
+       "NaN R$"
+      ],
+      [
+       "ok",
+       "1 000,00 R$"
+      ],
+      [
+       "ok",
+       "NaN R$"
+      ],
+      [
+       "ok",
+       "1,00 R$"
+      ],
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "0,00 R$"
+      ],
+      [
+       "ok",
+       "5,00 R$"
+      ],
+      [
+       "ok",
+       "NaN R$"
+      ]
+     ],
+     "currencyNoArg": "0,00 R$",
+     "domains": [
+      [
+       "<tr><td colspan=\"5\" data-i18n=\"myCompany.domains.none\">Aucun domaine enregistré.</td></tr>",
+       ""
+      ],
+      [
+       "<tr><td>app.empresa.test <strong data-i18n=\"myCompany.domains.primary\">(principal)</strong></td><td>Subdomínio</td><td>Verificado</td><td>Ativo</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-delete=\"1\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>sub.plataforma.test</td><td></td><td>Pendente</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"7\" data-i18n=\"myCompany.domains.verify\">Vérifier</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"7\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>epi.cliente.test</td><td>Próprio</td><td>Pendente</td><td>Pendente</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"2\" data-i18n=\"myCompany.domains.verify\">Vérifier</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"2\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>b.test</td><td>Próprio</td><td>Verificado</td><td>Falhou</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-primary=\"3\" data-i18n=\"myCompany.domains.makePrimary\">Définir comme principal</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"3\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>&lt;img src=x onerror=window.__xss=(window.__xss||0)+1&gt; <strong data-i18n=\"myCompany.domains.primary\">(principal)</strong></td><td>&lt;i&gt;t&lt;/i&gt;</td><td>Falhou</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"4\" data-i18n=\"myCompany.domains.verify\">Vérifier</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"4\" data-i18n=\"user.remove\">Remover</button></div></td></tr>",
+       "Pour activer <strong>epi.cliente.test</strong> : créez un CNAME pointant vers <code>cname.&lt;b&gt;x&lt;/b&gt; $&amp;$1</code> et un enregistrement TXT sur <code>_epi$'</code> avec la valeur <code>tok \"1\" $$</code>, puis cliquez sur Vérifier."
+      ],
+      [
+       "<tr><td>sub.plataforma.test</td><td></td><td>Pendente</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"7\" data-i18n=\"myCompany.domains.verify\">Vérifier</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"7\" data-i18n=\"user.remove\">Remover</button></div></td></tr><tr><td>epi.cliente.test</td><td>Próprio</td><td>Pendente</td><td>Pendente</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"2\" data-i18n=\"myCompany.domains.verify\">Vérifier</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"2\" data-i18n=\"user.remove\">Remover</button></div></td></tr>",
+       "Pour activer <strong>epi.cliente.test</strong> : créez un CNAME pointant vers <code>cname.&lt;b&gt;x&lt;/b&gt; $&amp;$1</code> et un enregistrement TXT sur <code>_epi$'</code> avec la valeur <code>tok \"1\" $$</code>, puis cliquez sur Vérifier."
+      ],
+      [
+       "<tr><td></td><td></td><td>-</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"\" data-i18n=\"myCompany.domains.verify\">Vérifier</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"\" data-i18n=\"user.remove\">Remover</button></div></td></tr>",
+       "Pour activer <strong></strong> : créez un CNAME pointant vers <code></code> et un enregistrement TXT sur <code></code> avec la valeur <code></code>, puis cliquez sur Vérifier."
+      ],
+      [
+       "<tr><td>&lt;img src=x onerror=window.__xss=(window.__xss||0)+1&gt; <strong data-i18n=\"myCompany.domains.primary\">(principal)</strong></td><td>&lt;i&gt;t&lt;/i&gt;</td><td>Falhou</td><td>-</td><td><div class=\"action-group\"><button class=\"ghost\" type=\"button\" data-domain-verify=\"4\" data-i18n=\"myCompany.domains.verify\">Vérifier</button><button class=\"ghost\" type=\"button\" data-domain-delete=\"4\" data-i18n=\"user.remove\">Remover</button></div></td></tr>",
+       "Pour activer <strong>&lt;img src=x onerror=window.__xss=(window.__xss||0)+1&gt;</strong> : créez un CNAME pointant vers <code></code> et un enregistrement TXT sur <code></code> avec la valeur <code></code>, puis cliquez sur Vérifier."
+      ]
+     ],
+     "base64": [
+      [
+       "ok",
+       "JVBERi0xLjQKJVFBCg=="
+      ],
+      [
+       "ok",
+       "T2zDoSwgbXVuZG8gIsOnw6MiIDxiPg=="
+      ],
+      [
+       "ok",
+       ""
+      ],
+      [
+       "ok",
+       "AAEC+vv8/f7/"
+      ]
+     ]
+    }
+   }
+  ]
+ }
+}

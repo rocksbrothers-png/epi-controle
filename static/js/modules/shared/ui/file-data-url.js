@@ -5,7 +5,8 @@
 //
 // fileToDataUrl (arquivo bruto) e fileToJpegDataUrl (imagem redimensionada e
 // convertida em JPEG num canvas de fundo branco), usados pela foto do EPI e
-// pelos logotipos da plataforma/empresa. Camada UI: FileReader, Image, canvas.
+// pelos logotipos da plataforma/empresa, e fileToBase64 (UBX Comercial C4), usado pelo
+// envio do contrato comercial assinado. Camada UI: FileReader, Image, canvas.
 //
 // Eram `async function` de bloco no app.js (sem Annex B): só o app.js as via.
 // Agora são publicadas em globalThis e o app.js e o cadastro de EPI chegam a
@@ -48,11 +49,26 @@
     });
   }
 
+  // fileToBase64 (UBX Comercial C4 — extraído de static/app.js): só o trecho base64 do data URL
+  // (o PDF assinado do contrato comercial). Corpo e mensagem idênticos; era global (Annex B).
+  function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const full = String(reader.result || '');
+        resolve(full.includes(',') ? full.split(',')[1] : full);
+      };
+      reader.onerror = () => reject(new Error(tr('commercial.panel.fileReadFailed', 'Falha ao ler arquivo.')));
+      reader.readAsDataURL(file);
+    });
+  }
+
   // ── Exports ───────────────────────────────────────────────────────────────
 
   const fileDataUrlExports = {
     fileToDataUrl,
-    fileToJpegDataUrl
+    fileToJpegDataUrl,
+    fileToBase64
   };
 
   for (const [name, fn] of Object.entries(fileDataUrlExports)) {

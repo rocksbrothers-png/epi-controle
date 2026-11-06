@@ -1234,3 +1234,112 @@ continuam inteiramente no backend, sem mudança; os testes de escopo comercial (
 `test_commercial_contract_management.py`) e o contrato front↔back (`test_frontend_api_contract.py`) passam. As guardas do
 frontend (`canAccessCommercialArea`, `hasPermission('companies:update')`, `requirePermission('commercial:view')`,
 `master_admin` nos parâmetros) ficaram nos mesmos lugares, antes das chamadas. Nenhum achado novo.
+
+## 20. UBX Comercial — fatia C3 (2026-11-06): interface comercial
+
+Base: Corporate `main` `e97387a2`, SaaS `main` `cb5bb35d` (C1 #1083/#457, SEC-C1-1 #1084/#458 e C2 #1085/#459
+integrados; CI pós-merge verde; nenhum PR aberto; issues abertas do Comercial só de backend — #1008/#382 —, fora do
+escopo). Somente frontend: nenhum arquivo de backend, banco, migrações, endpoints, contrato HTTP, `modules/payments`,
+`pagamento.js`, checkout, webhook, autenticação, autorização, estoque, entregas ou assinatura eletrônica de EPI.
+
+### 20.1 Inventário (antes da extração)
+
+Funções do `app.js` relacionadas à interface Comercial. "Global" = declaração de função não assíncrona no bloco de
+carga (Annex B: vira propriedade de `globalThis`); "bloco" = `async function` (não é global). Todas leem `state` e/ou
+`refs` (constantes do bloco do app.js, publicadas como `__EPI_APP_STATE__`/`__EPI_REFS__`).
+
+| Função | Responsabilidade | Parâmetros → retorno | Efeitos | Acionada por | Permissão | Destino |
+|---|---|---|---|---|---|---|
+| `filteredCommercialCompanies` | empresas visíveis filtradas pela situação | — → lista | — | resumo, alertas | escopo `filterByUserCompany` | `commercial-view.js` |
+| `filteredCommercialLogs` | histórico filtrado (empresa, responsável, período) | — → lista | — | histórico, exportações, impressão | — | `commercial-view.js` |
+| `fillCommercialSettingsForm` | preenche os parâmetros comerciais | — → — | campos | `renderAll`, salvar parâmetros | — | `commercial-view.js` |
+| `refreshCommercialPreview` | valores atual/projetado e dica do plano | `company?` → — | campos, dica | plano/limite/aditivo, preencher | — | `commercial-view.js` |
+| `fillCommercialForm` | carrega o editor (empresa + contrato) | `companyId?` → — | seletor, opções de plano, campos, reset e leitura do contrato | `renderAll`, seletor, cartões, Empresas, reset de navegação | `canAccessCommercialArea` | `commercial-view.js` |
+| `contractStatusLabel` | rótulo traduzido da situação do contrato | `status` → texto | — | painel e reset | — | `commercial-contract-view.js` |
+| `renderCommercialContractPanel` | preenche o painel do contrato | — → — | campos, status (binding vivo), eventos, `state.commercialClauseTemplate` | ações do contrato | — | `commercial-contract-view.js` |
+| `resetCommercialContractForm` | limpa o painel do contrato | `{ preserveClauses }` → — | campos, `state.commercialContract = null` | preencher, 403 na leitura | — | `commercial-contract-view.js` |
+| `loadCommercialContract` (bloco) | lê o contrato (C2) | `companyId` → Promise | estado + painel; 403 → reset; demais → `console.warn` | `fillCommercialForm` | `canAccessCommercialArea` | `commercial-contract-view.js` |
+| `buildCommercialContractPayload` | corpo do contrato a partir do formulário | — → objeto | — | rascunho, gerar | — | `commercial-contract-view.js` |
+| `toggleCommercialStatus` (bloco) | suspender/reativar (PUT de Empresas) | `companyId, mode` → Promise | recarga + editor; erro → `alert` | cartão do resumo | `companies:update` | `commercial-view.js` |
+| `renderCommercialStats/Summary/Alerts/History/Expiring` | painéis | — → — | `innerHTML` | `renderAll`, filtros, troca de idioma | escopo da empresa | `commercial-view.js` |
+| `populateCommercialActors` | lista de responsáveis e valores dos filtros | — → — | `<select>` e campos | `renderAll` | — | `commercial-view.js` |
+| `exportCommercialExcel`, `exportCommercialHistory` | exportação XLS/CSV do histórico filtrado | — → — | Blob + link de download | botões | — | `commercial-view.js` |
+| `formatCommercialFiltersLabel`, `printCommercialHistory` | impressão do histórico com o rótulo dos filtros | — → — / texto | popup (ou `alert` se bloqueado) | botão | — | `commercial-view.js` |
+| `downloadCommercialContractPdf`, `viewGeneratedCommercialContract`, `downloadGeneratedCommercialContract` | abrir PDF / arquivo gerado | — → — | nova aba (URL da C2) | botões | — | `commercial-contract-view.js` |
+| `saveCommercialContractDraft`, `generateCommercialContract`, `signCommercialContractAction`, `uploadSignedCommercialContract`, `sendCommercialContractByEmail`, `saveCommercialContractManagement` (bloco) | ações do contrato comercial (C2) | — → Promise | estado + painel + `alert` | botões | `commercial:view` (gestão) | `commercial-contract-view.js` |
+| `syncCommercialFilter` | estado dos filtros + painéis | — → — | `state.commercialFilters`, painéis | filtros, reset de navegação | — | `commercial-view.js` |
+| `saveCommercial`, `saveCommercialSettings` (bloco) | salvar empresa (PUT de Empresas) / parâmetros (C2) | `event` → Promise | recarga + formulários; erro → `alert` | submit | `commercial:view` / `master_admin` | `commercial-view.js` |
+
+Permanecem no `app.js`, com o motivo:
+
+| Item | Motivo |
+|---|---|
+| `cloneDefaultCommercialSettings`, `cloneCommercialSettings`, `getCommercialSettings` | estado da sessão (bootstrap) também lido pela C1; não é interface |
+| `platformBrandDisplayName`, `savePlatformBrand` | domínio Marca da plataforma; `savePlatformBrand` faz HTTP direto (`/api/platform-brand`) e não pode ir para `ui/` |
+| `openAndPrintPopup` | utilitário compartilhado (Colaboradores, relatórios) |
+| `fileToBase64` | utilitário genérico de arquivo |
+| ligação dos listeners (`bindAppListener` dos formulários, botões, filtros, cartões, Empresas → "ver contrato"/"Configurar licença") | inicialização do app; mover duplicaria ou perderia a ordem de ligação |
+| `VIEW_FORM_RESET.comercial`, `VIEW_FILTER_RESET.comercial`, trecho do `renderAll` e da troca de idioma | navegação e orquestração globais |
+| `formatCompanyCurrency` | Empresas (C4) |
+
+### 20.2 O que mudou
+
+- `modules/commercial/ui/commercial-view.js` (19 funções) e `modules/commercial/ui/commercial-contract-view.js` (14),
+  divididos por responsabilidade (a guarda UBX limita cada módulo a 500 linhas). Corpos idênticos aos do app.js —
+  mesmas chaves de tradução, fallbacks, escapes, ids, classes, ordem das operações e tratamento de erro; a única linha
+  nova por função é `const state = globalThis.__EPI_APP_STATE__` / `const refs = globalThis.__EPI_REFS__` (os
+  mesmos objetos; nenhum estado paralelo). `fillCommercialForm` chama `loadCommercialContract` por um repasse de uma
+  linha para o namespace do contrato (mesmo argumento, sem esperar, como antes).
+- Publicação: as 23 síncronas continuam globais com os mesmos nomes; as 10 assíncronas, que eram de bloco, ficam só
+  em `__EPI_COMMERCIAL_CONTRACT_VIEW__`/`__EPI_COMMERCIAL_VIEW__` (fachada congelada com as 33, na ordem do app.js).
+  O `app.js` liga os 7 listeners assíncronos e o clique delegado de suspender/reativar por
+  `__EPI_COMMERCIAL_VIEW__.<fn>` (referência estável); os demais
+  continuam pelo nome global. Nenhum listener foi movido ou duplicado.
+- Camadas: apresentação pura na C1, HTTP na C2 e no `updateCompany` de Empresas; os módulos de interface não chamam
+  `api`, `fetch` nem montam caminhos de API. Ordem de carga: C1 → C2 → contrato → tela → `app.js`.
+- Testes de fonte ajustados pela mudança de arquivo, sem mudar a intenção: F5-B G-conv-5 (JS e Python) procura
+  `fillCommercialForm` no módulo (fim de função indentada); PR3 A-6 procura o rascunho em `commercial-contract-view.js`
+  e a ligação do botão no app.js; a caracterização da C2 extrai os 12 chamadores dos módulos.
+
+### 20.3 Métricas
+
+| Métrica | Antes | Depois |
+|---|---|---|
+| Linhas do `app.js` | 16.959 | 16.441 |
+| Declarações de nível superior | 712 | 679 |
+| Endpoints no `app.js` | 94 | 94 |
+| Ciclos entre scripts | 0 | 0 |
+| Módulos UBX | 53 | 55 |
+
+### 20.4 Equivalência
+
+- Caracterização antes de mover (commit próprio, verde contra o app.js original): fixture literal das 33 funções e
+  `commercial-view-runtime.js`, com as dependências reais (motor de tradução e os cinco catálogos, view-helpers,
+  value-format, C1, C2, companies-api) e o que é da sessão/navegador registrado (permissões, acesso, bootstrap
+  assíncrono, popup, Blob/URL, link de download, alertas, `console.warn`, abas). Depois de cada passo, fotografia de
+  todos os elementos (value, innerHTML, textContent, checked, files, binding vivo do `textFor`) e do estado comercial.
+  Sequências: renderAll, troca de empresa, prévia, filtros (limites do período nas datas exatas), exportação e
+  impressão, painel do contrato, ações do contrato, suspender/reativar/salvar, troca de usuário/tenant/perfil sem
+  recarga, reset de navegação e troca de idioma; 10 variantes de sessão/DOM; todas as respostas HTTP; concorrência
+  (troca rápida de empresa com leituras fora de ordem, ações duplicadas, suspender/reativar sobrepostos).
+  2.715 cenários × 5 idiomas, 0 divergências. Nada é normalizado; o único recurso de desempenho é memorizar os
+  formatadores `Intl` por (locale, opções), que são puros.
+- Mutação: 28/29 sabotagens detectadas (HTML/classe, chave de tradução, escapes, filtros, limite do histórico,
+  `active ?? 1`, prévia, CSV/XLS, popup bloqueado, permissão, `preventDefault`, `await` da recarga, parâmetros,
+  renderização dos filtros, estado copiado, binding vivo, ordem estado/renderização, 403, cláusulas, corpo do
+  contrato, MIME, e-mail padrão, resposta ignorada, publicação global). A não detectada (carregar o contrato antes de
+  limpar o painel) é mutante equivalente: o reset é síncrono e a resposta chega depois, nos dois casos.
+- Chromium (`scripts/browser/ubx_commercial_view.py`, no workflow de navegador): 32 passos pela UI real, com relógio
+  fixo, reproduzem passo a passo a referência gravada da `main` anterior
+  (`static/js/test/fixtures/ubx-commercial-c3-browser.json`): hash de cada fotografia de `#comercial-view` (HTML e
+  campos), requisições comerciais em ordem, recargas em segundo plano como conjunto, abas, conteúdo impresso,
+  arquivos baixados e diálogos. A `main` contra a própria referência passa; sabotagens de HTML, estado do formulário e
+  ordem estado/renderização reprovam. Um clique = uma requisição (sem listener duplicado).
+
+### 20.5 Segurança e isolamento
+
+Autorização e isolamento por empresa/tenant seguem no backend, sem mudança; os testes de escopo comercial e o contrato
+front↔back passam. As guardas do frontend (`canAccessCommercialArea`, `hasPermission('companies:update')`,
+`requirePermission('commercial:view')`, `master_admin` nos parâmetros) ficaram nos mesmos lugares. Escapes da
+SECURITY-OUTPUT-XSS e a correção SEC-C1-1 continuam efetivos (bateria XSS do Comercial e de saída no Chromium).
+Troca de usuário, empresa e tenant sem recarga reproduz o comportamento anterior. Nenhum achado novo.

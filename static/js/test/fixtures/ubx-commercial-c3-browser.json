@@ -1,0 +1,3882 @@
+{
+ "pt-BR": {
+  "steps": [
+   [
+    "abrir o Comercial",
+    "fe0694cf1089652943c521506e464a8e7ad888a952c20b7990a4e31f15bb25ff"
+   ],
+   [
+    "abrir contrato pelo cartão",
+    "fe0694cf1089652943c521506e464a8e7ad888a952c20b7990a4e31f15bb25ff"
+   ],
+   [
+    "aba Marca & Planos",
+    "47baa443e06a881c837f832e3623642fb6b284d743fb153403857dae38705b01"
+   ],
+   [
+    "aba Contratos & Consumo",
+    "fe0694cf1089652943c521506e464a8e7ad888a952c20b7990a4e31f15bb25ff"
+   ],
+   [
+    "filtro: suspensas",
+    "dd07fffee6bab29b312787826a6db7dadd320d6ce75d4f89a1625b421d292744"
+   ],
+   [
+    "filtro: responsável e período",
+    "7b08607c4baa645c225744f01b1ef63232ac504c985fe837090077c8a375beda"
+   ],
+   [
+    "filtros limpos",
+    "fe0694cf1089652943c521506e464a8e7ad888a952c20b7990a4e31f15bb25ff"
+   ],
+   [
+    "trocar empresa no seletor",
+    "115e1de7da055619eab91ea955078cb1d125b08c02d08fe4df64c1d95cf16eff"
+   ],
+   [
+    "prévia: plano, limite e aditivo",
+    "6eeb4fb02afa9aadc950d8d5edd49230ad5a89383c74d337599cb156e1410965"
+   ],
+   [
+    "salvar empresa",
+    "b18f9cc92f1efe05590144c5ab120b068da411c92e6b6986213857e67232c56a"
+   ],
+   [
+    "salvar parâmetros",
+    "b18f9cc92f1efe05590144c5ab120b068da411c92e6b6986213857e67232c56a"
+   ],
+   [
+    "salvar rascunho",
+    "083f22aaf6f391f30a308541c2e4da0e149e2970b40d9c062ffb3e5d3dc9c4ff"
+   ],
+   [
+    "gerar",
+    "bb9137fd53559e489225433cda05425eae4a4e3aa7d29421ee9848f56dbf217b"
+   ],
+   [
+    "assinar",
+    "3ef3bbe9840745f03735325e9b92f133e81e63ee90118559de9a12a2278a59c3"
+   ],
+   [
+    "enviar PDF assinado",
+    "a9be127e56230a983cb7cfb7f3c9300b15cb248cb561ea23e69eefbdfdc9f72b"
+   ],
+   [
+    "registrar e-mail",
+    "9b55d5618ede74ebcc4b538cd90467e562fcf84db7d544645fa4920bfb2655cd"
+   ],
+   [
+    "abrir, visualizar e baixar o contrato",
+    "9b55d5618ede74ebcc4b538cd90467e562fcf84db7d544645fa4920bfb2655cd"
+   ],
+   [
+    "exportar CSV/Excel e imprimir",
+    "9b55d5618ede74ebcc4b538cd90467e562fcf84db7d544645fa4920bfb2655cd"
+   ],
+   [
+    "suspender pelo cartão",
+    "cf6fa84ec33439a2aa43c84f6924ff9581b87cbc0ee67b77c4ed0085fa3775c2"
+   ],
+   [
+    "salvar rascunho (403)",
+    "cf6fa84ec33439a2aa43c84f6924ff9581b87cbc0ee67b77c4ed0085fa3775c2"
+   ],
+   [
+    "gerar (403)",
+    "cf6fa84ec33439a2aa43c84f6924ff9581b87cbc0ee67b77c4ed0085fa3775c2"
+   ],
+   [
+    "assinar (403)",
+    "9a73abec4872ac511591f6698bc18e3ceb442de5e4227ba2f854dc6a18af1941"
+   ],
+   [
+    "enviar PDF assinado (403)",
+    "65805d0411f674f024f5104fe73ff39ec6494fba50f3da2e42deac82ee747a56"
+   ],
+   [
+    "registrar e-mail (403)",
+    "8f42d6a8a182964ad01e86887f9f543c16a8c14738edf6d9b1e0cded4e238560"
+   ],
+   [
+    "salvar empresa (403)",
+    "cf6fa84ec33439a2aa43c84f6924ff9581b87cbc0ee67b77c4ed0085fa3775c2"
+   ],
+   [
+    "salvar parâmetros (403)",
+    "cf6fa84ec33439a2aa43c84f6924ff9581b87cbc0ee67b77c4ed0085fa3775c2"
+   ],
+   [
+    "sair para o Dashboard e voltar",
+    "864dfef85e3759b56c1d51341c68fbf0e8ee0046124b2f73564c53a27a4ecce7"
+   ],
+   [
+    "abrir pelo botão da tela Empresas",
+    "1a4d5d3fbff507c117421a270524dac0ad344c1f6dbc08e743534ed65d6dc86b"
+   ],
+   [
+    "trocar o idioma sem recarregar",
+    "1e90e21adac9cf0515d6a3924c6f45d4a79f7539ee6d7d5a6db2721b28893968"
+   ],
+   [
+    "voltar ao idioma",
+    "1a4d5d3fbff507c117421a270524dac0ad344c1f6dbc08e743534ed65d6dc86b"
+   ],
+   [
+    "trocar de tenant sem recarregar",
+    "0cb83f73ac71e98465197fee862dcc1c68351ee60b0412cce98157cffd6df91b"
+   ],
+   [
+    "trocar para usuário sem acesso ao Comercial",
+    "0cb83f73ac71e98465197fee862dcc1c68351ee60b0412cce98157cffd6df91b"
+   ]
+  ],
+  "commercial_calls": [
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=902",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "PUT",
+    "path": "/api/companies/901",
+    "query": "",
+    "body": {
+     "company_id": "901",
+     "plan_name": "enterprise",
+     "user_limit": "250",
+     "addendum_enabled": 1,
+     "contract_start": "2026-01-01",
+     "contract_end": "2026-11-20",
+     "unit_price_display": "R$ 42,00",
+     "monthly_value": 500,
+     "projected_monthly_value": "R$ 10.500,00",
+     "license_status": "active",
+     "active": "1",
+     "commercial_notes": "QA",
+     "actor_user_id": 7,
+     "name": "Empresa QA",
+     "legal_name": "Empresa QA Ltda",
+     "cnpj": "11222333000181",
+     "logo_type": ""
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-settings",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "unit_price": 50,
+     "plans": {
+      "individual": {
+       "label": "Individual",
+       "min_users": 1,
+       "max_users": 1
+      },
+      "start": {
+       "label": "Start",
+       "min_users": 1,
+       "max_users": 10
+      },
+      "business": {
+       "label": "Business",
+       "min_users": 11,
+       "max_users": 25
+      },
+      "corporate": {
+       "label": "Corporate",
+       "min_users": 26,
+       "max_users": 100
+      },
+      "enterprise": {
+       "label": "Enterprise",
+       "min_users": 101,
+       "max_users": null
+      }
+     }
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/save",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "contract_number": "CT-901",
+     "issue_date": "",
+     "start_date": "2026-01-01",
+     "end_date": "2026-11-20",
+     "status": "pending_signature",
+     "contractor_name": "Empresa QA",
+     "contractor_legal_name": "Empresa QA Ltda",
+     "contractor_trade_name": "Empresa QA",
+     "contractor_cnpj": "11222333000181",
+     "contractor_address": "",
+     "contractor_representative": "",
+     "contractor_representative_role": "",
+     "contractor_email": "",
+     "contractor_phone": "",
+     "contractor_witness_1": "",
+     "contractor_witness_2": "",
+     "provider_name": "",
+     "provider_legal_name": "",
+     "provider_cnpj": "",
+     "provider_address": "",
+     "provider_representative": "",
+     "provider_representative_role": "",
+     "provider_email": "",
+     "provider_phone": "",
+     "provider_witnesses": "",
+     "clauses_text": "",
+     "notes": "QA"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/generate",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "contract_number": "CT-901-save",
+     "issue_date": "",
+     "start_date": "2026-01-01",
+     "end_date": "2026-11-20",
+     "status": "save",
+     "contractor_name": "Empresa QA",
+     "contractor_legal_name": "Empresa QA Ltda",
+     "contractor_trade_name": "Empresa QA",
+     "contractor_cnpj": "11222333000181",
+     "contractor_address": "",
+     "contractor_representative": "",
+     "contractor_representative_role": "",
+     "contractor_email": "",
+     "contractor_phone": "",
+     "contractor_witness_1": "",
+     "contractor_witness_2": "",
+     "provider_name": "",
+     "provider_legal_name": "",
+     "provider_cnpj": "",
+     "provider_address": "",
+     "provider_representative": "",
+     "provider_representative_role": "",
+     "provider_email": "",
+     "provider_phone": "",
+     "provider_witnesses": "",
+     "clauses_text": "",
+     "notes": "QA"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/sign",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "signature_name": "Ana \"QA\" <b>",
+     "signature_data": "data:image/png;base64,QUJD"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/upload-signed",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "file_name": "assinado <1>.pdf",
+     "file_mime": "application/pdf",
+     "file_base64": "JVBERi0xLjQKJVFBCg=="
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/send-email",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "email_to": "cliente@exemplo.test",
+     "subject": "Contrato & aditivo",
+     "body": "Linha 1\nLinha \"2\""
+    }
+   },
+   {
+    "method": "PUT",
+    "path": "/api/companies/901",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "name": "Empresa QA",
+     "legal_name": "Empresa QA Ltda",
+     "cnpj": "11222333000181",
+     "logo_type": "",
+     "plan_name": "enterprise",
+     "user_limit": "250",
+     "contract_start": "2026-01-01",
+     "contract_end": "2026-11-20",
+     "monthly_value": 500,
+     "addendum_enabled": 1,
+     "license_status": "suspended",
+     "active": 0,
+     "commercial_notes": "QA"
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/save",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "contract_number": "CT-901",
+     "issue_date": "",
+     "start_date": "2026-01-01",
+     "end_date": "2026-11-20",
+     "status": "pending_signature",
+     "contractor_name": "Empresa QA",
+     "contractor_legal_name": "Empresa QA Ltda",
+     "contractor_trade_name": "Empresa QA",
+     "contractor_cnpj": "11222333000181",
+     "contractor_address": "",
+     "contractor_representative": "",
+     "contractor_representative_role": "",
+     "contractor_email": "",
+     "contractor_phone": "",
+     "contractor_witness_1": "",
+     "contractor_witness_2": "",
+     "provider_name": "",
+     "provider_legal_name": "",
+     "provider_cnpj": "",
+     "provider_address": "",
+     "provider_representative": "",
+     "provider_representative_role": "",
+     "provider_email": "",
+     "provider_phone": "",
+     "provider_witnesses": "",
+     "clauses_text": "",
+     "notes": "QA"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/generate",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "contract_number": "CT-901",
+     "issue_date": "",
+     "start_date": "2026-01-01",
+     "end_date": "2026-11-20",
+     "status": "pending_signature",
+     "contractor_name": "Empresa QA",
+     "contractor_legal_name": "Empresa QA Ltda",
+     "contractor_trade_name": "Empresa QA",
+     "contractor_cnpj": "11222333000181",
+     "contractor_address": "",
+     "contractor_representative": "",
+     "contractor_representative_role": "",
+     "contractor_email": "",
+     "contractor_phone": "",
+     "contractor_witness_1": "",
+     "contractor_witness_2": "",
+     "provider_name": "",
+     "provider_legal_name": "",
+     "provider_cnpj": "",
+     "provider_address": "",
+     "provider_representative": "",
+     "provider_representative_role": "",
+     "provider_email": "",
+     "provider_phone": "",
+     "provider_witnesses": "",
+     "clauses_text": "",
+     "notes": "QA"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/sign",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "signature_name": "Ana \"QA\" <b>",
+     "signature_data": "data:image/png;base64,QUJD"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/upload-signed",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "file_name": "assinado <1>.pdf",
+     "file_mime": "application/pdf",
+     "file_base64": "JVBERi0xLjQKJVFBCg=="
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/send-email",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "email_to": "cliente@exemplo.test",
+     "subject": "Contrato & aditivo",
+     "body": "Linha 1\nLinha \"2\""
+    }
+   },
+   {
+    "method": "PUT",
+    "path": "/api/companies/901",
+    "query": "",
+    "body": {
+     "company_id": "901",
+     "plan_name": "enterprise",
+     "user_limit": "250",
+     "addendum_enabled": 1,
+     "contract_start": "2026-01-01",
+     "contract_end": "2026-11-20",
+     "unit_price_display": "R$ 42,00",
+     "monthly_value": 500,
+     "projected_monthly_value": "R$ 10.500,00",
+     "license_status": "suspended",
+     "active": "0",
+     "commercial_notes": "QA",
+     "actor_user_id": 7,
+     "name": "Empresa QA",
+     "legal_name": "Empresa QA Ltda",
+     "cnpj": "11222333000181",
+     "logo_type": ""
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-settings",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "unit_price": 42,
+     "plans": {
+      "individual": {
+       "label": "Individual",
+       "min_users": 1,
+       "max_users": 1
+      },
+      "start": {
+       "label": "Start",
+       "min_users": 1,
+       "max_users": 10
+      },
+      "business": {
+       "label": "Business",
+       "min_users": 11,
+       "max_users": 25
+      },
+      "corporate": {
+       "label": "Corporate",
+       "min_users": 26,
+       "max_users": 100
+      },
+      "enterprise": {
+       "label": "Enterprise",
+       "min_users": 101,
+       "max_users": null
+      }
+     }
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=902",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=911",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=911",
+    "body": null
+   }
+  ],
+  "background_calls": [
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/bootstrap\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/bootstrap\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/bootstrap\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/bootstrap\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/bootstrap\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/bootstrap\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/bootstrap\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/company-purchase-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/company-purchase-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/company-purchase-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/company-purchase-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/company-purchase-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/company-purchase-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/company-purchase-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-framework\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-framework\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-framework\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-framework\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-framework\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-framework\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-framework\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-rules\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-rules\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-rules\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-rules\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-rules\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-rules\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-rules\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/db-pool/status\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/db-pool/status\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/db-pool/status\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/db-pool/status\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/db-pool/status\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/db-pool/status\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/db-pool/status\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-archive\", \"query\": \"company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-archive\", \"query\": \"company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-archive\", \"query\": \"company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-archive\", \"query\": \"company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-archive\", \"query\": \"company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-archive\", \"query\": \"company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-archive\", \"query\": \"company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-config\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-config\", \"query\": \"actor_user_id=7&company_id=911\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-epi-audit\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-epi-audit\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-epi-audit\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-epi-audit\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-epi-audit\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-epi-audit\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-epi-audit\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-retention-policy\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-retention-policy\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-retention-policy\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-retention-policy\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-retention-policy\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-retention-policy\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-retention-policy\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/fichas\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/fichas\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/fichas\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/fichas\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/fichas\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/fichas\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/fichas\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/module-visibility\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/module-visibility\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/module-visibility\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/module-visibility\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/module-visibility\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/module-visibility\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/module-visibility\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/reports\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/reports\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/reports\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/reports\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/reports\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/reports\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/reports\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/requests\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/requests\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/requests\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/requests\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/requests\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/requests\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/requests\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/compliance\", \"query\": \"company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/compliance\", \"query\": \"company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/compliance\", \"query\": \"company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/compliance\", \"query\": \"company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/compliance\", \"query\": \"company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/compliance\", \"query\": \"company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/compliance\", \"query\": \"company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=911\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=911\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=911\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/low\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/low\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/low\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/low\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/low\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/low\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/low\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/health\", \"query\": \"\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/health\", \"query\": \"\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/health\", \"query\": \"\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/health\", \"query\": \"\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/health\", \"query\": \"\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/health\", \"query\": \"\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/health\", \"query\": \"\"}"
+  ],
+  "opens": [
+   [
+    "/api/commercial-contract.pdf?actor_user_id=7&company_id=901",
+    "_blank",
+    ""
+   ],
+   [
+    "/api/commercial-contract.pdf?actor_user_id=7&company_id=901",
+    "_blank",
+    ""
+   ],
+   [
+    "/api/commercial-contract/file?actor_user_id=7&company_id=901&kind=generated",
+    "_blank",
+    ""
+   ],
+   [
+    "",
+    "_blank",
+    "width=1100,height=800"
+   ]
+  ],
+  "printed": [
+   "5867362ca7d3a25d61ae22867e3aff8068ebf8d93818cc5a55003a286c415714"
+  ],
+  "downloads": [
+   [
+    "historico-comercial.csv",
+    "01a823cbfb6fa73f2419fc0f3e7e40b4997b7ae2af4a42d04502e5c11745bcc9"
+   ],
+   [
+    "historico-comercial.xls",
+    "cc13db402f620d575a500bbcaa8dc4f7bf06bdf184e1a3939d79d918ac9f2463"
+   ]
+  ],
+  "dialogs": [
+   "Contrato salvo em rascunho.",
+   "Contrato gerado com sucesso.",
+   "Assinatura digital registrada.",
+   "Contrato assinado enviado com sucesso.",
+   "Registro de envio por e-mail atualizado.",
+   "QA forbidden",
+   "QA forbidden",
+   "QA forbidden",
+   "QA forbidden",
+   "QA forbidden",
+   "QA forbidden"
+  ],
+  "external": [
+   "https://unpkg.com/htmx.org@1.9.12"
+  ]
+ },
+ "en-GB": {
+  "steps": [
+   [
+    "abrir o Comercial",
+    "11a8c18cb7f365b0b0bcf071339ad02f10f5e665a3d94328558c268efac496f4"
+   ],
+   [
+    "abrir contrato pelo cartão",
+    "11a8c18cb7f365b0b0bcf071339ad02f10f5e665a3d94328558c268efac496f4"
+   ],
+   [
+    "aba Marca & Planos",
+    "050a4bf64f4b049f42187fd3f58945c90c93cf85df9fd1d1c9566a2d9d479d40"
+   ],
+   [
+    "aba Contratos & Consumo",
+    "11a8c18cb7f365b0b0bcf071339ad02f10f5e665a3d94328558c268efac496f4"
+   ],
+   [
+    "filtro: suspensas",
+    "3a877a7d556676aa430b9e49cbf2a2ac0bad0e65ab5ed917a0cf1e45a6b1a216"
+   ],
+   [
+    "filtro: responsável e período",
+    "4e49efdc35bcd1ae1654b13a792f88ebb295840dfaab7d633d860dca08b385bb"
+   ],
+   [
+    "filtros limpos",
+    "11a8c18cb7f365b0b0bcf071339ad02f10f5e665a3d94328558c268efac496f4"
+   ],
+   [
+    "trocar empresa no seletor",
+    "6235f3c374afc60496cdb6c1a907c865f16581a1cca8ac81168710ae5106fa40"
+   ],
+   [
+    "prévia: plano, limite e aditivo",
+    "c6db67db8de8b7130c9a118749ed5d29cdb8ec1fc53cf4cb69bffef712b52d16"
+   ],
+   [
+    "salvar empresa",
+    "65935fa47caf3a39acb4552b7fffadd0a51a44db65d134692b17ac609fb2390a"
+   ],
+   [
+    "salvar parâmetros",
+    "65935fa47caf3a39acb4552b7fffadd0a51a44db65d134692b17ac609fb2390a"
+   ],
+   [
+    "salvar rascunho",
+    "13a23db09ccc68ba5db39be2f88249cfed8333c58fb019397b7f019a8a65201a"
+   ],
+   [
+    "gerar",
+    "2035e050ee1ae1ae35f3439b06080efb0de501c11d6ee2d8833c663b796c4ed9"
+   ],
+   [
+    "assinar",
+    "1f0f80f876749018956152682c2eb1026ffb7a32897c723cc417e38cd64e9fa3"
+   ],
+   [
+    "enviar PDF assinado",
+    "57abf4829cbf0ba45cf4901e871f3471d71de7300c79b0f2bd0cce0ca21e4d02"
+   ],
+   [
+    "registrar e-mail",
+    "7d74032ed9e0ff4c3d582137b9fac285902d2b083891566a7dd0d78ece46288e"
+   ],
+   [
+    "abrir, visualizar e baixar o contrato",
+    "7d74032ed9e0ff4c3d582137b9fac285902d2b083891566a7dd0d78ece46288e"
+   ],
+   [
+    "exportar CSV/Excel e imprimir",
+    "7d74032ed9e0ff4c3d582137b9fac285902d2b083891566a7dd0d78ece46288e"
+   ],
+   [
+    "suspender pelo cartão",
+    "0e1d1df35aef76bb1a3d1127186d40bd03573311387f0ea62fa8e2080617e070"
+   ],
+   [
+    "salvar rascunho (403)",
+    "0e1d1df35aef76bb1a3d1127186d40bd03573311387f0ea62fa8e2080617e070"
+   ],
+   [
+    "gerar (403)",
+    "0e1d1df35aef76bb1a3d1127186d40bd03573311387f0ea62fa8e2080617e070"
+   ],
+   [
+    "assinar (403)",
+    "1718c87b33ae8b5fedb2095a55c691099927a608a8418a2f676f8dfc272782ee"
+   ],
+   [
+    "enviar PDF assinado (403)",
+    "d2ee54fdd34206cf9968e107aa0113733ac63f36869f037af49c2db8794f4095"
+   ],
+   [
+    "registrar e-mail (403)",
+    "37fc09222bdcd310e9f2c33934acf8069e9a62a70afe855525d834b111f184e8"
+   ],
+   [
+    "salvar empresa (403)",
+    "0e1d1df35aef76bb1a3d1127186d40bd03573311387f0ea62fa8e2080617e070"
+   ],
+   [
+    "salvar parâmetros (403)",
+    "0e1d1df35aef76bb1a3d1127186d40bd03573311387f0ea62fa8e2080617e070"
+   ],
+   [
+    "sair para o Dashboard e voltar",
+    "d66be7aad02e0924d476f49c358d67fb92bab4ed4aa4c85f74b76a0cad3d6042"
+   ],
+   [
+    "abrir pelo botão da tela Empresas",
+    "b7a29efcc5f9fb79e9d642faead527e8874d7e734fa63eb338b41a3430fc0bd7"
+   ],
+   [
+    "trocar o idioma sem recarregar",
+    "f0f23388eeaf561e30ab39599552620fadeb4edf8b50380fc7ac95c68fdd9671"
+   ],
+   [
+    "voltar ao idioma",
+    "b7a29efcc5f9fb79e9d642faead527e8874d7e734fa63eb338b41a3430fc0bd7"
+   ],
+   [
+    "trocar de tenant sem recarregar",
+    "009bb784995acdb83517eee18718b6d46ec5cd3748f86a7e202f122b3df2d913"
+   ],
+   [
+    "trocar para usuário sem acesso ao Comercial",
+    "009bb784995acdb83517eee18718b6d46ec5cd3748f86a7e202f122b3df2d913"
+   ]
+  ],
+  "commercial_calls": [
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=902",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "PUT",
+    "path": "/api/companies/901",
+    "query": "",
+    "body": {
+     "company_id": "901",
+     "plan_name": "enterprise",
+     "user_limit": "250",
+     "addendum_enabled": 1,
+     "contract_start": "2026-01-01",
+     "contract_end": "2026-11-20",
+     "unit_price_display": "R$42.00",
+     "monthly_value": 500,
+     "projected_monthly_value": "R$10,500.00",
+     "license_status": "active",
+     "active": "1",
+     "commercial_notes": "QA",
+     "actor_user_id": 7,
+     "name": "Empresa QA",
+     "legal_name": "Empresa QA Ltda",
+     "cnpj": "11222333000181",
+     "logo_type": ""
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-settings",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "unit_price": 50,
+     "plans": {
+      "individual": {
+       "label": "Individual",
+       "min_users": 1,
+       "max_users": 1
+      },
+      "start": {
+       "label": "Start",
+       "min_users": 1,
+       "max_users": 10
+      },
+      "business": {
+       "label": "Business",
+       "min_users": 11,
+       "max_users": 25
+      },
+      "corporate": {
+       "label": "Corporate",
+       "min_users": 26,
+       "max_users": 100
+      },
+      "enterprise": {
+       "label": "Enterprise",
+       "min_users": 101,
+       "max_users": null
+      }
+     }
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/save",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "contract_number": "CT-901",
+     "issue_date": "",
+     "start_date": "2026-01-01",
+     "end_date": "2026-11-20",
+     "status": "pending_signature",
+     "contractor_name": "Empresa QA",
+     "contractor_legal_name": "Empresa QA Ltda",
+     "contractor_trade_name": "Empresa QA",
+     "contractor_cnpj": "11222333000181",
+     "contractor_address": "",
+     "contractor_representative": "",
+     "contractor_representative_role": "",
+     "contractor_email": "",
+     "contractor_phone": "",
+     "contractor_witness_1": "",
+     "contractor_witness_2": "",
+     "provider_name": "",
+     "provider_legal_name": "",
+     "provider_cnpj": "",
+     "provider_address": "",
+     "provider_representative": "",
+     "provider_representative_role": "",
+     "provider_email": "",
+     "provider_phone": "",
+     "provider_witnesses": "",
+     "clauses_text": "",
+     "notes": "QA"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/generate",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "contract_number": "CT-901-save",
+     "issue_date": "",
+     "start_date": "2026-01-01",
+     "end_date": "2026-11-20",
+     "status": "save",
+     "contractor_name": "Empresa QA",
+     "contractor_legal_name": "Empresa QA Ltda",
+     "contractor_trade_name": "Empresa QA",
+     "contractor_cnpj": "11222333000181",
+     "contractor_address": "",
+     "contractor_representative": "",
+     "contractor_representative_role": "",
+     "contractor_email": "",
+     "contractor_phone": "",
+     "contractor_witness_1": "",
+     "contractor_witness_2": "",
+     "provider_name": "",
+     "provider_legal_name": "",
+     "provider_cnpj": "",
+     "provider_address": "",
+     "provider_representative": "",
+     "provider_representative_role": "",
+     "provider_email": "",
+     "provider_phone": "",
+     "provider_witnesses": "",
+     "clauses_text": "",
+     "notes": "QA"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/sign",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "signature_name": "Ana \"QA\" <b>",
+     "signature_data": "data:image/png;base64,QUJD"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/upload-signed",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "file_name": "assinado <1>.pdf",
+     "file_mime": "application/pdf",
+     "file_base64": "JVBERi0xLjQKJVFBCg=="
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/send-email",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "email_to": "cliente@exemplo.test",
+     "subject": "Contrato & aditivo",
+     "body": "Linha 1\nLinha \"2\""
+    }
+   },
+   {
+    "method": "PUT",
+    "path": "/api/companies/901",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "name": "Empresa QA",
+     "legal_name": "Empresa QA Ltda",
+     "cnpj": "11222333000181",
+     "logo_type": "",
+     "plan_name": "enterprise",
+     "user_limit": "250",
+     "contract_start": "2026-01-01",
+     "contract_end": "2026-11-20",
+     "monthly_value": 500,
+     "addendum_enabled": 1,
+     "license_status": "suspended",
+     "active": 0,
+     "commercial_notes": "QA"
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/save",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "contract_number": "CT-901",
+     "issue_date": "",
+     "start_date": "2026-01-01",
+     "end_date": "2026-11-20",
+     "status": "pending_signature",
+     "contractor_name": "Empresa QA",
+     "contractor_legal_name": "Empresa QA Ltda",
+     "contractor_trade_name": "Empresa QA",
+     "contractor_cnpj": "11222333000181",
+     "contractor_address": "",
+     "contractor_representative": "",
+     "contractor_representative_role": "",
+     "contractor_email": "",
+     "contractor_phone": "",
+     "contractor_witness_1": "",
+     "contractor_witness_2": "",
+     "provider_name": "",
+     "provider_legal_name": "",
+     "provider_cnpj": "",
+     "provider_address": "",
+     "provider_representative": "",
+     "provider_representative_role": "",
+     "provider_email": "",
+     "provider_phone": "",
+     "provider_witnesses": "",
+     "clauses_text": "",
+     "notes": "QA"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/generate",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "contract_number": "CT-901",
+     "issue_date": "",
+     "start_date": "2026-01-01",
+     "end_date": "2026-11-20",
+     "status": "pending_signature",
+     "contractor_name": "Empresa QA",
+     "contractor_legal_name": "Empresa QA Ltda",
+     "contractor_trade_name": "Empresa QA",
+     "contractor_cnpj": "11222333000181",
+     "contractor_address": "",
+     "contractor_representative": "",
+     "contractor_representative_role": "",
+     "contractor_email": "",
+     "contractor_phone": "",
+     "contractor_witness_1": "",
+     "contractor_witness_2": "",
+     "provider_name": "",
+     "provider_legal_name": "",
+     "provider_cnpj": "",
+     "provider_address": "",
+     "provider_representative": "",
+     "provider_representative_role": "",
+     "provider_email": "",
+     "provider_phone": "",
+     "provider_witnesses": "",
+     "clauses_text": "",
+     "notes": "QA"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/sign",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "signature_name": "Ana \"QA\" <b>",
+     "signature_data": "data:image/png;base64,QUJD"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/upload-signed",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "file_name": "assinado <1>.pdf",
+     "file_mime": "application/pdf",
+     "file_base64": "JVBERi0xLjQKJVFBCg=="
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/send-email",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "email_to": "cliente@exemplo.test",
+     "subject": "Contrato & aditivo",
+     "body": "Linha 1\nLinha \"2\""
+    }
+   },
+   {
+    "method": "PUT",
+    "path": "/api/companies/901",
+    "query": "",
+    "body": {
+     "company_id": "901",
+     "plan_name": "enterprise",
+     "user_limit": "250",
+     "addendum_enabled": 1,
+     "contract_start": "2026-01-01",
+     "contract_end": "2026-11-20",
+     "unit_price_display": "R$42.00",
+     "monthly_value": 500,
+     "projected_monthly_value": "R$10,500.00",
+     "license_status": "suspended",
+     "active": "0",
+     "commercial_notes": "QA",
+     "actor_user_id": 7,
+     "name": "Empresa QA",
+     "legal_name": "Empresa QA Ltda",
+     "cnpj": "11222333000181",
+     "logo_type": ""
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-settings",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "unit_price": 42,
+     "plans": {
+      "individual": {
+       "label": "Individual",
+       "min_users": 1,
+       "max_users": 1
+      },
+      "start": {
+       "label": "Start",
+       "min_users": 1,
+       "max_users": 10
+      },
+      "business": {
+       "label": "Business",
+       "min_users": 11,
+       "max_users": 25
+      },
+      "corporate": {
+       "label": "Corporate",
+       "min_users": 26,
+       "max_users": 100
+      },
+      "enterprise": {
+       "label": "Enterprise",
+       "min_users": 101,
+       "max_users": null
+      }
+     }
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=902",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=911",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=911",
+    "body": null
+   }
+  ],
+  "background_calls": [
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/bootstrap\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/bootstrap\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/bootstrap\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/bootstrap\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/bootstrap\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/bootstrap\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/bootstrap\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/company-purchase-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/company-purchase-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/company-purchase-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/company-purchase-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/company-purchase-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/company-purchase-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/company-purchase-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-framework\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-framework\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-framework\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-framework\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-framework\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-framework\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-framework\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-rules\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-rules\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-rules\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-rules\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-rules\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-rules\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-rules\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/db-pool/status\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/db-pool/status\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/db-pool/status\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/db-pool/status\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/db-pool/status\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/db-pool/status\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/db-pool/status\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-archive\", \"query\": \"company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-archive\", \"query\": \"company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-archive\", \"query\": \"company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-archive\", \"query\": \"company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-archive\", \"query\": \"company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-archive\", \"query\": \"company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-archive\", \"query\": \"company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-config\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-config\", \"query\": \"actor_user_id=7&company_id=911\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-epi-audit\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-epi-audit\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-epi-audit\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-epi-audit\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-epi-audit\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-epi-audit\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-epi-audit\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-retention-policy\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-retention-policy\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-retention-policy\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-retention-policy\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-retention-policy\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-retention-policy\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-retention-policy\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/fichas\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/fichas\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/fichas\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/fichas\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/fichas\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/fichas\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/fichas\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/module-visibility\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/module-visibility\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/module-visibility\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/module-visibility\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/module-visibility\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/module-visibility\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/module-visibility\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/reports\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/reports\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/reports\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/reports\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/reports\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/reports\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/reports\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/requests\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/requests\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/requests\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/requests\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/requests\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/requests\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/requests\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/compliance\", \"query\": \"company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/compliance\", \"query\": \"company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/compliance\", \"query\": \"company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/compliance\", \"query\": \"company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/compliance\", \"query\": \"company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/compliance\", \"query\": \"company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/compliance\", \"query\": \"company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=911\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=911\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=911\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/low\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/low\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/low\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/low\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/low\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/low\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/low\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/health\", \"query\": \"\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/health\", \"query\": \"\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/health\", \"query\": \"\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/health\", \"query\": \"\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/health\", \"query\": \"\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/health\", \"query\": \"\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/health\", \"query\": \"\"}"
+  ],
+  "opens": [
+   [
+    "/api/commercial-contract.pdf?actor_user_id=7&company_id=901",
+    "_blank",
+    ""
+   ],
+   [
+    "/api/commercial-contract.pdf?actor_user_id=7&company_id=901",
+    "_blank",
+    ""
+   ],
+   [
+    "/api/commercial-contract/file?actor_user_id=7&company_id=901&kind=generated",
+    "_blank",
+    ""
+   ],
+   [
+    "",
+    "_blank",
+    "width=1100,height=800"
+   ]
+  ],
+  "printed": [
+   "45c74a78953202865fba927e9dfb214cf7265da2f211b4bcf7a65c3b13f24619"
+  ],
+  "downloads": [
+   [
+    "historico-comercial.csv",
+    "b03293af73ea576745f7f481567ebc20202b12cc8c793ab15dcb5b0ce7ef61e4"
+   ],
+   [
+    "historico-comercial.xls",
+    "dab4ef4259a35c7fbbc373562425f9c0f546751780c61b33a8677e504be2fdba"
+   ]
+  ],
+  "dialogs": [
+   "Contract saved as a draft.",
+   "Contract generated successfully.",
+   "Digital signature recorded.",
+   "Signed contract uploaded successfully.",
+   "Email sending record updated.",
+   "QA forbidden",
+   "QA forbidden",
+   "QA forbidden",
+   "QA forbidden",
+   "QA forbidden",
+   "QA forbidden"
+  ],
+  "external": [
+   "https://unpkg.com/htmx.org@1.9.12"
+  ]
+ },
+ "es-ES": {
+  "steps": [
+   [
+    "abrir o Comercial",
+    "ccbfaff84e0975199fbe914cfadde39a3a00e591c599ad14bdd5f2e5cf9343ee"
+   ],
+   [
+    "abrir contrato pelo cartão",
+    "ccbfaff84e0975199fbe914cfadde39a3a00e591c599ad14bdd5f2e5cf9343ee"
+   ],
+   [
+    "aba Marca & Planos",
+    "bcb336f0ef4b45697232f37d4d7028d94be8ec35376340ce6276bef02932c136"
+   ],
+   [
+    "aba Contratos & Consumo",
+    "ccbfaff84e0975199fbe914cfadde39a3a00e591c599ad14bdd5f2e5cf9343ee"
+   ],
+   [
+    "filtro: suspensas",
+    "817a2974f66d9a953984a0533ff1ccb14df96c299e1dcf96dc3d5c71709b9869"
+   ],
+   [
+    "filtro: responsável e período",
+    "8517788530e45bbaa814d12d74b854858b6dbca70f43ba2b9e2e936dbe366a78"
+   ],
+   [
+    "filtros limpos",
+    "ccbfaff84e0975199fbe914cfadde39a3a00e591c599ad14bdd5f2e5cf9343ee"
+   ],
+   [
+    "trocar empresa no seletor",
+    "5cd1bc1a24ff6a0a7c3eb7f0e1d5382e8adbbb135eed96412dc3a9c0556732a1"
+   ],
+   [
+    "prévia: plano, limite e aditivo",
+    "20a823abe3ae8609544032d4ba68207df5a3c0ac8641406b6b66a610cdd48f69"
+   ],
+   [
+    "salvar empresa",
+    "04b43ccd67a30a1da999b7518d8f199bb236658e5331d095bc91312dc473e2e2"
+   ],
+   [
+    "salvar parâmetros",
+    "04b43ccd67a30a1da999b7518d8f199bb236658e5331d095bc91312dc473e2e2"
+   ],
+   [
+    "salvar rascunho",
+    "42ed4e4d8b9ebabdec66e42186f693c2373dcd4fc67c18c375da298cc00785b6"
+   ],
+   [
+    "gerar",
+    "ccdbaced49e8edd973460dfa629126cda5f9375133da9bb8d04f04aaf5fa05d0"
+   ],
+   [
+    "assinar",
+    "4e38c5875b11f7ed694c88e689bc6567cdf22062dd020dc47e748108edf77f2f"
+   ],
+   [
+    "enviar PDF assinado",
+    "6fc51535d69114dd5b9ccc711a4dc1cad87d21d3d915fa7dc7790eca55862784"
+   ],
+   [
+    "registrar e-mail",
+    "f7e3540d236507b5367154ab8d5203109cee11f0e7e94624a59a5219b1de3fcd"
+   ],
+   [
+    "abrir, visualizar e baixar o contrato",
+    "f7e3540d236507b5367154ab8d5203109cee11f0e7e94624a59a5219b1de3fcd"
+   ],
+   [
+    "exportar CSV/Excel e imprimir",
+    "f7e3540d236507b5367154ab8d5203109cee11f0e7e94624a59a5219b1de3fcd"
+   ],
+   [
+    "suspender pelo cartão",
+    "0285a23f1d2893343f2d32c8918eb4d36fd828828d9f58ecfbd61c733aa88dca"
+   ],
+   [
+    "salvar rascunho (403)",
+    "0285a23f1d2893343f2d32c8918eb4d36fd828828d9f58ecfbd61c733aa88dca"
+   ],
+   [
+    "gerar (403)",
+    "0285a23f1d2893343f2d32c8918eb4d36fd828828d9f58ecfbd61c733aa88dca"
+   ],
+   [
+    "assinar (403)",
+    "976ffdafe447ba218244e6cc44f660944d6566bfddf06af8a2118bd274f2b072"
+   ],
+   [
+    "enviar PDF assinado (403)",
+    "b3392cb1475f6d4491681b1d4656fe6374d66f9d24a4c199e0cfd4e3ec53985f"
+   ],
+   [
+    "registrar e-mail (403)",
+    "d216f9ed2355fbe8497fa94344109994ae1991b4158edf3048c957db893cfeb3"
+   ],
+   [
+    "salvar empresa (403)",
+    "0285a23f1d2893343f2d32c8918eb4d36fd828828d9f58ecfbd61c733aa88dca"
+   ],
+   [
+    "salvar parâmetros (403)",
+    "0285a23f1d2893343f2d32c8918eb4d36fd828828d9f58ecfbd61c733aa88dca"
+   ],
+   [
+    "sair para o Dashboard e voltar",
+    "7af7261e571713dca0bb4aed59128da7ba8e441343d37c0c10d3711a56f1114c"
+   ],
+   [
+    "abrir pelo botão da tela Empresas",
+    "0f3bc4a2161b9c9db7b940847551dcde626f6f839b91f17600b7d3d0001b10b6"
+   ],
+   [
+    "trocar o idioma sem recarregar",
+    "7cba6ffec6783be12296161190c9724a0dd8190ac5b5d008d0eb05fb3d59b9cd"
+   ],
+   [
+    "voltar ao idioma",
+    "0f3bc4a2161b9c9db7b940847551dcde626f6f839b91f17600b7d3d0001b10b6"
+   ],
+   [
+    "trocar de tenant sem recarregar",
+    "075314fda42399f6d083cd127d29580a199051debe09b5df9860e657f3a27b76"
+   ],
+   [
+    "trocar para usuário sem acesso ao Comercial",
+    "075314fda42399f6d083cd127d29580a199051debe09b5df9860e657f3a27b76"
+   ]
+  ],
+  "commercial_calls": [
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=902",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "PUT",
+    "path": "/api/companies/901",
+    "query": "",
+    "body": {
+     "company_id": "901",
+     "plan_name": "enterprise",
+     "user_limit": "250",
+     "addendum_enabled": 1,
+     "contract_start": "2026-01-01",
+     "contract_end": "2026-11-20",
+     "unit_price_display": "42,00 BRL",
+     "monthly_value": 500,
+     "projected_monthly_value": "10.500,00 BRL",
+     "license_status": "active",
+     "active": "1",
+     "commercial_notes": "QA",
+     "actor_user_id": 7,
+     "name": "Empresa QA",
+     "legal_name": "Empresa QA Ltda",
+     "cnpj": "11222333000181",
+     "logo_type": ""
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-settings",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "unit_price": 50,
+     "plans": {
+      "individual": {
+       "label": "Individual",
+       "min_users": 1,
+       "max_users": 1
+      },
+      "start": {
+       "label": "Start",
+       "min_users": 1,
+       "max_users": 10
+      },
+      "business": {
+       "label": "Business",
+       "min_users": 11,
+       "max_users": 25
+      },
+      "corporate": {
+       "label": "Corporate",
+       "min_users": 26,
+       "max_users": 100
+      },
+      "enterprise": {
+       "label": "Enterprise",
+       "min_users": 101,
+       "max_users": null
+      }
+     }
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/save",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "contract_number": "CT-901",
+     "issue_date": "",
+     "start_date": "2026-01-01",
+     "end_date": "2026-11-20",
+     "status": "pending_signature",
+     "contractor_name": "Empresa QA",
+     "contractor_legal_name": "Empresa QA Ltda",
+     "contractor_trade_name": "Empresa QA",
+     "contractor_cnpj": "11222333000181",
+     "contractor_address": "",
+     "contractor_representative": "",
+     "contractor_representative_role": "",
+     "contractor_email": "",
+     "contractor_phone": "",
+     "contractor_witness_1": "",
+     "contractor_witness_2": "",
+     "provider_name": "",
+     "provider_legal_name": "",
+     "provider_cnpj": "",
+     "provider_address": "",
+     "provider_representative": "",
+     "provider_representative_role": "",
+     "provider_email": "",
+     "provider_phone": "",
+     "provider_witnesses": "",
+     "clauses_text": "",
+     "notes": "QA"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/generate",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "contract_number": "CT-901-save",
+     "issue_date": "",
+     "start_date": "2026-01-01",
+     "end_date": "2026-11-20",
+     "status": "save",
+     "contractor_name": "Empresa QA",
+     "contractor_legal_name": "Empresa QA Ltda",
+     "contractor_trade_name": "Empresa QA",
+     "contractor_cnpj": "11222333000181",
+     "contractor_address": "",
+     "contractor_representative": "",
+     "contractor_representative_role": "",
+     "contractor_email": "",
+     "contractor_phone": "",
+     "contractor_witness_1": "",
+     "contractor_witness_2": "",
+     "provider_name": "",
+     "provider_legal_name": "",
+     "provider_cnpj": "",
+     "provider_address": "",
+     "provider_representative": "",
+     "provider_representative_role": "",
+     "provider_email": "",
+     "provider_phone": "",
+     "provider_witnesses": "",
+     "clauses_text": "",
+     "notes": "QA"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/sign",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "signature_name": "Ana \"QA\" <b>",
+     "signature_data": "data:image/png;base64,QUJD"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/upload-signed",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "file_name": "assinado <1>.pdf",
+     "file_mime": "application/pdf",
+     "file_base64": "JVBERi0xLjQKJVFBCg=="
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/send-email",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "email_to": "cliente@exemplo.test",
+     "subject": "Contrato & aditivo",
+     "body": "Linha 1\nLinha \"2\""
+    }
+   },
+   {
+    "method": "PUT",
+    "path": "/api/companies/901",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "name": "Empresa QA",
+     "legal_name": "Empresa QA Ltda",
+     "cnpj": "11222333000181",
+     "logo_type": "",
+     "plan_name": "enterprise",
+     "user_limit": "250",
+     "contract_start": "2026-01-01",
+     "contract_end": "2026-11-20",
+     "monthly_value": 500,
+     "addendum_enabled": 1,
+     "license_status": "suspended",
+     "active": 0,
+     "commercial_notes": "QA"
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/save",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "contract_number": "CT-901",
+     "issue_date": "",
+     "start_date": "2026-01-01",
+     "end_date": "2026-11-20",
+     "status": "pending_signature",
+     "contractor_name": "Empresa QA",
+     "contractor_legal_name": "Empresa QA Ltda",
+     "contractor_trade_name": "Empresa QA",
+     "contractor_cnpj": "11222333000181",
+     "contractor_address": "",
+     "contractor_representative": "",
+     "contractor_representative_role": "",
+     "contractor_email": "",
+     "contractor_phone": "",
+     "contractor_witness_1": "",
+     "contractor_witness_2": "",
+     "provider_name": "",
+     "provider_legal_name": "",
+     "provider_cnpj": "",
+     "provider_address": "",
+     "provider_representative": "",
+     "provider_representative_role": "",
+     "provider_email": "",
+     "provider_phone": "",
+     "provider_witnesses": "",
+     "clauses_text": "",
+     "notes": "QA"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/generate",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "contract_number": "CT-901",
+     "issue_date": "",
+     "start_date": "2026-01-01",
+     "end_date": "2026-11-20",
+     "status": "pending_signature",
+     "contractor_name": "Empresa QA",
+     "contractor_legal_name": "Empresa QA Ltda",
+     "contractor_trade_name": "Empresa QA",
+     "contractor_cnpj": "11222333000181",
+     "contractor_address": "",
+     "contractor_representative": "",
+     "contractor_representative_role": "",
+     "contractor_email": "",
+     "contractor_phone": "",
+     "contractor_witness_1": "",
+     "contractor_witness_2": "",
+     "provider_name": "",
+     "provider_legal_name": "",
+     "provider_cnpj": "",
+     "provider_address": "",
+     "provider_representative": "",
+     "provider_representative_role": "",
+     "provider_email": "",
+     "provider_phone": "",
+     "provider_witnesses": "",
+     "clauses_text": "",
+     "notes": "QA"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/sign",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "signature_name": "Ana \"QA\" <b>",
+     "signature_data": "data:image/png;base64,QUJD"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/upload-signed",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "file_name": "assinado <1>.pdf",
+     "file_mime": "application/pdf",
+     "file_base64": "JVBERi0xLjQKJVFBCg=="
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/send-email",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "email_to": "cliente@exemplo.test",
+     "subject": "Contrato & aditivo",
+     "body": "Linha 1\nLinha \"2\""
+    }
+   },
+   {
+    "method": "PUT",
+    "path": "/api/companies/901",
+    "query": "",
+    "body": {
+     "company_id": "901",
+     "plan_name": "enterprise",
+     "user_limit": "250",
+     "addendum_enabled": 1,
+     "contract_start": "2026-01-01",
+     "contract_end": "2026-11-20",
+     "unit_price_display": "42,00 BRL",
+     "monthly_value": 500,
+     "projected_monthly_value": "10.500,00 BRL",
+     "license_status": "suspended",
+     "active": "0",
+     "commercial_notes": "QA",
+     "actor_user_id": 7,
+     "name": "Empresa QA",
+     "legal_name": "Empresa QA Ltda",
+     "cnpj": "11222333000181",
+     "logo_type": ""
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-settings",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "unit_price": 42,
+     "plans": {
+      "individual": {
+       "label": "Individual",
+       "min_users": 1,
+       "max_users": 1
+      },
+      "start": {
+       "label": "Start",
+       "min_users": 1,
+       "max_users": 10
+      },
+      "business": {
+       "label": "Business",
+       "min_users": 11,
+       "max_users": 25
+      },
+      "corporate": {
+       "label": "Corporate",
+       "min_users": 26,
+       "max_users": 100
+      },
+      "enterprise": {
+       "label": "Enterprise",
+       "min_users": 101,
+       "max_users": null
+      }
+     }
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=902",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=911",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=911",
+    "body": null
+   }
+  ],
+  "background_calls": [
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/bootstrap\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/bootstrap\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/bootstrap\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/bootstrap\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/bootstrap\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/bootstrap\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/bootstrap\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/company-purchase-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/company-purchase-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/company-purchase-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/company-purchase-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/company-purchase-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/company-purchase-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/company-purchase-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-framework\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-framework\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-framework\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-framework\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-framework\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-framework\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-framework\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-rules\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-rules\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-rules\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-rules\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-rules\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-rules\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-rules\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/db-pool/status\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/db-pool/status\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/db-pool/status\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/db-pool/status\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/db-pool/status\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/db-pool/status\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/db-pool/status\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-archive\", \"query\": \"company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-archive\", \"query\": \"company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-archive\", \"query\": \"company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-archive\", \"query\": \"company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-archive\", \"query\": \"company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-archive\", \"query\": \"company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-archive\", \"query\": \"company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-config\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-config\", \"query\": \"actor_user_id=7&company_id=911\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-epi-audit\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-epi-audit\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-epi-audit\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-epi-audit\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-epi-audit\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-epi-audit\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-epi-audit\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-retention-policy\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-retention-policy\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-retention-policy\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-retention-policy\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-retention-policy\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-retention-policy\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-retention-policy\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/fichas\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/fichas\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/fichas\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/fichas\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/fichas\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/fichas\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/fichas\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/module-visibility\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/module-visibility\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/module-visibility\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/module-visibility\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/module-visibility\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/module-visibility\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/module-visibility\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/reports\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/reports\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/reports\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/reports\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/reports\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/reports\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/reports\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/requests\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/requests\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/requests\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/requests\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/requests\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/requests\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/requests\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/compliance\", \"query\": \"company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/compliance\", \"query\": \"company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/compliance\", \"query\": \"company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/compliance\", \"query\": \"company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/compliance\", \"query\": \"company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/compliance\", \"query\": \"company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/compliance\", \"query\": \"company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=911\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=911\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=911\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/low\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/low\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/low\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/low\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/low\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/low\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/low\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/health\", \"query\": \"\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/health\", \"query\": \"\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/health\", \"query\": \"\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/health\", \"query\": \"\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/health\", \"query\": \"\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/health\", \"query\": \"\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/health\", \"query\": \"\"}"
+  ],
+  "opens": [
+   [
+    "/api/commercial-contract.pdf?actor_user_id=7&company_id=901",
+    "_blank",
+    ""
+   ],
+   [
+    "/api/commercial-contract.pdf?actor_user_id=7&company_id=901",
+    "_blank",
+    ""
+   ],
+   [
+    "/api/commercial-contract/file?actor_user_id=7&company_id=901&kind=generated",
+    "_blank",
+    ""
+   ],
+   [
+    "",
+    "_blank",
+    "width=1100,height=800"
+   ]
+  ],
+  "printed": [
+   "cad200dd969155cc630de5585ac56332824984e6d078ce3bb5f36139a8c55030"
+  ],
+  "downloads": [
+   [
+    "historico-comercial.csv",
+    "38fb8bfa74c9cc9c99236acffa22cd325fcf3a0a8cb8cdd2242c75652ebd8f3c"
+   ],
+   [
+    "historico-comercial.xls",
+    "dc4d7a3709f91ec64cb45b29c806a92f3d764c43e35946d4982d553902c8b50b"
+   ]
+  ],
+  "dialogs": [
+   "Contrato guardado como borrador.",
+   "Contrato generado correctamente.",
+   "Firma digital registrada.",
+   "Contrato firmado enviado correctamente.",
+   "Registro de envío por correo electrónico actualizado.",
+   "QA forbidden",
+   "QA forbidden",
+   "QA forbidden",
+   "QA forbidden",
+   "QA forbidden",
+   "QA forbidden"
+  ],
+  "external": [
+   "https://unpkg.com/htmx.org@1.9.12"
+  ]
+ },
+ "fr-FR": {
+  "steps": [
+   [
+    "abrir o Comercial",
+    "10eecdfe1e329d13ac3d02978c94931bd3143713885e11d34da8212f50fa6327"
+   ],
+   [
+    "abrir contrato pelo cartão",
+    "10eecdfe1e329d13ac3d02978c94931bd3143713885e11d34da8212f50fa6327"
+   ],
+   [
+    "aba Marca & Planos",
+    "317ff23d480304869bf532a9ce48d0caa9774efd8c5170f3a4a3d823686a4704"
+   ],
+   [
+    "aba Contratos & Consumo",
+    "10eecdfe1e329d13ac3d02978c94931bd3143713885e11d34da8212f50fa6327"
+   ],
+   [
+    "filtro: suspensas",
+    "cbce4a6147c5e024b9765513109b34bd698400be65d769e8f95fc7f9443cd949"
+   ],
+   [
+    "filtro: responsável e período",
+    "fe161c015f623032c5b5b4f94a003a9c281e927060058c907cb95cacfc7bcb91"
+   ],
+   [
+    "filtros limpos",
+    "10eecdfe1e329d13ac3d02978c94931bd3143713885e11d34da8212f50fa6327"
+   ],
+   [
+    "trocar empresa no seletor",
+    "27ff170ee289b743ef5a0b11d12d9c9d416261548c247531ff05f097351400ad"
+   ],
+   [
+    "prévia: plano, limite e aditivo",
+    "983ca70800c13e433f1d13290d98d679aac93bb7e6319d1fd0a6f70313c18cbf"
+   ],
+   [
+    "salvar empresa",
+    "0ec06889cf621777234db89223d913bd20b4c6aaedc0f857e6e604ebb99ec416"
+   ],
+   [
+    "salvar parâmetros",
+    "0ec06889cf621777234db89223d913bd20b4c6aaedc0f857e6e604ebb99ec416"
+   ],
+   [
+    "salvar rascunho",
+    "444a9fd257b859d116ea86fde3e60c4ba71369c944fd85b741ffb99d98bc76c2"
+   ],
+   [
+    "gerar",
+    "5923e5b645d815e377b9776ab18ee0bd2bee8681babdeaecf8f0c5c7c52bd371"
+   ],
+   [
+    "assinar",
+    "f3f9035485c5372169e011c34263dbdab345954d14c53b355cc3eb022af953db"
+   ],
+   [
+    "enviar PDF assinado",
+    "89189a4737fdba1084e0140097788914e5f81020cf19c37866eeeac3c3ce85b0"
+   ],
+   [
+    "registrar e-mail",
+    "94195daa000c3677f31744e64e54b3fee23da411f9324827821f416a027cbc33"
+   ],
+   [
+    "abrir, visualizar e baixar o contrato",
+    "94195daa000c3677f31744e64e54b3fee23da411f9324827821f416a027cbc33"
+   ],
+   [
+    "exportar CSV/Excel e imprimir",
+    "94195daa000c3677f31744e64e54b3fee23da411f9324827821f416a027cbc33"
+   ],
+   [
+    "suspender pelo cartão",
+    "d90107710b7e8f369701c7c79b5735479b59fffe84ce09ad8cc26d86b29c0349"
+   ],
+   [
+    "salvar rascunho (403)",
+    "d90107710b7e8f369701c7c79b5735479b59fffe84ce09ad8cc26d86b29c0349"
+   ],
+   [
+    "gerar (403)",
+    "d90107710b7e8f369701c7c79b5735479b59fffe84ce09ad8cc26d86b29c0349"
+   ],
+   [
+    "assinar (403)",
+    "41dff6508b21d0156f0ae9f6c7ffa75e07c23fe5461f52ff0ef65d503a83dd52"
+   ],
+   [
+    "enviar PDF assinado (403)",
+    "ad32337e1d9567cfee96c93fa0ba237c67f1f9011fafb15e980e3b2c4fb7b032"
+   ],
+   [
+    "registrar e-mail (403)",
+    "6dda509f2ef6990f0c1245e454c36b08fc08453f89bb9bc16a0fa301566756a6"
+   ],
+   [
+    "salvar empresa (403)",
+    "d90107710b7e8f369701c7c79b5735479b59fffe84ce09ad8cc26d86b29c0349"
+   ],
+   [
+    "salvar parâmetros (403)",
+    "d90107710b7e8f369701c7c79b5735479b59fffe84ce09ad8cc26d86b29c0349"
+   ],
+   [
+    "sair para o Dashboard e voltar",
+    "8ae938cc2745b2bc9efa70caf848936b20b69ba47724ca4bc83ebab16b1833a1"
+   ],
+   [
+    "abrir pelo botão da tela Empresas",
+    "ae2f83282b7d072e1c4fb58f542b94b163a1079646bb31413541f4407a43cc8e"
+   ],
+   [
+    "trocar o idioma sem recarregar",
+    "23ff9f4365d1c1f7d5f82e405e3f54ac7ee4a094a46f09d1e0379a11f67c0a6c"
+   ],
+   [
+    "voltar ao idioma",
+    "ae2f83282b7d072e1c4fb58f542b94b163a1079646bb31413541f4407a43cc8e"
+   ],
+   [
+    "trocar de tenant sem recarregar",
+    "da6e5ffe306fa89c1540b518a8e6d877a7252367e27cccb0cef7f99aed16d155"
+   ],
+   [
+    "trocar para usuário sem acesso ao Comercial",
+    "da6e5ffe306fa89c1540b518a8e6d877a7252367e27cccb0cef7f99aed16d155"
+   ]
+  ],
+  "commercial_calls": [
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=902",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "PUT",
+    "path": "/api/companies/901",
+    "query": "",
+    "body": {
+     "company_id": "901",
+     "plan_name": "enterprise",
+     "user_limit": "250",
+     "addendum_enabled": 1,
+     "contract_start": "2026-01-01",
+     "contract_end": "2026-11-20",
+     "unit_price_display": "42,00 R$",
+     "monthly_value": 500,
+     "projected_monthly_value": "10 500,00 R$",
+     "license_status": "active",
+     "active": "1",
+     "commercial_notes": "QA",
+     "actor_user_id": 7,
+     "name": "Empresa QA",
+     "legal_name": "Empresa QA Ltda",
+     "cnpj": "11222333000181",
+     "logo_type": ""
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-settings",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "unit_price": 50,
+     "plans": {
+      "individual": {
+       "label": "Individual",
+       "min_users": 1,
+       "max_users": 1
+      },
+      "start": {
+       "label": "Start",
+       "min_users": 1,
+       "max_users": 10
+      },
+      "business": {
+       "label": "Business",
+       "min_users": 11,
+       "max_users": 25
+      },
+      "corporate": {
+       "label": "Corporate",
+       "min_users": 26,
+       "max_users": 100
+      },
+      "enterprise": {
+       "label": "Enterprise",
+       "min_users": 101,
+       "max_users": null
+      }
+     }
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/save",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "contract_number": "CT-901",
+     "issue_date": "",
+     "start_date": "2026-01-01",
+     "end_date": "2026-11-20",
+     "status": "pending_signature",
+     "contractor_name": "Empresa QA",
+     "contractor_legal_name": "Empresa QA Ltda",
+     "contractor_trade_name": "Empresa QA",
+     "contractor_cnpj": "11222333000181",
+     "contractor_address": "",
+     "contractor_representative": "",
+     "contractor_representative_role": "",
+     "contractor_email": "",
+     "contractor_phone": "",
+     "contractor_witness_1": "",
+     "contractor_witness_2": "",
+     "provider_name": "",
+     "provider_legal_name": "",
+     "provider_cnpj": "",
+     "provider_address": "",
+     "provider_representative": "",
+     "provider_representative_role": "",
+     "provider_email": "",
+     "provider_phone": "",
+     "provider_witnesses": "",
+     "clauses_text": "",
+     "notes": "QA"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/generate",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "contract_number": "CT-901-save",
+     "issue_date": "",
+     "start_date": "2026-01-01",
+     "end_date": "2026-11-20",
+     "status": "save",
+     "contractor_name": "Empresa QA",
+     "contractor_legal_name": "Empresa QA Ltda",
+     "contractor_trade_name": "Empresa QA",
+     "contractor_cnpj": "11222333000181",
+     "contractor_address": "",
+     "contractor_representative": "",
+     "contractor_representative_role": "",
+     "contractor_email": "",
+     "contractor_phone": "",
+     "contractor_witness_1": "",
+     "contractor_witness_2": "",
+     "provider_name": "",
+     "provider_legal_name": "",
+     "provider_cnpj": "",
+     "provider_address": "",
+     "provider_representative": "",
+     "provider_representative_role": "",
+     "provider_email": "",
+     "provider_phone": "",
+     "provider_witnesses": "",
+     "clauses_text": "",
+     "notes": "QA"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/sign",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "signature_name": "Ana \"QA\" <b>",
+     "signature_data": "data:image/png;base64,QUJD"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/upload-signed",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "file_name": "assinado <1>.pdf",
+     "file_mime": "application/pdf",
+     "file_base64": "JVBERi0xLjQKJVFBCg=="
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/send-email",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "email_to": "cliente@exemplo.test",
+     "subject": "Contrato & aditivo",
+     "body": "Linha 1\nLinha \"2\""
+    }
+   },
+   {
+    "method": "PUT",
+    "path": "/api/companies/901",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "name": "Empresa QA",
+     "legal_name": "Empresa QA Ltda",
+     "cnpj": "11222333000181",
+     "logo_type": "",
+     "plan_name": "enterprise",
+     "user_limit": "250",
+     "contract_start": "2026-01-01",
+     "contract_end": "2026-11-20",
+     "monthly_value": 500,
+     "addendum_enabled": 1,
+     "license_status": "suspended",
+     "active": 0,
+     "commercial_notes": "QA"
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/save",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "contract_number": "CT-901",
+     "issue_date": "",
+     "start_date": "2026-01-01",
+     "end_date": "2026-11-20",
+     "status": "pending_signature",
+     "contractor_name": "Empresa QA",
+     "contractor_legal_name": "Empresa QA Ltda",
+     "contractor_trade_name": "Empresa QA",
+     "contractor_cnpj": "11222333000181",
+     "contractor_address": "",
+     "contractor_representative": "",
+     "contractor_representative_role": "",
+     "contractor_email": "",
+     "contractor_phone": "",
+     "contractor_witness_1": "",
+     "contractor_witness_2": "",
+     "provider_name": "",
+     "provider_legal_name": "",
+     "provider_cnpj": "",
+     "provider_address": "",
+     "provider_representative": "",
+     "provider_representative_role": "",
+     "provider_email": "",
+     "provider_phone": "",
+     "provider_witnesses": "",
+     "clauses_text": "",
+     "notes": "QA"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/generate",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "contract_number": "CT-901",
+     "issue_date": "",
+     "start_date": "2026-01-01",
+     "end_date": "2026-11-20",
+     "status": "pending_signature",
+     "contractor_name": "Empresa QA",
+     "contractor_legal_name": "Empresa QA Ltda",
+     "contractor_trade_name": "Empresa QA",
+     "contractor_cnpj": "11222333000181",
+     "contractor_address": "",
+     "contractor_representative": "",
+     "contractor_representative_role": "",
+     "contractor_email": "",
+     "contractor_phone": "",
+     "contractor_witness_1": "",
+     "contractor_witness_2": "",
+     "provider_name": "",
+     "provider_legal_name": "",
+     "provider_cnpj": "",
+     "provider_address": "",
+     "provider_representative": "",
+     "provider_representative_role": "",
+     "provider_email": "",
+     "provider_phone": "",
+     "provider_witnesses": "",
+     "clauses_text": "",
+     "notes": "QA"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/sign",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "signature_name": "Ana \"QA\" <b>",
+     "signature_data": "data:image/png;base64,QUJD"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/upload-signed",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "file_name": "assinado <1>.pdf",
+     "file_mime": "application/pdf",
+     "file_base64": "JVBERi0xLjQKJVFBCg=="
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/send-email",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "email_to": "cliente@exemplo.test",
+     "subject": "Contrato & aditivo",
+     "body": "Linha 1\nLinha \"2\""
+    }
+   },
+   {
+    "method": "PUT",
+    "path": "/api/companies/901",
+    "query": "",
+    "body": {
+     "company_id": "901",
+     "plan_name": "enterprise",
+     "user_limit": "250",
+     "addendum_enabled": 1,
+     "contract_start": "2026-01-01",
+     "contract_end": "2026-11-20",
+     "unit_price_display": "42,00 R$",
+     "monthly_value": 500,
+     "projected_monthly_value": "10 500,00 R$",
+     "license_status": "suspended",
+     "active": "0",
+     "commercial_notes": "QA",
+     "actor_user_id": 7,
+     "name": "Empresa QA",
+     "legal_name": "Empresa QA Ltda",
+     "cnpj": "11222333000181",
+     "logo_type": ""
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-settings",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "unit_price": 42,
+     "plans": {
+      "individual": {
+       "label": "Individual",
+       "min_users": 1,
+       "max_users": 1
+      },
+      "start": {
+       "label": "Start",
+       "min_users": 1,
+       "max_users": 10
+      },
+      "business": {
+       "label": "Business",
+       "min_users": 11,
+       "max_users": 25
+      },
+      "corporate": {
+       "label": "Corporate",
+       "min_users": 26,
+       "max_users": 100
+      },
+      "enterprise": {
+       "label": "Enterprise",
+       "min_users": 101,
+       "max_users": null
+      }
+     }
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=902",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=911",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=911",
+    "body": null
+   }
+  ],
+  "background_calls": [
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/bootstrap\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/bootstrap\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/bootstrap\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/bootstrap\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/bootstrap\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/bootstrap\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/bootstrap\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/company-purchase-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/company-purchase-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/company-purchase-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/company-purchase-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/company-purchase-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/company-purchase-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/company-purchase-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-framework\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-framework\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-framework\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-framework\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-framework\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-framework\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-framework\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-rules\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-rules\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-rules\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-rules\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-rules\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-rules\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-rules\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/db-pool/status\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/db-pool/status\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/db-pool/status\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/db-pool/status\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/db-pool/status\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/db-pool/status\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/db-pool/status\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-archive\", \"query\": \"company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-archive\", \"query\": \"company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-archive\", \"query\": \"company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-archive\", \"query\": \"company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-archive\", \"query\": \"company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-archive\", \"query\": \"company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-archive\", \"query\": \"company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-config\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-config\", \"query\": \"actor_user_id=7&company_id=911\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-epi-audit\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-epi-audit\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-epi-audit\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-epi-audit\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-epi-audit\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-epi-audit\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-epi-audit\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-retention-policy\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-retention-policy\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-retention-policy\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-retention-policy\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-retention-policy\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-retention-policy\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-retention-policy\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/fichas\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/fichas\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/fichas\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/fichas\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/fichas\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/fichas\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/fichas\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/module-visibility\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/module-visibility\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/module-visibility\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/module-visibility\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/module-visibility\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/module-visibility\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/module-visibility\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/reports\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/reports\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/reports\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/reports\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/reports\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/reports\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/reports\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/requests\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/requests\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/requests\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/requests\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/requests\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/requests\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/requests\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/compliance\", \"query\": \"company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/compliance\", \"query\": \"company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/compliance\", \"query\": \"company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/compliance\", \"query\": \"company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/compliance\", \"query\": \"company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/compliance\", \"query\": \"company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/compliance\", \"query\": \"company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=911\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=911\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=911\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/low\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/low\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/low\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/low\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/low\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/low\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/low\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/health\", \"query\": \"\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/health\", \"query\": \"\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/health\", \"query\": \"\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/health\", \"query\": \"\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/health\", \"query\": \"\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/health\", \"query\": \"\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/health\", \"query\": \"\"}"
+  ],
+  "opens": [
+   [
+    "/api/commercial-contract.pdf?actor_user_id=7&company_id=901",
+    "_blank",
+    ""
+   ],
+   [
+    "/api/commercial-contract.pdf?actor_user_id=7&company_id=901",
+    "_blank",
+    ""
+   ],
+   [
+    "/api/commercial-contract/file?actor_user_id=7&company_id=901&kind=generated",
+    "_blank",
+    ""
+   ],
+   [
+    "",
+    "_blank",
+    "width=1100,height=800"
+   ]
+  ],
+  "printed": [
+   "081bfbfad2c62987593ddf66fe3a85e39871db7ad96ee3484406e26a08d24ca5"
+  ],
+  "downloads": [
+   [
+    "historico-comercial.csv",
+    "d130a6bb742dbdda002eb53a794529595a0839950f3ac0c570d0f2d069a9c423"
+   ],
+   [
+    "historico-comercial.xls",
+    "59cd1237c84d77adcf197e1504b2d30093d39efe2cf24025815f39e721efbf2b"
+   ]
+  ],
+  "dialogs": [
+   "Contrat enregistré comme brouillon.",
+   "Contrat généré avec succès.",
+   "Signature électronique enregistrée.",
+   "Contrat signé envoyé avec succès.",
+   "Enregistrement de l'envoi par e-mail mis à jour.",
+   "QA forbidden",
+   "QA forbidden",
+   "QA forbidden",
+   "QA forbidden",
+   "QA forbidden",
+   "QA forbidden"
+  ],
+  "external": [
+   "https://unpkg.com/htmx.org@1.9.12"
+  ]
+ },
+ "nb-NO": {
+  "steps": [
+   [
+    "abrir o Comercial",
+    "96bc197ecbdf0ae7f64f1cb3b7101d24d126e0fc7becf781381d2d0192cfd042"
+   ],
+   [
+    "abrir contrato pelo cartão",
+    "96bc197ecbdf0ae7f64f1cb3b7101d24d126e0fc7becf781381d2d0192cfd042"
+   ],
+   [
+    "aba Marca & Planos",
+    "36cd967c3cc0693f398c7e8e634355243db5bc85ffe0fbcbb532ea2cc64cf7b0"
+   ],
+   [
+    "aba Contratos & Consumo",
+    "96bc197ecbdf0ae7f64f1cb3b7101d24d126e0fc7becf781381d2d0192cfd042"
+   ],
+   [
+    "filtro: suspensas",
+    "cf4afa22e1b40d4174f68cc21dcc51f9f6cb81f7320362b8c1e7204841ce4690"
+   ],
+   [
+    "filtro: responsável e período",
+    "e6c7e3f6ed3953690f262aec079a54e784f8730186387d6cf72e1d8b345efda9"
+   ],
+   [
+    "filtros limpos",
+    "96bc197ecbdf0ae7f64f1cb3b7101d24d126e0fc7becf781381d2d0192cfd042"
+   ],
+   [
+    "trocar empresa no seletor",
+    "71d9c659202de7d1cf783771213554b8e4d7268efcc886284ae8af2453e7de34"
+   ],
+   [
+    "prévia: plano, limite e aditivo",
+    "1ecfa9af5efcf5ae98f775e02192f0b04fe243f35652b13c319b670f110505b4"
+   ],
+   [
+    "salvar empresa",
+    "e13bc6d91bdb3694a5a5061ff2c8acc9dbc7999e7ea30299a0afa9e16a266557"
+   ],
+   [
+    "salvar parâmetros",
+    "e13bc6d91bdb3694a5a5061ff2c8acc9dbc7999e7ea30299a0afa9e16a266557"
+   ],
+   [
+    "salvar rascunho",
+    "ade8b2cd915339cbabd5c3486aef98bb801f87e0e52a9da06a73afff7c327315"
+   ],
+   [
+    "gerar",
+    "3b7c43af021d6ad6ef24e505a72a8e24619b4fa09458698b68c929d26bb8cb6c"
+   ],
+   [
+    "assinar",
+    "9128c4cd92d74f095aeceda701e4637c11a644bf41caf52adc4d58a8329fd009"
+   ],
+   [
+    "enviar PDF assinado",
+    "b1b9e3c98a87c60ad083c7b85b1c3cff6a881b80f713111a5a18f67505193516"
+   ],
+   [
+    "registrar e-mail",
+    "0330ef53670bff46b1c93a0e9b7ce5784f4062c8227927571054a171d75c2d9b"
+   ],
+   [
+    "abrir, visualizar e baixar o contrato",
+    "0330ef53670bff46b1c93a0e9b7ce5784f4062c8227927571054a171d75c2d9b"
+   ],
+   [
+    "exportar CSV/Excel e imprimir",
+    "0330ef53670bff46b1c93a0e9b7ce5784f4062c8227927571054a171d75c2d9b"
+   ],
+   [
+    "suspender pelo cartão",
+    "61a9fe000a64684095747a2f8e8de520b229ec9d29af577dd1da6afdf0156c6e"
+   ],
+   [
+    "salvar rascunho (403)",
+    "61a9fe000a64684095747a2f8e8de520b229ec9d29af577dd1da6afdf0156c6e"
+   ],
+   [
+    "gerar (403)",
+    "61a9fe000a64684095747a2f8e8de520b229ec9d29af577dd1da6afdf0156c6e"
+   ],
+   [
+    "assinar (403)",
+    "0f794bac68f0784a02a7c0839f790b0a03d1d7c542fda224e8c5d24d38c4b1f1"
+   ],
+   [
+    "enviar PDF assinado (403)",
+    "b719a5f3d1c9879259b008de32f456ee7b8e97a481e0dc7ee3154ebc75ab3cc2"
+   ],
+   [
+    "registrar e-mail (403)",
+    "2ecfa1cac22ea6bd4b58bf1c2a3b89cf35515d0ccb5c95547d55e0abb9f59c36"
+   ],
+   [
+    "salvar empresa (403)",
+    "61a9fe000a64684095747a2f8e8de520b229ec9d29af577dd1da6afdf0156c6e"
+   ],
+   [
+    "salvar parâmetros (403)",
+    "61a9fe000a64684095747a2f8e8de520b229ec9d29af577dd1da6afdf0156c6e"
+   ],
+   [
+    "sair para o Dashboard e voltar",
+    "1bbcc12bd709ebaaba5ec235ea3774899058f66032a3118ae62ac3de9981c7c0"
+   ],
+   [
+    "abrir pelo botão da tela Empresas",
+    "9e588a4731ef49419de6783b43beae7abe2595af0429cbe8b3c732c899725fc5"
+   ],
+   [
+    "trocar o idioma sem recarregar",
+    "eacc0487a1f951f7b4bd9c925878df223fd57b49994f5ec9f97f3b3252f68876"
+   ],
+   [
+    "voltar ao idioma",
+    "9e588a4731ef49419de6783b43beae7abe2595af0429cbe8b3c732c899725fc5"
+   ],
+   [
+    "trocar de tenant sem recarregar",
+    "df883887ac5545de6ffef1adbe25109f6eb46fc737d219fc82be1d556339070a"
+   ],
+   [
+    "trocar para usuário sem acesso ao Comercial",
+    "df883887ac5545de6ffef1adbe25109f6eb46fc737d219fc82be1d556339070a"
+   ]
+  ],
+  "commercial_calls": [
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=902",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "PUT",
+    "path": "/api/companies/901",
+    "query": "",
+    "body": {
+     "company_id": "901",
+     "plan_name": "enterprise",
+     "user_limit": "250",
+     "addendum_enabled": 1,
+     "contract_start": "2026-01-01",
+     "contract_end": "2026-11-20",
+     "unit_price_display": "42,00 BRL",
+     "monthly_value": 500,
+     "projected_monthly_value": "10 500,00 BRL",
+     "license_status": "active",
+     "active": "1",
+     "commercial_notes": "QA",
+     "actor_user_id": 7,
+     "name": "Empresa QA",
+     "legal_name": "Empresa QA Ltda",
+     "cnpj": "11222333000181",
+     "logo_type": ""
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-settings",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "unit_price": 50,
+     "plans": {
+      "individual": {
+       "label": "Individual",
+       "min_users": 1,
+       "max_users": 1
+      },
+      "start": {
+       "label": "Start",
+       "min_users": 1,
+       "max_users": 10
+      },
+      "business": {
+       "label": "Business",
+       "min_users": 11,
+       "max_users": 25
+      },
+      "corporate": {
+       "label": "Corporate",
+       "min_users": 26,
+       "max_users": 100
+      },
+      "enterprise": {
+       "label": "Enterprise",
+       "min_users": 101,
+       "max_users": null
+      }
+     }
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/save",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "contract_number": "CT-901",
+     "issue_date": "",
+     "start_date": "2026-01-01",
+     "end_date": "2026-11-20",
+     "status": "pending_signature",
+     "contractor_name": "Empresa QA",
+     "contractor_legal_name": "Empresa QA Ltda",
+     "contractor_trade_name": "Empresa QA",
+     "contractor_cnpj": "11222333000181",
+     "contractor_address": "",
+     "contractor_representative": "",
+     "contractor_representative_role": "",
+     "contractor_email": "",
+     "contractor_phone": "",
+     "contractor_witness_1": "",
+     "contractor_witness_2": "",
+     "provider_name": "",
+     "provider_legal_name": "",
+     "provider_cnpj": "",
+     "provider_address": "",
+     "provider_representative": "",
+     "provider_representative_role": "",
+     "provider_email": "",
+     "provider_phone": "",
+     "provider_witnesses": "",
+     "clauses_text": "",
+     "notes": "QA"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/generate",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "contract_number": "CT-901-save",
+     "issue_date": "",
+     "start_date": "2026-01-01",
+     "end_date": "2026-11-20",
+     "status": "save",
+     "contractor_name": "Empresa QA",
+     "contractor_legal_name": "Empresa QA Ltda",
+     "contractor_trade_name": "Empresa QA",
+     "contractor_cnpj": "11222333000181",
+     "contractor_address": "",
+     "contractor_representative": "",
+     "contractor_representative_role": "",
+     "contractor_email": "",
+     "contractor_phone": "",
+     "contractor_witness_1": "",
+     "contractor_witness_2": "",
+     "provider_name": "",
+     "provider_legal_name": "",
+     "provider_cnpj": "",
+     "provider_address": "",
+     "provider_representative": "",
+     "provider_representative_role": "",
+     "provider_email": "",
+     "provider_phone": "",
+     "provider_witnesses": "",
+     "clauses_text": "",
+     "notes": "QA"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/sign",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "signature_name": "Ana \"QA\" <b>",
+     "signature_data": "data:image/png;base64,QUJD"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/upload-signed",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "file_name": "assinado <1>.pdf",
+     "file_mime": "application/pdf",
+     "file_base64": "JVBERi0xLjQKJVFBCg=="
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/send-email",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "email_to": "cliente@exemplo.test",
+     "subject": "Contrato & aditivo",
+     "body": "Linha 1\nLinha \"2\""
+    }
+   },
+   {
+    "method": "PUT",
+    "path": "/api/companies/901",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "name": "Empresa QA",
+     "legal_name": "Empresa QA Ltda",
+     "cnpj": "11222333000181",
+     "logo_type": "",
+     "plan_name": "enterprise",
+     "user_limit": "250",
+     "contract_start": "2026-01-01",
+     "contract_end": "2026-11-20",
+     "monthly_value": 500,
+     "addendum_enabled": 1,
+     "license_status": "suspended",
+     "active": 0,
+     "commercial_notes": "QA"
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/save",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "contract_number": "CT-901",
+     "issue_date": "",
+     "start_date": "2026-01-01",
+     "end_date": "2026-11-20",
+     "status": "pending_signature",
+     "contractor_name": "Empresa QA",
+     "contractor_legal_name": "Empresa QA Ltda",
+     "contractor_trade_name": "Empresa QA",
+     "contractor_cnpj": "11222333000181",
+     "contractor_address": "",
+     "contractor_representative": "",
+     "contractor_representative_role": "",
+     "contractor_email": "",
+     "contractor_phone": "",
+     "contractor_witness_1": "",
+     "contractor_witness_2": "",
+     "provider_name": "",
+     "provider_legal_name": "",
+     "provider_cnpj": "",
+     "provider_address": "",
+     "provider_representative": "",
+     "provider_representative_role": "",
+     "provider_email": "",
+     "provider_phone": "",
+     "provider_witnesses": "",
+     "clauses_text": "",
+     "notes": "QA"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/generate",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "contract_number": "CT-901",
+     "issue_date": "",
+     "start_date": "2026-01-01",
+     "end_date": "2026-11-20",
+     "status": "pending_signature",
+     "contractor_name": "Empresa QA",
+     "contractor_legal_name": "Empresa QA Ltda",
+     "contractor_trade_name": "Empresa QA",
+     "contractor_cnpj": "11222333000181",
+     "contractor_address": "",
+     "contractor_representative": "",
+     "contractor_representative_role": "",
+     "contractor_email": "",
+     "contractor_phone": "",
+     "contractor_witness_1": "",
+     "contractor_witness_2": "",
+     "provider_name": "",
+     "provider_legal_name": "",
+     "provider_cnpj": "",
+     "provider_address": "",
+     "provider_representative": "",
+     "provider_representative_role": "",
+     "provider_email": "",
+     "provider_phone": "",
+     "provider_witnesses": "",
+     "clauses_text": "",
+     "notes": "QA"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/sign",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "signature_name": "Ana \"QA\" <b>",
+     "signature_data": "data:image/png;base64,QUJD"
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/upload-signed",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "file_name": "assinado <1>.pdf",
+     "file_mime": "application/pdf",
+     "file_base64": "JVBERi0xLjQKJVFBCg=="
+    }
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-contract/send-email",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "company_id": 901,
+     "email_to": "cliente@exemplo.test",
+     "subject": "Contrato & aditivo",
+     "body": "Linha 1\nLinha \"2\""
+    }
+   },
+   {
+    "method": "PUT",
+    "path": "/api/companies/901",
+    "query": "",
+    "body": {
+     "company_id": "901",
+     "plan_name": "enterprise",
+     "user_limit": "250",
+     "addendum_enabled": 1,
+     "contract_start": "2026-01-01",
+     "contract_end": "2026-11-20",
+     "unit_price_display": "42,00 BRL",
+     "monthly_value": 500,
+     "projected_monthly_value": "10 500,00 BRL",
+     "license_status": "suspended",
+     "active": "0",
+     "commercial_notes": "QA",
+     "actor_user_id": 7,
+     "name": "Empresa QA",
+     "legal_name": "Empresa QA Ltda",
+     "cnpj": "11222333000181",
+     "logo_type": ""
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "POST",
+    "path": "/api/commercial-settings",
+    "query": "",
+    "body": {
+     "actor_user_id": 7,
+     "unit_price": 42,
+     "plans": {
+      "individual": {
+       "label": "Individual",
+       "min_users": 1,
+       "max_users": 1
+      },
+      "start": {
+       "label": "Start",
+       "min_users": 1,
+       "max_users": 10
+      },
+      "business": {
+       "label": "Business",
+       "min_users": 11,
+       "max_users": 25
+      },
+      "corporate": {
+       "label": "Corporate",
+       "min_users": 26,
+       "max_users": 100
+      },
+      "enterprise": {
+       "label": "Enterprise",
+       "min_users": 101,
+       "max_users": null
+      }
+     }
+    }
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=902",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=901",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=911",
+    "body": null
+   },
+   {
+    "method": "GET",
+    "path": "/api/commercial-contract",
+    "query": "actor_user_id=7&company_id=911",
+    "body": null
+   }
+  ],
+  "background_calls": [
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/bootstrap\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/bootstrap\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/bootstrap\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/bootstrap\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/bootstrap\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/bootstrap\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/bootstrap\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/company-purchase-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/company-purchase-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/company-purchase-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/company-purchase-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/company-purchase-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/company-purchase-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/company-purchase-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-framework\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-framework\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-framework\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-framework\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-framework\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-framework\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-framework\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-rules\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-rules\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-rules\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-rules\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-rules\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-rules\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/configuration-rules\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/db-pool/status\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/db-pool/status\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/db-pool/status\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/db-pool/status\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/db-pool/status\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/db-pool/status\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/db-pool/status\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-archive\", \"query\": \"company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-archive\", \"query\": \"company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-archive\", \"query\": \"company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-archive\", \"query\": \"company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-archive\", \"query\": \"company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-archive\", \"query\": \"company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-archive\", \"query\": \"company_id=&unit_id=&employee_id=&sector=&status=&date_from=&date_to=&page=1&page_size=50&actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-config\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-config\", \"query\": \"actor_user_id=7&company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-config\", \"query\": \"actor_user_id=7&company_id=911\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-epi-audit\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-epi-audit\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-epi-audit\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-epi-audit\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-epi-audit\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-epi-audit\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-epi-audit\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-retention-policy\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-retention-policy\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-retention-policy\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-retention-policy\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-retention-policy\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-retention-policy\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/ficha-retention-policy\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/fichas\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/fichas\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/fichas\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/fichas\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/fichas\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/fichas\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/fichas\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/module-visibility\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/module-visibility\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/module-visibility\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/module-visibility\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/module-visibility\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/module-visibility\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/module-visibility\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/reports\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/reports\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/reports\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/reports\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/reports\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/reports\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/reports\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/requests\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/requests\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/requests\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/requests\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/requests\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/requests\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/requests\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/compliance\", \"query\": \"company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/compliance\", \"query\": \"company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/compliance\", \"query\": \"company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/compliance\", \"query\": \"company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/compliance\", \"query\": \"company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/compliance\", \"query\": \"company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/compliance\", \"query\": \"company_id=901\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=901&unit_id=5\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=911\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=911\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/epis\", \"query\": \"actor_user_id=7&company_id=911\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/low\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/low\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/low\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/low\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/low\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/low\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/api/stock/low\", \"query\": \"actor_user_id=7\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/health\", \"query\": \"\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/health\", \"query\": \"\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/health\", \"query\": \"\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/health\", \"query\": \"\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/health\", \"query\": \"\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/health\", \"query\": \"\"}",
+   "{\"body\": null, \"method\": \"GET\", \"path\": \"/health\", \"query\": \"\"}"
+  ],
+  "opens": [
+   [
+    "/api/commercial-contract.pdf?actor_user_id=7&company_id=901",
+    "_blank",
+    ""
+   ],
+   [
+    "/api/commercial-contract.pdf?actor_user_id=7&company_id=901",
+    "_blank",
+    ""
+   ],
+   [
+    "/api/commercial-contract/file?actor_user_id=7&company_id=901&kind=generated",
+    "_blank",
+    ""
+   ],
+   [
+    "",
+    "_blank",
+    "width=1100,height=800"
+   ]
+  ],
+  "printed": [
+   "0ba19f69926028044f0c543b679ec94d4c69ced4b0d6352515f0c7354bdee5c9"
+  ],
+  "downloads": [
+   [
+    "historico-comercial.csv",
+    "c6e1fc498fb4dfdb677ed0a2ef8c63a7609dee093ad0c921f4c413cdac11218e"
+   ],
+   [
+    "historico-comercial.xls",
+    "a7af2089c7acf296610f46c3cfcd7b9d5a32646c609340de3122c6fbf1a0b704"
+   ]
+  ],
+  "dialogs": [
+   "Kontrakten er lagret som utkast.",
+   "Kontrakten er generert.",
+   "Digital signatur er registrert.",
+   "Den signerte kontrakten er lastet opp.",
+   "Registreringen av e-postutsendelsen er oppdatert.",
+   "QA forbidden",
+   "QA forbidden",
+   "QA forbidden",
+   "QA forbidden",
+   "QA forbidden",
+   "QA forbidden"
+  ],
+  "external": [
+   "https://unpkg.com/htmx.org@1.9.12"
+  ]
+ }
+}

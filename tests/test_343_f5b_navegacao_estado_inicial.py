@@ -317,8 +317,11 @@ def test_o_editor_comercial_e_resetado_atomicamente():
     assert 'fillCommercialForm()' in linha, (
         'o reset comercial voltou a limpar só a metade do contrato'
     )
-    preenche = corpo[corpo.index('function fillCommercialForm('):]
-    assert 'resetCommercialContractForm(' in preenche[:preenche.index('\n}')], (
+    # UBX Comercial C3: fillCommercialForm mora em modules/commercial/ui/commercial-view.js
+    # (indentada dentro do IIFE do módulo).
+    interface = _fonte('static/js/modules/commercial/ui/commercial-view.js')
+    preenche = interface[interface.index('function fillCommercialForm('):]
+    assert 'resetCommercialContractForm(' in preenche[:preenche.index('\n  }')], (
         'fillCommercialForm deixou de resetar a metade do contrato'
     )
 
@@ -648,7 +651,7 @@ ARQUIVOS_PAREADOS_F5B = (
 ESTE_ARQUIVO = 'tests/test_343_f5b_navegacao_estado_inicial.py'
 PREFIXO_DO_DIGESTO = 'DIGESTO_PARIDADE_F5B = '
 
-DIGESTO_PARIDADE_F5B = '4b0c390c7d24edbe4cb7370189f718346f7a958cca5375c315462761052332db'
+DIGESTO_PARIDADE_F5B = '5629383660b9765e26f01e645d62c0688f3fdf5bf1a65aa8ff16cecc07235a68'
 
 
 def _bytes_para_o_digesto(rel: str) -> bytes:

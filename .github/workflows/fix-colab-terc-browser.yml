@@ -20,6 +20,7 @@ on:
       - 'scripts/browser/ubx_commercial.py'
       - 'scripts/browser/security_commercial_plan_xss.py'
       - 'scripts/browser/ubx_commercial_integrations.py'
+      - 'scripts/browser/ubx_commercial_view.py'
       - 'modules/ficha/**'
       - '.github/workflows/fix-colab-terc-browser.yml'
   workflow_dispatch:
@@ -29,7 +30,8 @@ jobs:
   browser:
     name: Chromium functional regression (five locales)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # 45: as provas de navegador somam ~20 min e a instalação do Chromium (apt) já levou 10 min num runner lento.
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -84,6 +86,11 @@ jobs:
       - if: ${{ !cancelled() }}
         name: UBX commercial C2 integrations equivalence (five locales)
         run: python scripts/browser/ubx_commercial_integrations.py --output browser-evidence/ubx-commercial-c2
+      # UBX Comercial C3: a interface comercial pela UI reproduz, passo a passo, a referência gravada da main
+      # (fotografias da tela, requisições, abas, impressão, downloads, diálogos; troca de tenant/usuário/idioma).
+      - if: ${{ !cancelled() }}
+        name: UBX commercial C3 view equivalence (five locales)
+        run: python scripts/browser/ubx_commercial_view.py --output browser-evidence/ubx-commercial-c3
       # SECURITY-OUTPUT-XSS-V2: texto de colaborador, unidade e EPI contaminado em todas as telas não executa.
       - if: ${{ !cancelled() }}
         run: python scripts/browser/security_output_xss_v2.py --output browser-evidence/security-output-xss-v2

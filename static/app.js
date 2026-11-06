@@ -4832,345 +4832,21 @@ function formatCompanyCurrency(value) {
   return formatCurrency(value || 0, globalThis.EpiI18n?.lang);
 }
 
-function filteredCommercialCompanies() {
-  const companies = filterByUserCompany(state.companies);
-  if (!state.commercialFilters.status) return companies;
-  return companies.filter((item) => item.license_status === state.commercialFilters.status);
-}
-
-function filteredCommercialLogs() {
-  const selectedCompanyId = refs.commercialCompany?.value || '';
-  return state.companyAuditLogs.filter((item) => {
-    if (selectedCompanyId && String(item.company_id) !== String(selectedCompanyId)) return false;
-    if (state.commercialFilters.actor_name && item.actor_name !== state.commercialFilters.actor_name) return false;
-    const day = String(item.created_at || '').slice(0, 10);
-    if (state.commercialFilters.date_from && day < state.commercialFilters.date_from) return false;
-    if (state.commercialFilters.date_to && day > state.commercialFilters.date_to) return false;
-    return true;
-  });
-}
-
-function fillCommercialSettingsForm() {
-  if (!refs.commercialSettingsForm) return;
-  const settings = getCommercialSettings();
-  refs.commercialSettingsForm.elements.unit_price.value = settings.unit_price ?? 42;
-  refs.commercialSettingsForm.elements.individual_max.value = settings.plans.individual.max_users ?? 1;
-  refs.commercialSettingsForm.elements.start_max.value = settings.plans.start.max_users ?? 10;
-  refs.commercialSettingsForm.elements.business_max.value = settings.plans.business.max_users ?? 25;
-  refs.commercialSettingsForm.elements.corporate_max.value = settings.plans.corporate.max_users ?? 100;
-  refs.commercialSettingsForm.elements.enterprise_min.value = settings.plans.enterprise.min_users ?? 101;
-}
-
-function refreshCommercialPreview(company = null) {
-  if (!refs.commercialForm) return;
-  const currentCompany = company || state.companies.find((item) => String(item.id) === String(refs.commercialCompany?.value || ''));
-  const unitPrice = Number(getCommercialSettings().unit_price || 0);
-  const activeUsers = Number(currentCompany?.user_count || 0);
-  const userLimit = Number(refs.commercialForm.elements.user_limit.value || currentCompany?.user_limit || 0);
-  const planName = refs.commercialForm.elements.plan_name.value || currentCompany?.plan_name || 'start';
-  const addendumEnabled = refs.commercialForm.elements.addendum_enabled.checked;
-  refs.commercialForm.elements.unit_price_display.value = formatCurrency(unitPrice, globalThis.EpiI18n?.lang);
-  refs.commercialForm.elements.monthly_value.value = formatCurrency(activeUsers * unitPrice, globalThis.EpiI18n?.lang);
-  refs.commercialForm.elements.projected_monthly_value.value = formatCurrency(userLimit * unitPrice, globalThis.EpiI18n?.lang);
-  if (refs.commercialPlanHint) refs.commercialPlanHint.textContent = planHintText(planName, addendumEnabled);
-}
-
-function fillCommercialForm(companyId) {
-  if (!refs.commercialForm || !refs.commercialCompany) return;
-  const visibleCompanies = filterByUserCompany(state.companies);
-  refs.commercialCompany.innerHTML = visibleCompanies.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}</option>`).join('');
-  refs.commercialForm.elements.plan_name.innerHTML = planOptionMarkup();
-  const selected = visibleCompanies.find((item) => String(item.id) === String(companyId || refs.commercialCompany.value)) || visibleCompanies[0];
-  if (!selected) return;
-  refs.commercialCompany.value = selected.id;
-  refs.commercialForm.elements.company_id.value = selected.id;
-  refs.commercialForm.elements.plan_name.value = selected.plan_name || 'start';
-  refs.commercialForm.elements.user_limit.value = selected.user_limit || 1;
-  refs.commercialForm.elements.addendum_enabled.checked = Number(selected.addendum_enabled || 0) === 1;
-  refs.commercialForm.elements.contract_start.value = selected.contract_start || '';
-  refs.commercialForm.elements.contract_end.value = selected.contract_end || '';
-  refs.commercialForm.elements.license_status.value = selected.license_status || 'active';
-  // FIX-EMPRESAS-ACTIVE-V1: `?? 1` (não `|| 1`) — empresa inativa (0) abre como inativa e não é reativada ao salvar.
-  refs.commercialForm.elements.active.value = String(Number(selected.active ?? 1));
-  refs.commercialForm.elements.commercial_notes.value = selected.commercial_notes || '';
-  refreshCommercialPreview(selected);
-  resetCommercialContractForm({ preserveClauses: true });
-  if (canAccessCommercialArea()) loadCommercialContract(selected.id);
-}
-
-function contractStatusLabel(status) {
-  const labels = {
-    draft: 'Rascunho',
-    generated: 'Gerado',
-    sent: 'Enviado',
-    pending_signature: 'Pendente de assinatura',
-    signed: 'Assinado',
-    active: 'Ativo',
-    closed: 'Encerrado',
-    archived: 'Arquivado'
-  };
-  const code = String(status || '').toLowerCase() || 'draft';
-  // Código desconhecido continua visível como veio do backend.
-  return labels[code] ? tr(`commercial.contractStatusLabels.${code}`, labels[code]) : status;
-}
-
-function renderCommercialContractPanel() {
-  const contract = state.commercialContract;
-  if (!contract) return;
-  if (refs.commercialContractStatus) {
-    const code = String(contract.status || '').toLowerCase() || 'draft';
-    // Binding vivo: a troca de idioma retraduz o rótulo sem reler o contrato nem tocar no formulário.
-    refs.commercialContractStatus.textContent = globalThis.EpiI18n?.textFor?.(refs.commercialContractStatus, 'commercial.panel.contractStatus', 'Status do contrato: {status}', { status: contractStatusLabel(contract.status) }, { status: `commercial.contractStatusLabels.${code}` })
-      ?? tr('commercial.panel.contractStatus', 'Status do contrato: {status}', { status: contractStatusLabel(contract.status) });
-  }
-  if (refs.commercialContractNumber) refs.commercialContractNumber.value = contract.contract_number || '';
-  if (refs.commercialContractIssueDate) refs.commercialContractIssueDate.value = contract.issue_date || '';
-  if (refs.commercialContractorAddress) refs.commercialContractorAddress.value = contract.contractor_address || '';
-  if (refs.commercialContractorRepresentative) refs.commercialContractorRepresentative.value = contract.contractor_representative || '';
-  if (refs.commercialContractorRole) refs.commercialContractorRole.value = contract.contractor_representative_role || '';
-  if (refs.commercialContractorEmail) refs.commercialContractorEmail.value = contract.contractor_email || '';
-  if (refs.commercialContractorPhone) refs.commercialContractorPhone.value = contract.contractor_phone || '';
-  if (refs.commercialContractorW1) refs.commercialContractorW1.value = contract.contractor_witness_1 || '';
-  if (refs.commercialContractorW2) refs.commercialContractorW2.value = contract.contractor_witness_2 || '';
-  if (refs.commercialProviderName) refs.commercialProviderName.value = contract.provider_name || '';
-  if (refs.commercialProviderLegalName) refs.commercialProviderLegalName.value = contract.provider_legal_name || '';
-  if (refs.commercialProviderCnpj) refs.commercialProviderCnpj.value = contract.provider_cnpj || '';
-  if (refs.commercialProviderAddress) refs.commercialProviderAddress.value = contract.provider_address || '';
-  if (refs.commercialProviderRepresentative) refs.commercialProviderRepresentative.value = contract.provider_representative || '';
-  if (refs.commercialProviderRole) refs.commercialProviderRole.value = contract.provider_representative_role || '';
-  if (refs.commercialProviderEmail) refs.commercialProviderEmail.value = contract.provider_email || '';
-  if (refs.commercialProviderPhone) refs.commercialProviderPhone.value = contract.provider_phone || '';
-  if (refs.commercialProviderWitnesses) refs.commercialProviderWitnesses.value = contract.provider_witnesses || '';
-  if (refs.commercialContractClauses) {
-    const clausesValue = contract.clauses_text || state.commercialClauseTemplate || refs.commercialContractClauses.value || '';
-    refs.commercialContractClauses.value = clausesValue;
-    state.commercialClauseTemplate = clausesValue;
-  }
-  if (refs.commercialEmailTo) refs.commercialEmailTo.value = contract.last_email_to || contract.contractor_email || '';
-  if (refs.commercialEmailSubject) refs.commercialEmailSubject.value = contract.last_email_subject || 'Contrato comercial EPI Controle';
-  if (refs.commercialEmailBody) refs.commercialEmailBody.value = contract.last_email_body || 'Segue contrato comercial para análise e assinatura.';
-  if (refs.commercialContractEvents) {
-    refs.commercialContractEvents.innerHTML = (contract.events || []).map((event) => `<div class="summary-item"><strong>${escapeHtml(event.event_type)}</strong><div>${formatDateTime(event.created_at)}</div></div>`).join('') || `<div class="summary-item">${escapeHtml(tr('commercial.panel.noContractHistory', 'Sem histórico de contrato.'))}</div>`;
-  }
-}
-
-function resetCommercialContractForm({ preserveClauses = true } = {}) {
-  const clauses = preserveClauses ? (refs.commercialContractClauses?.value || state.commercialClauseTemplate || '') : '';
-  if (refs.commercialContractStatus) {
-    refs.commercialContractStatus.textContent = globalThis.EpiI18n?.textFor?.(refs.commercialContractStatus, 'commercial.panel.contractStatus', 'Status do contrato: {status}', { status: contractStatusLabel('draft') }, { status: 'commercial.contractStatusLabels.draft' })
-      ?? tr('commercial.panel.contractStatus', 'Status do contrato: {status}', { status: contractStatusLabel('draft') });
-  }
-  if (refs.commercialContractNumber) refs.commercialContractNumber.value = '';
-  if (refs.commercialContractIssueDate) refs.commercialContractIssueDate.value = '';
-  if (refs.commercialContractorAddress) refs.commercialContractorAddress.value = '';
-  if (refs.commercialContractorRepresentative) refs.commercialContractorRepresentative.value = '';
-  if (refs.commercialContractorRole) refs.commercialContractorRole.value = '';
-  if (refs.commercialContractorEmail) refs.commercialContractorEmail.value = '';
-  if (refs.commercialContractorPhone) refs.commercialContractorPhone.value = '';
-  if (refs.commercialContractorW1) refs.commercialContractorW1.value = '';
-  if (refs.commercialContractorW2) refs.commercialContractorW2.value = '';
-  if (refs.commercialProviderName) refs.commercialProviderName.value = '';
-  if (refs.commercialProviderLegalName) refs.commercialProviderLegalName.value = '';
-  if (refs.commercialProviderCnpj) refs.commercialProviderCnpj.value = '';
-  if (refs.commercialProviderAddress) refs.commercialProviderAddress.value = '';
-  if (refs.commercialProviderRepresentative) refs.commercialProviderRepresentative.value = '';
-  if (refs.commercialProviderRole) refs.commercialProviderRole.value = '';
-  if (refs.commercialProviderEmail) refs.commercialProviderEmail.value = '';
-  if (refs.commercialProviderPhone) refs.commercialProviderPhone.value = '';
-  if (refs.commercialProviderWitnesses) refs.commercialProviderWitnesses.value = '';
-  if (refs.commercialContractClauses) refs.commercialContractClauses.value = clauses;
-  if (refs.commercialSignatureName) refs.commercialSignatureName.value = '';
-  if (refs.commercialSignatureData) refs.commercialSignatureData.value = '';
-  if (refs.commercialEmailTo) refs.commercialEmailTo.value = '';
-  if (refs.commercialEmailSubject) refs.commercialEmailSubject.value = 'Contrato comercial EPI Controle';
-  if (refs.commercialEmailBody) refs.commercialEmailBody.value = 'Segue contrato comercial para análise e assinatura.';
-  if (refs.commercialSignedFile) refs.commercialSignedFile.value = '';
-  if (refs.commercialContractEvents) refs.commercialContractEvents.innerHTML = `<div class="summary-item">${escapeHtml(tr('commercial.panel.noContractHistory', 'Sem histórico de contrato.'))}</div>`;
-  state.commercialContract = null;
-  state.commercialClauseTemplate = clauses;
-}
-
-async function loadCommercialContract(companyId) {
-  if (!companyId || !refs.commercialForm || !canAccessCommercialArea()) return;
-  try {
-    const payload = await globalThis.__EPI_COMMERCIAL_API__.getContract(state.user.id, companyId);
-    state.commercialContract = payload.contract || null;
-    renderCommercialContractPanel();
-  } catch (error) {
-    if (error?.status === 403) {
-      resetCommercialContractForm({ preserveClauses: true });
-      return;
-    }
-    console.warn('[commercial-contract] Não foi possível carregar contrato', error);
-  }
-}
-
-function buildCommercialContractPayload() {
-  const companyId = refs.commercialCompany?.value;
-  const company = state.companies.find((item) => String(item.id) === String(companyId));
-  return {
-    actor_user_id: state.user.id,
-    company_id: Number(companyId || 0),
-    contract_number: refs.commercialContractNumber?.value || '',
-    issue_date: refs.commercialContractIssueDate?.value || '',
-    start_date: refs.commercialForm?.elements.contract_start?.value || company?.contract_start || '',
-    end_date: refs.commercialForm?.elements.contract_end?.value || company?.contract_end || '',
-    status: state.commercialContract?.status || 'draft',
-    contractor_name: company?.name || '',
-    contractor_legal_name: company?.legal_name || '',
-    contractor_trade_name: company?.name || '',
-    contractor_cnpj: company?.cnpj || '',
-    contractor_address: refs.commercialContractorAddress?.value || '',
-    contractor_representative: refs.commercialContractorRepresentative?.value || '',
-    contractor_representative_role: refs.commercialContractorRole?.value || '',
-    contractor_email: refs.commercialContractorEmail?.value || '',
-    contractor_phone: refs.commercialContractorPhone?.value || '',
-    contractor_witness_1: refs.commercialContractorW1?.value || '',
-    contractor_witness_2: refs.commercialContractorW2?.value || '',
-    provider_name: refs.commercialProviderName?.value || '',
-    provider_legal_name: refs.commercialProviderLegalName?.value || '',
-    provider_cnpj: refs.commercialProviderCnpj?.value || '',
-    provider_address: refs.commercialProviderAddress?.value || '',
-    provider_representative: refs.commercialProviderRepresentative?.value || '',
-    provider_representative_role: refs.commercialProviderRole?.value || '',
-    provider_email: refs.commercialProviderEmail?.value || '',
-    provider_phone: refs.commercialProviderPhone?.value || '',
-    provider_witnesses: refs.commercialProviderWitnesses?.value || '',
-    clauses_text: refs.commercialContractClauses?.value || '',
-    notes: refs.commercialForm?.elements.commercial_notes?.value || ''
-  };
-}
+// Interface do Comercial (formulários de empresa, contrato e parâmetros, prévia, painéis, filtros,
+// exportação/impressão, ações de contrato, suspender/reativar e salvar — 33 funções):
+// static/js/modules/commercial/ui/commercial-view.js e, o contrato comercial,
+// static/js/modules/commercial/ui/commercial-contract-view.js (UBX Comercial C3).
 
 // commercialRiskMeta, commercialActions, renderCommercialSummaryCard, renderCommercialAlertCard e
 // renderCommercialExpiringCard: static/js/modules/commercial/ui/commercial-presentation.js; commercialAlertTone:
 // static/js/modules/commercial/business/commercial-rules.js (UBX Comercial C1).
 
-async function toggleCommercialStatus(companyId, mode) {
-  const company = state.companies.find((item) => String(item.id) === String(companyId));
-  if (!company || !hasPermission('companies:update')) return;
-  const next = mode === 'reactivate'
-    ? { active: 1, license_status: 'active' }
-    : { active: 0, license_status: 'suspended' };
-  try {
-    await globalThis.__EPI_COMPANIES_API__.updateCompany(company.id, {
-        actor_user_id: state.user.id,
-        name: company.name,
-        legal_name: company.legal_name,
-        cnpj: company.cnpj,
-        logo_type: company.logo_type || '',
-        plan_name: company.plan_name,
-        user_limit: company.user_limit,
-        contract_start: company.contract_start || '',
-        contract_end: company.contract_end || '',
-        monthly_value: company.monthly_value || 0,
-        addendum_enabled: company.addendum_enabled || 0,
-        license_status: next.license_status,
-        active: next.active,
-        commercial_notes: company.commercial_notes || ''
-    });
-    await loadBootstrap();
-    fillCommercialForm(company.id);
-  } catch (error) { alert(error.message); }
-}
-
-function renderCommercialStats() {
-  if (!refs.commercialStats) return;
-  const companies = filterByUserCompany(state.companies);
-  const monthlyTotal = companies.reduce((total, item) => total + Number(item.monthly_value || 0), 0);
-  const activeCount = companies.filter((item) => item.license_status === 'active').length;
-  const suspendedCount = companies.filter((item) => item.license_status === 'suspended').length;
-  const expiredCount = companies.filter((item) => item.license_status === 'expired').length;
-  refs.commercialStats.innerHTML = [
-    [tr('commercial.panel.statMonthlyRevenue', 'Faturamento mensal'), formatCurrency(monthlyTotal, globalThis.EpiI18n?.lang)],
-    [tr('commercial.panel.statActive', 'Empresas ativas'), (globalThis.EpiI18n?.formatNumber?.(activeCount) ?? String(activeCount))],
-    [tr('commercial.panel.statSuspended', 'Suspensas'), (globalThis.EpiI18n?.formatNumber?.(suspendedCount) ?? String(suspendedCount))],
-    [tr('commercial.panel.statExpired', 'Expiradas'), (globalThis.EpiI18n?.formatNumber?.(expiredCount) ?? String(expiredCount))]
-  ].map((item) => `<article class="stat-card"><div class="stat-label">${escapeHtml(item[0])}</div><div class="stat-value">${escapeHtml(item[1])}</div></article>`).join('');
-}
-
-function renderCommercialSummary() {
-  if (!refs.commercialSummary) return;
-  const companies = filteredCommercialCompanies();
-  refs.commercialSummary.innerHTML = companies.map(renderCommercialSummaryCard).join('') || `<div class="summary-item">${escapeHtml(tr('commercial.panel.noCompanies', 'Sem empresas cadastradas.'))}</div>`;
-}
-
-function renderCommercialAlerts() {
-  if (!refs.commercialAlerts) return;
-  const alerts = filteredCommercialCompanies().filter((item) => Number(item.limit_reached) === 1 || item.near_limit || ['suspended', 'expired'].includes(item.license_status) || Number(item.active) !== 1);
-  refs.commercialAlerts.innerHTML = alerts.map(renderCommercialAlertCard).join('') || `<div class="summary-item">${escapeHtml(tr('commercial.panel.noAlerts', 'Nenhuma empresa em alerta comercial.'))}</div>`;
-}
-
 // formatCommercialAuditDetails e renderCommercialHistoryItem: static/js/modules/commercial/ui/commercial-presentation.js (UBX Comercial C1).
-
-function renderCommercialHistory() {
-  if (!refs.commercialHistory) return;
-  const logs = filteredCommercialLogs();
-  refs.commercialHistory.innerHTML = logs.slice(0, 12).map(renderCommercialHistoryItem).join('') || `<div class="summary-item">${escapeHtml(tr('commercial.panel.noHistory', 'Sem histórico comercial registrado.'))}</div>`;
-}
-
-function renderCommercialExpiring() {
-  if (!refs.commercialExpiring) return;
-  const expiring = filterByUserCompany(state.companies)
-    .map((item) => ({ item, days: daysUntil(item.contract_end) }))
-    .filter((entry) => entry.days !== null && entry.days >= 0 && entry.days <= 30)
-    .sort((a, b) => a.days - b.days);
-  refs.commercialExpiring.innerHTML = expiring.map(renderCommercialExpiringCard).join('') || `<div class="summary-item">${escapeHtml(tr('commercial.panel.noExpiring', 'Nenhum contrato vencendo nos próximos 30 dias.'))}</div>`;
-}
 
 // companyRowActions: static/js/modules/companies/ui/ (UBX-V5, Etapa 2).
 
-function populateCommercialActors() {
-  if (!refs.commercialFilterActor) return;
-  const names = [...new Set(state.companyAuditLogs.map((item) => item.actor_name))].sort((a, b) => String(a).localeCompare(String(b), globalThis.EpiI18n?.lang || 'pt-BR'));
-  const optionsHtml = names.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('');
-  refs.commercialFilterActor.innerHTML = `<option value="" data-i18n="user.filterAll">Todos</option>` + optionsHtml;
-  refs.commercialFilterActor.value = state.commercialFilters.actor_name;
-  refs.commercialFilterDateFrom.value = state.commercialFilters.date_from;
-  refs.commercialFilterDateTo.value = state.commercialFilters.date_to;
-  refs.commercialFilterStatus.value = state.commercialFilters.status;
-}
-
 function platformBrandDisplayName() {
   return state.platformBrand?.display_name || DEFAULT_PLATFORM_BRAND.display_name;
-}
-
-function exportCommercialExcel() {
-  const rows = filteredCommercialLogs();
-  const exportBrandName = platformBrandDisplayName();
-  const header = [
-    tr('commercial.brand', 'Marca'),
-    tr('commercial.panel.colCompany', 'Empresa'),
-    tr('commercial.panel.colAction', 'Ação'),
-    tr('commercial.panel.colActor', 'Responsável'),
-    tr('commercial.panel.colDate', 'Data'),
-    tr('commercial.panel.colSummary', 'Resumo'),
-    tr('commercial.panel.colDetails', 'Detalhes')
-  ];
-  const body = rows.map((item) => {
-    const detailsHtml = formatCommercialDetails(item.details);
-    const createdAt = new Intl.DateTimeFormat(globalThis.EpiI18n?.lang || 'pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at));
-    return `<tr><td>${escapeHtml(exportBrandName)}</td><td>${escapeHtml(item.company_name)}</td><td>${escapeHtml(item.action_label)}</td><td>${escapeHtml(item.actor_name)}</td><td>${createdAt}</td><td>${escapeHtml(item.summary)}</td><td>${detailsHtml}</td></tr>`;
-  }).join('');
-  const tableStylesheet = 'table{border-collapse:collapse;width:100%;font-family:Segoe UI,Arial,sans-serif}th,td{border:1px solid var(--color-border);padding:8px;text-align:left;vertical-align:top}th{background:#f6d8c8}';
-  const headerCells = header.map((item) => `<th scope="col">${escapeHtml(item)}</th>`).join('');
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${tableStylesheet}</style></head><body><table><thead><tr>${headerCells}</tr></thead><tbody>${body}</tbody></table></body></html>`;
-  const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = 'historico-comercial.xls';
-  link.click();
-  URL.revokeObjectURL(link.href);
-}
-
-function formatCommercialFiltersLabel() {
-  return [
-    state.commercialFilters.status
-      ? tr('commercial.panel.filterStatus', 'Status: {status}', { status: tr(`license.${state.commercialFilters.status}`, state.commercialFilters.status) })
-      : tr('commercial.panel.filterStatusAll', 'Status: todos'),
-    state.commercialFilters.actor_name ? tr('commercial.panel.filterActor', 'Responsável: {actor}', { actor: state.commercialFilters.actor_name }) : '',
-    state.commercialFilters.date_from ? tr('commercial.panel.filterFrom', 'De: {date}', { date: formatDate(state.commercialFilters.date_from) }) : '',
-    state.commercialFilters.date_to ? tr('commercial.panel.filterTo', 'até: {date}', { date: formatDate(state.commercialFilters.date_to) }) : ''
-  ].filter(Boolean).join(' | ');
 }
 
 // formatCommercialDetails: static/js/modules/commercial/ui/commercial-presentation.js (UBX Comercial C1).
@@ -5200,21 +4876,6 @@ function openAndPrintPopup(html, features = 'width=1100,height=800') {
   return popup;
 }
 
-function printCommercialHistory() {
-  const rows = filteredCommercialLogs();
-  const filters = formatCommercialFiltersLabel();
-  const rowsHtml = rows.map((item) => {
-    const detailsHtml = formatCommercialDetails(item.details);
-    const createdAt = new Intl.DateTimeFormat(globalThis.EpiI18n?.lang || 'pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at));
-    return `<tr><td>${escapeHtml(item.company_name)}</td><td>${escapeHtml(item.action_label)}</td><td>${escapeHtml(item.actor_name)}</td><td>${createdAt}</td><td>${escapeHtml(item.summary)}</td><td class="detail">${detailsHtml}</td></tr>`;
-  }).join('');
-  const printTitle = escapeHtml(tr('commercial.panel.printTitle', 'Histórico Comercial'));
-  const printHeaders = ['colCompany', 'colAction', 'colActor', 'colDate', 'colSummary', 'colDetails']
-    .map((key, index) => `<th scope="col">${escapeHtml(tr(`commercial.panel.${key}`, ['Empresa', 'Ação', 'Responsável', 'Data', 'Resumo', 'Detalhes'][index]))}</th>`).join('');
-  const html = `<!DOCTYPE html><html lang="${escapeHtml(String(globalThis.EpiI18n?.lang || 'pt-BR').toLowerCase())}"><head><meta charset="utf-8"><title>${printTitle}</title></head><body><h1>${printTitle}</h1><p>${escapeHtml(tr('commercial.panel.filtersLabel', 'Filtros: {filters}', { filters }))}</p><table><thead><tr>${printHeaders}</tr></thead><tbody>${rowsHtml}</tbody></table></body></html>`;
-  if (!openAndPrintPopup(html, 'width=1100,height=800')) return alert(tr('commercial.panel.popupBlocked', 'Não foi possível abrir a janela de impressão. Permita pop-ups para este site.'));
-}
-
 async function savePlatformBrand(event) {
   event.preventDefault();
   if (state.user?.role !== 'master_admin') return;
@@ -5229,55 +4890,6 @@ async function savePlatformBrand(event) {
   } catch (error) { alert(error.message); }
 }
 
-function downloadCommercialContractPdf() {
-  const companyId = refs.commercialCompany?.value;
-  if (!companyId) return;
-  globalThis.open(globalThis.__EPI_COMMERCIAL_API__.contractPdfUrl({ actor_user_id: state.user.id, company_id: companyId }), '_blank');
-}
-
-async function saveCommercialContractDraft(showToast = false) {
-  const payload = buildCommercialContractPayload();
-  if (!payload.company_id) return;
-  const response = await globalThis.__EPI_COMMERCIAL_API__.saveContractDraft(payload);
-  state.commercialContract = response.contract || null;
-  renderCommercialContractPanel();
-  if (showToast) alert(tr('commercial.panel.draftSaved', 'Contrato salvo em rascunho.'));
-}
-
-async function generateCommercialContract() {
-  try {
-    const payload = buildCommercialContractPayload();
-    const response = await globalThis.__EPI_COMMERCIAL_API__.generateContract(payload);
-    state.commercialContract = response.contract || null;
-    renderCommercialContractPanel();
-    alert(tr('commercial.panel.generated', 'Contrato gerado com sucesso.'));
-  } catch (error) { alert(error.message); }
-}
-
-function viewGeneratedCommercialContract() {
-  const companyId = refs.commercialCompany?.value;
-  if (!companyId) return;
-  globalThis.open(globalThis.__EPI_COMMERCIAL_API__.contractPdfUrl({ actor_user_id: state.user.id, company_id: companyId }), '_blank');
-}
-
-function downloadGeneratedCommercialContract() {
-  const companyId = refs.commercialCompany?.value;
-  if (!companyId) return;
-  globalThis.open(globalThis.__EPI_COMMERCIAL_API__.contractFileUrl({ actor_user_id: state.user.id, company_id: companyId, kind: 'generated' }), '_blank');
-}
-
-async function signCommercialContractAction() {
-  try {
-    const companyId = refs.commercialCompany?.value;
-    const signatureName = refs.commercialSignatureName?.value || '';
-    const signatureData = refs.commercialSignatureData?.value || '';
-    const response = await globalThis.__EPI_COMMERCIAL_API__.signContract({ actor_user_id: state.user.id, company_id: Number(companyId || 0), signature_name: signatureName, signature_data: signatureData });
-    state.commercialContract = response.contract || null;
-    renderCommercialContractPanel();
-    alert(tr('commercial.panel.signatureRecorded', 'Assinatura digital registrada.'));
-  } catch (error) { alert(error.message); }
-}
-
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -5288,137 +4900,6 @@ function fileToBase64(file) {
     reader.onerror = () => reject(new Error(tr('commercial.panel.fileReadFailed', 'Falha ao ler arquivo.')));
     reader.readAsDataURL(file);
   });
-}
-
-async function uploadSignedCommercialContract() {
-  try {
-    const file = refs.commercialSignedFile?.files?.[0];
-    if (!file) return alert(tr('commercial.panel.selectSignedPdf', 'Selecione um PDF assinado.'));
-    const companyId = refs.commercialCompany?.value;
-    const fileBase64 = await fileToBase64(file);
-    const response = await globalThis.__EPI_COMMERCIAL_API__.uploadSignedContract({
-      actor_user_id: state.user.id,
-      company_id: Number(companyId || 0),
-      file_name: file.name,
-      file_mime: file.type || 'application/pdf',
-      file_base64: fileBase64
-    });
-    state.commercialContract = response.contract || null;
-    renderCommercialContractPanel();
-    alert(tr('commercial.panel.signedUploaded', 'Contrato assinado enviado com sucesso.'));
-  } catch (error) { alert(error.message); }
-}
-
-async function sendCommercialContractByEmail() {
-  try {
-    const companyId = refs.commercialCompany?.value;
-    const response = await globalThis.__EPI_COMMERCIAL_API__.sendContractEmail({
-      actor_user_id: state.user.id,
-      company_id: Number(companyId || 0),
-      email_to: refs.commercialEmailTo?.value || '',
-      subject: refs.commercialEmailSubject?.value || '',
-      body: refs.commercialEmailBody?.value || ''
-    });
-    state.commercialContract = response.contract || null;
-    renderCommercialContractPanel();
-    alert(tr('commercial.panel.emailLogged', 'Registro de envio por e-mail atualizado.'));
-  } catch (error) { alert(error.message); }
-}
-
-function exportCommercialHistory() {
-  const rows = filteredCommercialLogs();
-  const exportBrandName = platformBrandDisplayName();
-  const header = [
-    tr('commercial.brand', 'Marca'),
-    tr('commercial.panel.colCompany', 'Empresa'),
-    tr('commercial.panel.colAction', 'Ação'),
-    tr('commercial.panel.colActor', 'Responsável'),
-    tr('commercial.panel.colDate', 'Data'),
-    tr('commercial.panel.colSummary', 'Resumo'),
-    tr('commercial.panel.colDetails', 'Detalhes')
-  ];
-  const lines = rows.map((item) => [
-    exportBrandName,
-    item.company_name,
-    item.action_label,
-    item.actor_name,
-    item.created_at,
-    item.summary,
-    (item.details || []).map((detail) => `${detail.field}: ${detail.before || '-'} -> ${detail.after || '-'}`).join(' | ')
-  ]);
-  const csv = [header, ...lines].map((row) => row.map((value) => `"${String(value || '').replaceAll('"', '""')}"`).join(';')).join('\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = 'historico-comercial.csv';
-  link.click();
-  URL.revokeObjectURL(link.href);
-}
-
-function syncCommercialFilter() {
-  state.commercialFilters.status = refs.commercialFilterStatus?.value || '';
-  state.commercialFilters.date_from = refs.commercialFilterDateFrom?.value || '';
-  state.commercialFilters.date_to = refs.commercialFilterDateTo?.value || '';
-  state.commercialFilters.actor_name = refs.commercialFilterActor?.value || '';
-  renderCommercialSummary();
-  renderCommercialAlerts();
-  renderCommercialHistory();
-}
-
-async function saveCommercial(event) {
-  event.preventDefault();
-  if (!requirePermission('commercial:view')) return;
-  const companyId = refs.commercialCompany?.value;
-  const company = state.companies.find((item) => String(item.id) === String(companyId));
-  if (!company) return;
-  try {
-    const values = formValues(refs.commercialForm);
-    values.actor_user_id = state.user.id;
-    values.name = company.name;
-    values.legal_name = company.legal_name;
-    values.cnpj = company.cnpj;
-    values.logo_type = company.logo_type || '';
-    values.addendum_enabled = refs.commercialForm.elements.addendum_enabled.checked ? 1 : 0;
-    values.monthly_value = Number(company.monthly_value || 0);
-    await globalThis.__EPI_COMPANIES_API__.updateCompany(company.id, values);
-    await loadBootstrap();
-    fillCommercialForm(company.id);
-  } catch (error) { alert(error.message); }
-}
-
-async function saveCommercialContractManagement() {
-  if (!requirePermission('commercial:view')) return;
-  try {
-    await saveCommercialContractDraft(true);
-  } catch (error) {
-    alert(error.message);
-  }
-}
-
-async function saveCommercialSettings(event) {
-  event.preventDefault();
-  if (state.user?.role !== 'master_admin') return;
-  try {
-    const form = refs.commercialSettingsForm;
-    const startMax = Number(form.elements.start_max.value || 10);
-    const businessMax = Number(form.elements.business_max.value || 25);
-    const corporateMax = Number(form.elements.corporate_max.value || 100);
-    const payload = {
-      actor_user_id: state.user.id,
-      unit_price: Number(form.elements.unit_price.value || 0),
-      plans: {
-        individual: { label: 'Individual', min_users: 1, max_users: Number(form.elements.individual_max.value || 1) },
-        start: { label: 'Start', min_users: 1, max_users: startMax },
-        business: { label: 'Business', min_users: startMax + 1, max_users: businessMax },
-        corporate: { label: 'Corporate', min_users: businessMax + 1, max_users: corporateMax },
-        enterprise: { label: 'Enterprise', min_users: Number(form.elements.enterprise_min.value || 101), max_users: null }
-      }
-    };
-    await globalThis.__EPI_COMMERCIAL_API__.saveCommercialSettings(payload);
-    await loadBootstrap();
-    fillCommercialSettingsForm();
-    fillCommercialForm(refs.commercialCompany?.value);
-  } catch (error) { alert(error.message); }
 }
 
 // Tela de Empresas (formatCompanyRow, renderCompanies, resetCompanyForm, startEditCompany,
@@ -12102,8 +11583,9 @@ async function init() {
   });
   bindAppListener(refs.companyForm, 'submit', saveCompany);
   bindAppListener(refs.platformBrandForm, 'submit', savePlatformBrand);
-  bindAppListener(refs.commercialSettingsForm, 'submit', saveCommercialSettings);
-  bindAppListener(refs.commercialForm, 'submit', saveCommercial);
+  // Assíncronas do Comercial (C3): só no namespace, como eram de bloco no app.js; a referência é estável (namespace congelado).
+  bindAppListener(refs.commercialSettingsForm, 'submit', globalThis.__EPI_COMMERCIAL_VIEW__.saveCommercialSettings);
+  bindAppListener(refs.commercialForm, 'submit', globalThis.__EPI_COMMERCIAL_VIEW__.saveCommercial);
 
   bindAppListener(refs.commercialCompany, 'change', () => {
     fillCommercialForm(refs.commercialCompany.value);
@@ -12123,13 +11605,13 @@ async function init() {
   });
 
   bindAppListener(refs.commercialContractPdf, 'click', downloadCommercialContractPdf);
-  bindAppListener(refs.commercialGenerateContract, 'click', generateCommercialContract);
+  bindAppListener(refs.commercialGenerateContract, 'click', globalThis.__EPI_COMMERCIAL_VIEW__.generateCommercialContract);
   bindAppListener(refs.commercialViewContract, 'click', viewGeneratedCommercialContract);
   bindAppListener(refs.commercialDownloadContract, 'click', downloadGeneratedCommercialContract);
-  bindAppListener(refs.commercialUploadSigned, 'click', uploadSignedCommercialContract);
-  bindAppListener(refs.commercialSignContract, 'click', signCommercialContractAction);
-  bindAppListener(refs.commercialSendContractEmail, 'click', sendCommercialContractByEmail);
-  bindAppListener(refs.commercialSaveContractManagement, 'click', saveCommercialContractManagement);
+  bindAppListener(refs.commercialUploadSigned, 'click', globalThis.__EPI_COMMERCIAL_VIEW__.uploadSignedCommercialContract);
+  bindAppListener(refs.commercialSignContract, 'click', globalThis.__EPI_COMMERCIAL_VIEW__.signCommercialContractAction);
+  bindAppListener(refs.commercialSendContractEmail, 'click', globalThis.__EPI_COMMERCIAL_VIEW__.sendCommercialContractByEmail);
+  bindAppListener(refs.commercialSaveContractManagement, 'click', globalThis.__EPI_COMMERCIAL_VIEW__.saveCommercialContractManagement);
   bindAppListener(refs.commercialExport, 'click', exportCommercialHistory);
   bindAppListener(refs.commercialExportExcel, 'click', exportCommercialExcel);
   bindAppListener(refs.commercialPrint, 'click', printCommercialHistory);
@@ -12742,7 +12224,7 @@ async function init() {
       fillCommercialForm(event.target.dataset.companyCommercial);
     }
     if (event.target.dataset.commercialToggle) {
-      toggleCommercialStatus(event.target.dataset.commercialToggle, event.target.dataset.commercialMode);
+      globalThis.__EPI_COMMERCIAL_VIEW__.toggleCommercialStatus(event.target.dataset.commercialToggle, event.target.dataset.commercialMode);
     }
   });
 

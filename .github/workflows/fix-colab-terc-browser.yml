@@ -30,7 +30,8 @@ jobs:
   browser:
     name: Chromium functional regression (five locales)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # 45: as provas de navegador somam ~20 min e a instalação do Chromium (apt) já levou 10 min num runner lento.
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7

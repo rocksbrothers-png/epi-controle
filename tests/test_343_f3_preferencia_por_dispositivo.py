@@ -102,7 +102,10 @@ def test_a_promessa_ao_usuario_acompanha_o_escopo_no_web_legado():
     AUSENTE. Manter as duas seria pior do que trocar: o usuário leria uma coisa
     e o sistema faria outra.
     """
-    js = APP_JS.read_text(encoding='utf-8')
+    # Shell/Topbar UBX: mesma promessa e mesmas proibições na composição servida.
+    modulo = 'js/modules/shell/ui/settings-drawer.js'
+    assert '/' + modulo in (RAIZ / 'static/views/_scripts.html').read_text(encoding='utf-8')
+    js = APP_JS.read_text(encoding='utf-8') + (RAIZ / 'static' / modulo).read_text(encoding='utf-8')
     assert 'As preferências são salvas na sua conta' in js, \
         'a UI parou de dizer ao usuário onde as preferências dele ficam'
     assert 'As preferências são salvas neste dispositivo.' not in js, \

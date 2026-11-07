@@ -1722,8 +1722,12 @@ Nomes maliciosos de empresa/unidade mantêm escape e nenhum código injetado exe
   namespace e guarda de carga. SaaS pendente na interrupção foi concluído na retomada.
 - Suíte JavaScript: 699 aprovados por produto. Testes antigos de drawer/sidebar leem também os
   módulos servidos; todas as assertivas originais preservadas. Suítes UBX anteriores intactas.
-- Python selecionado: 342 Corporate / 293 SaaS, sem pulados; segurança, CSP, saída XSS,
+- Python selecionado ampliado: 362 Corporate / 313 SaaS, sem pulados; segurança, CSP, saída XSS,
   contrato HTTP, escopo comercial/multi-tenant, I18N, assets/build e F4/F5B. Um aviso pytest por produto.
+  Inclui os 20 testes F3 por produto; a seleção inicial de 342/293 também passou. O CI completo
+  revelou o gate da promessa de preferências restrito a app.js. Ele passou a ler app + módulo
+  servido do drawer, preservando as três assertivas e verificando a presença do script. F3: 20/20
+  em ambos. Gate oficial Ruff F401 de tests/scripts aprovado; demais funções do arquivo intactas.
 - Regressões Chromium adicionais aprovadas nos dois produtos e nos cinco idiomas: Marca (80 passos),
   Impressão (45 passos + cinco popups reais), I18N geral, CSP com seis controles negativos,
   navegação (transferência, arquivamento, perda de acesso, clique duplo e recargas). C3 passou

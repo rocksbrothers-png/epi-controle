@@ -364,7 +364,7 @@ Detalhes e riscos em `UBX_APPJS_AUDITORIA.md` §24; inventário em `UBX_SHELL_TO
 - `app.js`: 16.269 → 16.126 linhas físicas; 668 → 654 declarações; 550 → 536 funções; 93 endpoints.
   AST remanescente idêntico, cinco SCC internos, zero ciclos entre scripts segundo a guarda.
 - 725 comparações por produto; 29/29 mutações detectadas em ambos; JavaScript 699 por produto;
-  Python selecionado 342 Corporate / 293 SaaS. Guarda, F4/F5B, CSP, lint/build e I18N preservados.
+  Python ampliado 362 Corporate / 313 SaaS (20 F3 adicionais por produto). Guarda, F4/F5B, CSP, lint/build e I18N preservados.
 - Chromium cobre cinco idiomas e duas ordens de tenant-init, desktop/mobile e contexto/principal atual: 260 passos funcionais
   equivalentes. PNG estrito 107/110; restrição visual reproduzida na base (§24.4). A variação de bindings de I18N foi reproduzida na main e documentada na §24.4; harness usa sinais
   reais, preserva as duas ordens e não adiciona sleeps. Resultados finais/CI/CodeQL no relatório e PR.

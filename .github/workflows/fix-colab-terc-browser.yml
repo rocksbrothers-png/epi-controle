@@ -23,6 +23,7 @@ on:
       - 'scripts/browser/ubx_commercial_view.py'
       - 'scripts/browser/ubx_commercial_shared.py'
       - 'scripts/browser/ubx_platform_brand.py'
+      - 'scripts/browser/ubx_print_popup.py'
       - 'modules/ficha/**'
       - '.github/workflows/fix-colab-terc-browser.yml'
   workflow_dispatch:
@@ -101,6 +102,9 @@ jobs:
       - if: ${{ !cancelled() }}
         name: UBX Marca platform brand equivalence (five locales)
         run: python scripts/browser/ubx_platform_brand.py --output browser-evidence/ubx-platform-brand
+      - if: ${{ !cancelled() }}
+        name: UBX shared print popup equivalence (five locales)
+        run: python scripts/browser/ubx_print_popup.py --output browser-evidence/ubx-print-popup
       # SECURITY-OUTPUT-XSS-V2: texto de colaborador, unidade e EPI contaminado em todas as telas não executa.
       - if: ${{ !cancelled() }}
         run: python scripts/browser/security_output_xss_v2.py --output browser-evidence/security-output-xss-v2

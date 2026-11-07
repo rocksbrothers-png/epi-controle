@@ -1,0 +1,4052 @@
+{
+ "pt-BR": {
+  "steps": [
+   {
+    "label": "comercial",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"pt-br\"><head><meta charset=\"utf-8\"><title>Histórico Comercial</title></head><body><h1>Histórico Comercial</h1><p>Filtros: Status: todos</p><table><thead><tr><th scope=\"col\">Empresa</th><th scope=\"col\">Ação</th><th scope=\"col\">Responsável</th><th scope=\"col\">Data</th><th scope=\"col\">Resumo</th><th scope=\"col\">Detalhes</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30/10/2026, 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     }
+    ],
+    "dialogs": [],
+    "calls": []
+   },
+   {
+    "label": "QR do usuário",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"pt-br\"><head><meta charset=\"utf-8\"><title>Histórico Comercial</title></head><body><h1>Histórico Comercial</h1><p>Filtros: Status: todos</p><table><thead><tr><th scope=\"col\">Empresa</th><th scope=\"col\">Ação</th><th scope=\"col\">Responsável</th><th scope=\"col\">Data</th><th scope=\"col\">Resumo</th><th scope=\"col\">Detalhes</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30/10/2026, 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Acesso Funcionário\"></head><body><p><a href=\"https://fixture.example.test/?employee_token=QA%20%26%20token\">https://fixture.example.test/?employee_token=QA%20%26%20token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     }
+    ],
+    "dialogs": [],
+    "calls": []
+   },
+   {
+    "label": "portal do colaborador",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"pt-br\"><head><meta charset=\"utf-8\"><title>Histórico Comercial</title></head><body><h1>Histórico Comercial</h1><p>Filtros: Status: todos</p><table><thead><tr><th scope=\"col\">Empresa</th><th scope=\"col\">Ação</th><th scope=\"col\">Responsável</th><th scope=\"col\">Data</th><th scope=\"col\">Resumo</th><th scope=\"col\">Detalhes</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30/10/2026, 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Acesso Funcionário\"></head><body><p><a href=\"https://fixture.example.test/?employee_token=QA%20%26%20token\">https://fixture.example.test/?employee_token=QA%20%26%20token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>Ana &lt;img src=x onerror=window.__xss=1&gt;</h2><p>Link de acesso externo</p><img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=https%3A%2F%2Fportal.example.test%2F%3Femployee_token%3DQA%2526token\" alt=\"Link acesso colaborador\"><p><a href=\"https://portal.example.test/?employee_token=QA%26token\">https://portal.example.test/?employee_token=QA%26token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     }
+    ],
+    "dialogs": [],
+    "calls": [
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     }
+    ]
+   },
+   {
+    "label": "etiquetas de estoque",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"pt-br\"><head><meta charset=\"utf-8\"><title>Histórico Comercial</title></head><body><h1>Histórico Comercial</h1><p>Filtros: Status: todos</p><table><thead><tr><th scope=\"col\">Empresa</th><th scope=\"col\">Ação</th><th scope=\"col\">Responsável</th><th scope=\"col\">Data</th><th scope=\"col\">Resumo</th><th scope=\"col\">Detalhes</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30/10/2026, 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Acesso Funcionário\"></head><body><p><a href=\"https://fixture.example.test/?employee_token=QA%20%26%20token\">https://fixture.example.test/?employee_token=QA%20%26%20token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>Ana &lt;img src=x onerror=window.__xss=1&gt;</h2><p>Link de acesso externo</p><img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=https%3A%2F%2Fportal.example.test%2F%3Femployee_token%3DQA%2526token\" alt=\"Link acesso colaborador\"><p><a href=\"https://portal.example.test/?employee_token=QA%26token\">https://portal.example.test/?employee_token=QA%26token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Etiquetas EPI</title><style>body{font-family:Arial,sans-serif;padding:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.label{border:1px dashed var(--color-border);padding:8px;text-align:center;font-size:12px}img{width:110px;height:110px}</style></head><body><div class=\"grid\">\n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  \n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  </div></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     }
+    ],
+    "dialogs": [],
+    "calls": [
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     }
+    ]
+   },
+   {
+    "label": "comercial bloqueado",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"pt-br\"><head><meta charset=\"utf-8\"><title>Histórico Comercial</title></head><body><h1>Histórico Comercial</h1><p>Filtros: Status: todos</p><table><thead><tr><th scope=\"col\">Empresa</th><th scope=\"col\">Ação</th><th scope=\"col\">Responsável</th><th scope=\"col\">Data</th><th scope=\"col\">Resumo</th><th scope=\"col\">Detalhes</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30/10/2026, 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Acesso Funcionário\"></head><body><p><a href=\"https://fixture.example.test/?employee_token=QA%20%26%20token\">https://fixture.example.test/?employee_token=QA%20%26%20token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>Ana &lt;img src=x onerror=window.__xss=1&gt;</h2><p>Link de acesso externo</p><img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=https%3A%2F%2Fportal.example.test%2F%3Femployee_token%3DQA%2526token\" alt=\"Link acesso colaborador\"><p><a href=\"https://portal.example.test/?employee_token=QA%26token\">https://portal.example.test/?employee_token=QA%26token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Etiquetas EPI</title><style>body{font-family:Arial,sans-serif;padding:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.label{border:1px dashed var(--color-border);padding:8px;text-align:center;font-size:12px}img{width:110px;height:110px}</style></head><body><div class=\"grid\">\n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  \n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  </div></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "",
+      "events": []
+     }
+    ],
+    "dialogs": [
+     {
+      "type": "alert",
+      "message": "Não foi possível abrir a janela de impressão. Permita pop-ups para este site."
+     }
+    ],
+    "calls": [
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     }
+    ]
+   },
+   {
+    "label": "QR do usuário bloqueado",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"pt-br\"><head><meta charset=\"utf-8\"><title>Histórico Comercial</title></head><body><h1>Histórico Comercial</h1><p>Filtros: Status: todos</p><table><thead><tr><th scope=\"col\">Empresa</th><th scope=\"col\">Ação</th><th scope=\"col\">Responsável</th><th scope=\"col\">Data</th><th scope=\"col\">Resumo</th><th scope=\"col\">Detalhes</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30/10/2026, 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Acesso Funcionário\"></head><body><p><a href=\"https://fixture.example.test/?employee_token=QA%20%26%20token\">https://fixture.example.test/?employee_token=QA%20%26%20token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>Ana &lt;img src=x onerror=window.__xss=1&gt;</h2><p>Link de acesso externo</p><img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=https%3A%2F%2Fportal.example.test%2F%3Femployee_token%3DQA%2526token\" alt=\"Link acesso colaborador\"><p><a href=\"https://portal.example.test/?employee_token=QA%26token\">https://portal.example.test/?employee_token=QA%26token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Etiquetas EPI</title><style>body{font-family:Arial,sans-serif;padding:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.label{border:1px dashed var(--color-border);padding:8px;text-align:center;font-size:12px}img{width:110px;height:110px}</style></head><body><div class=\"grid\">\n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  \n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  </div></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "",
+      "events": []
+     }
+    ],
+    "dialogs": [
+     {
+      "type": "alert",
+      "message": "Não foi possível abrir a janela de impressão. Permita pop-ups para este site."
+     },
+     {
+      "type": "alert",
+      "message": "Não tem acesso."
+     }
+    ],
+    "calls": [
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     }
+    ]
+   },
+   {
+    "label": "portal do colaborador bloqueado",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"pt-br\"><head><meta charset=\"utf-8\"><title>Histórico Comercial</title></head><body><h1>Histórico Comercial</h1><p>Filtros: Status: todos</p><table><thead><tr><th scope=\"col\">Empresa</th><th scope=\"col\">Ação</th><th scope=\"col\">Responsável</th><th scope=\"col\">Data</th><th scope=\"col\">Resumo</th><th scope=\"col\">Detalhes</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30/10/2026, 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Acesso Funcionário\"></head><body><p><a href=\"https://fixture.example.test/?employee_token=QA%20%26%20token\">https://fixture.example.test/?employee_token=QA%20%26%20token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>Ana &lt;img src=x onerror=window.__xss=1&gt;</h2><p>Link de acesso externo</p><img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=https%3A%2F%2Fportal.example.test%2F%3Femployee_token%3DQA%2526token\" alt=\"Link acesso colaborador\"><p><a href=\"https://portal.example.test/?employee_token=QA%26token\">https://portal.example.test/?employee_token=QA%26token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Etiquetas EPI</title><style>body{font-family:Arial,sans-serif;padding:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.label{border:1px dashed var(--color-border);padding:8px;text-align:center;font-size:12px}img{width:110px;height:110px}</style></head><body><div class=\"grid\">\n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  \n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  </div></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "",
+      "events": []
+     }
+    ],
+    "dialogs": [
+     {
+      "type": "alert",
+      "message": "Não foi possível abrir a janela de impressão. Permita pop-ups para este site."
+     },
+     {
+      "type": "alert",
+      "message": "Não tem acesso."
+     },
+     {
+      "type": "alert",
+      "message": "Não tem acesso."
+     }
+    ],
+    "calls": [
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     },
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     }
+    ]
+   },
+   {
+    "label": "etiquetas de estoque bloqueado",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"pt-br\"><head><meta charset=\"utf-8\"><title>Histórico Comercial</title></head><body><h1>Histórico Comercial</h1><p>Filtros: Status: todos</p><table><thead><tr><th scope=\"col\">Empresa</th><th scope=\"col\">Ação</th><th scope=\"col\">Responsável</th><th scope=\"col\">Data</th><th scope=\"col\">Resumo</th><th scope=\"col\">Detalhes</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30/10/2026, 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Acesso Funcionário\"></head><body><p><a href=\"https://fixture.example.test/?employee_token=QA%20%26%20token\">https://fixture.example.test/?employee_token=QA%20%26%20token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>Ana &lt;img src=x onerror=window.__xss=1&gt;</h2><p>Link de acesso externo</p><img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=https%3A%2F%2Fportal.example.test%2F%3Femployee_token%3DQA%2526token\" alt=\"Link acesso colaborador\"><p><a href=\"https://portal.example.test/?employee_token=QA%26token\">https://portal.example.test/?employee_token=QA%26token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Etiquetas EPI</title><style>body{font-family:Arial,sans-serif;padding:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.label{border:1px dashed var(--color-border);padding:8px;text-align:center;font-size:12px}img{width:110px;height:110px}</style></head><body><div class=\"grid\">\n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  \n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  </div></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "",
+      "events": []
+     }
+    ],
+    "dialogs": [
+     {
+      "type": "alert",
+      "message": "Não foi possível abrir a janela de impressão. Permita pop-ups para este site."
+     },
+     {
+      "type": "alert",
+      "message": "Não tem acesso."
+     },
+     {
+      "type": "alert",
+      "message": "Não tem acesso."
+     }
+    ],
+    "calls": [
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     },
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     }
+    ]
+   },
+   {
+    "label": "portal: 403 sem popup",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"pt-br\"><head><meta charset=\"utf-8\"><title>Histórico Comercial</title></head><body><h1>Histórico Comercial</h1><p>Filtros: Status: todos</p><table><thead><tr><th scope=\"col\">Empresa</th><th scope=\"col\">Ação</th><th scope=\"col\">Responsável</th><th scope=\"col\">Data</th><th scope=\"col\">Resumo</th><th scope=\"col\">Detalhes</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30/10/2026, 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Acesso Funcionário\"></head><body><p><a href=\"https://fixture.example.test/?employee_token=QA%20%26%20token\">https://fixture.example.test/?employee_token=QA%20%26%20token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>Ana &lt;img src=x onerror=window.__xss=1&gt;</h2><p>Link de acesso externo</p><img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=https%3A%2F%2Fportal.example.test%2F%3Femployee_token%3DQA%2526token\" alt=\"Link acesso colaborador\"><p><a href=\"https://portal.example.test/?employee_token=QA%26token\">https://portal.example.test/?employee_token=QA%26token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Etiquetas EPI</title><style>body{font-family:Arial,sans-serif;padding:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.label{border:1px dashed var(--color-border);padding:8px;text-align:center;font-size:12px}img{width:110px;height:110px}</style></head><body><div class=\"grid\">\n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  \n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  </div></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "",
+      "events": []
+     }
+    ],
+    "dialogs": [
+     {
+      "type": "alert",
+      "message": "Não foi possível abrir a janela de impressão. Permita pop-ups para este site."
+     },
+     {
+      "type": "alert",
+      "message": "Não tem acesso."
+     },
+     {
+      "type": "alert",
+      "message": "Não tem acesso."
+     },
+     {
+      "type": "alert",
+      "message": "QA forbidden"
+     }
+    ],
+    "calls": [
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     },
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     },
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     }
+    ]
+   }
+  ],
+  "real_popup": {
+   "content": "Olá & €",
+   "focus_before_print": true
+  }
+ },
+ "en-GB": {
+  "steps": [
+   {
+    "label": "comercial",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"en-gb\"><head><meta charset=\"utf-8\"><title>Commercial history</title></head><body><h1>Commercial history</h1><p>Filters: Status: all</p><table><thead><tr><th scope=\"col\">Company</th><th scope=\"col\">Action</th><th scope=\"col\">Performed by</th><th scope=\"col\">Date</th><th scope=\"col\">Summary</th><th scope=\"col\">Details</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30/10/2026, 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     }
+    ],
+    "dialogs": [],
+    "calls": []
+   },
+   {
+    "label": "QR do usuário",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"en-gb\"><head><meta charset=\"utf-8\"><title>Commercial history</title></head><body><h1>Commercial history</h1><p>Filters: Status: all</p><table><thead><tr><th scope=\"col\">Company</th><th scope=\"col\">Action</th><th scope=\"col\">Performed by</th><th scope=\"col\">Date</th><th scope=\"col\">Summary</th><th scope=\"col\">Details</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30/10/2026, 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Acesso Funcionário\"></head><body><p><a href=\"https://fixture.example.test/?employee_token=QA%20%26%20token\">https://fixture.example.test/?employee_token=QA%20%26%20token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     }
+    ],
+    "dialogs": [],
+    "calls": []
+   },
+   {
+    "label": "portal do colaborador",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"en-gb\"><head><meta charset=\"utf-8\"><title>Commercial history</title></head><body><h1>Commercial history</h1><p>Filters: Status: all</p><table><thead><tr><th scope=\"col\">Company</th><th scope=\"col\">Action</th><th scope=\"col\">Performed by</th><th scope=\"col\">Date</th><th scope=\"col\">Summary</th><th scope=\"col\">Details</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30/10/2026, 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Acesso Funcionário\"></head><body><p><a href=\"https://fixture.example.test/?employee_token=QA%20%26%20token\">https://fixture.example.test/?employee_token=QA%20%26%20token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>Ana &lt;img src=x onerror=window.__xss=1&gt;</h2><p>Link de acesso externo</p><img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=https%3A%2F%2Fportal.example.test%2F%3Femployee_token%3DQA%2526token\" alt=\"Link acesso colaborador\"><p><a href=\"https://portal.example.test/?employee_token=QA%26token\">https://portal.example.test/?employee_token=QA%26token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     }
+    ],
+    "dialogs": [],
+    "calls": [
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     }
+    ]
+   },
+   {
+    "label": "etiquetas de estoque",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"en-gb\"><head><meta charset=\"utf-8\"><title>Commercial history</title></head><body><h1>Commercial history</h1><p>Filters: Status: all</p><table><thead><tr><th scope=\"col\">Company</th><th scope=\"col\">Action</th><th scope=\"col\">Performed by</th><th scope=\"col\">Date</th><th scope=\"col\">Summary</th><th scope=\"col\">Details</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30/10/2026, 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Acesso Funcionário\"></head><body><p><a href=\"https://fixture.example.test/?employee_token=QA%20%26%20token\">https://fixture.example.test/?employee_token=QA%20%26%20token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>Ana &lt;img src=x onerror=window.__xss=1&gt;</h2><p>Link de acesso externo</p><img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=https%3A%2F%2Fportal.example.test%2F%3Femployee_token%3DQA%2526token\" alt=\"Link acesso colaborador\"><p><a href=\"https://portal.example.test/?employee_token=QA%26token\">https://portal.example.test/?employee_token=QA%26token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Etiquetas EPI</title><style>body{font-family:Arial,sans-serif;padding:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.label{border:1px dashed var(--color-border);padding:8px;text-align:center;font-size:12px}img{width:110px;height:110px}</style></head><body><div class=\"grid\">\n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  \n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  </div></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     }
+    ],
+    "dialogs": [],
+    "calls": [
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     }
+    ]
+   },
+   {
+    "label": "comercial bloqueado",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"en-gb\"><head><meta charset=\"utf-8\"><title>Commercial history</title></head><body><h1>Commercial history</h1><p>Filters: Status: all</p><table><thead><tr><th scope=\"col\">Company</th><th scope=\"col\">Action</th><th scope=\"col\">Performed by</th><th scope=\"col\">Date</th><th scope=\"col\">Summary</th><th scope=\"col\">Details</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30/10/2026, 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Acesso Funcionário\"></head><body><p><a href=\"https://fixture.example.test/?employee_token=QA%20%26%20token\">https://fixture.example.test/?employee_token=QA%20%26%20token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>Ana &lt;img src=x onerror=window.__xss=1&gt;</h2><p>Link de acesso externo</p><img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=https%3A%2F%2Fportal.example.test%2F%3Femployee_token%3DQA%2526token\" alt=\"Link acesso colaborador\"><p><a href=\"https://portal.example.test/?employee_token=QA%26token\">https://portal.example.test/?employee_token=QA%26token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Etiquetas EPI</title><style>body{font-family:Arial,sans-serif;padding:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.label{border:1px dashed var(--color-border);padding:8px;text-align:center;font-size:12px}img{width:110px;height:110px}</style></head><body><div class=\"grid\">\n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  \n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  </div></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "",
+      "events": []
+     }
+    ],
+    "dialogs": [
+     {
+      "type": "alert",
+      "message": "The print window could not be opened. Allow pop-ups for this site."
+     }
+    ],
+    "calls": [
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     }
+    ]
+   },
+   {
+    "label": "QR do usuário bloqueado",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"en-gb\"><head><meta charset=\"utf-8\"><title>Commercial history</title></head><body><h1>Commercial history</h1><p>Filters: Status: all</p><table><thead><tr><th scope=\"col\">Company</th><th scope=\"col\">Action</th><th scope=\"col\">Performed by</th><th scope=\"col\">Date</th><th scope=\"col\">Summary</th><th scope=\"col\">Details</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30/10/2026, 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Acesso Funcionário\"></head><body><p><a href=\"https://fixture.example.test/?employee_token=QA%20%26%20token\">https://fixture.example.test/?employee_token=QA%20%26%20token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>Ana &lt;img src=x onerror=window.__xss=1&gt;</h2><p>Link de acesso externo</p><img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=https%3A%2F%2Fportal.example.test%2F%3Femployee_token%3DQA%2526token\" alt=\"Link acesso colaborador\"><p><a href=\"https://portal.example.test/?employee_token=QA%26token\">https://portal.example.test/?employee_token=QA%26token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Etiquetas EPI</title><style>body{font-family:Arial,sans-serif;padding:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.label{border:1px dashed var(--color-border);padding:8px;text-align:center;font-size:12px}img{width:110px;height:110px}</style></head><body><div class=\"grid\">\n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  \n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  </div></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "",
+      "events": []
+     }
+    ],
+    "dialogs": [
+     {
+      "type": "alert",
+      "message": "The print window could not be opened. Allow pop-ups for this site."
+     },
+     {
+      "type": "alert",
+      "message": "Não tem acesso."
+     }
+    ],
+    "calls": [
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     }
+    ]
+   },
+   {
+    "label": "portal do colaborador bloqueado",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"en-gb\"><head><meta charset=\"utf-8\"><title>Commercial history</title></head><body><h1>Commercial history</h1><p>Filters: Status: all</p><table><thead><tr><th scope=\"col\">Company</th><th scope=\"col\">Action</th><th scope=\"col\">Performed by</th><th scope=\"col\">Date</th><th scope=\"col\">Summary</th><th scope=\"col\">Details</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30/10/2026, 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Acesso Funcionário\"></head><body><p><a href=\"https://fixture.example.test/?employee_token=QA%20%26%20token\">https://fixture.example.test/?employee_token=QA%20%26%20token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>Ana &lt;img src=x onerror=window.__xss=1&gt;</h2><p>Link de acesso externo</p><img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=https%3A%2F%2Fportal.example.test%2F%3Femployee_token%3DQA%2526token\" alt=\"Link acesso colaborador\"><p><a href=\"https://portal.example.test/?employee_token=QA%26token\">https://portal.example.test/?employee_token=QA%26token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Etiquetas EPI</title><style>body{font-family:Arial,sans-serif;padding:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.label{border:1px dashed var(--color-border);padding:8px;text-align:center;font-size:12px}img{width:110px;height:110px}</style></head><body><div class=\"grid\">\n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  \n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  </div></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "",
+      "events": []
+     }
+    ],
+    "dialogs": [
+     {
+      "type": "alert",
+      "message": "The print window could not be opened. Allow pop-ups for this site."
+     },
+     {
+      "type": "alert",
+      "message": "Não tem acesso."
+     },
+     {
+      "type": "alert",
+      "message": "Não tem acesso."
+     }
+    ],
+    "calls": [
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     },
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     }
+    ]
+   },
+   {
+    "label": "etiquetas de estoque bloqueado",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"en-gb\"><head><meta charset=\"utf-8\"><title>Commercial history</title></head><body><h1>Commercial history</h1><p>Filters: Status: all</p><table><thead><tr><th scope=\"col\">Company</th><th scope=\"col\">Action</th><th scope=\"col\">Performed by</th><th scope=\"col\">Date</th><th scope=\"col\">Summary</th><th scope=\"col\">Details</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30/10/2026, 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Acesso Funcionário\"></head><body><p><a href=\"https://fixture.example.test/?employee_token=QA%20%26%20token\">https://fixture.example.test/?employee_token=QA%20%26%20token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>Ana &lt;img src=x onerror=window.__xss=1&gt;</h2><p>Link de acesso externo</p><img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=https%3A%2F%2Fportal.example.test%2F%3Femployee_token%3DQA%2526token\" alt=\"Link acesso colaborador\"><p><a href=\"https://portal.example.test/?employee_token=QA%26token\">https://portal.example.test/?employee_token=QA%26token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Etiquetas EPI</title><style>body{font-family:Arial,sans-serif;padding:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.label{border:1px dashed var(--color-border);padding:8px;text-align:center;font-size:12px}img{width:110px;height:110px}</style></head><body><div class=\"grid\">\n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  \n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  </div></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "",
+      "events": []
+     }
+    ],
+    "dialogs": [
+     {
+      "type": "alert",
+      "message": "The print window could not be opened. Allow pop-ups for this site."
+     },
+     {
+      "type": "alert",
+      "message": "Não tem acesso."
+     },
+     {
+      "type": "alert",
+      "message": "Não tem acesso."
+     }
+    ],
+    "calls": [
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     },
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     }
+    ]
+   },
+   {
+    "label": "portal: 403 sem popup",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"en-gb\"><head><meta charset=\"utf-8\"><title>Commercial history</title></head><body><h1>Commercial history</h1><p>Filters: Status: all</p><table><thead><tr><th scope=\"col\">Company</th><th scope=\"col\">Action</th><th scope=\"col\">Performed by</th><th scope=\"col\">Date</th><th scope=\"col\">Summary</th><th scope=\"col\">Details</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30/10/2026, 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Acesso Funcionário\"></head><body><p><a href=\"https://fixture.example.test/?employee_token=QA%20%26%20token\">https://fixture.example.test/?employee_token=QA%20%26%20token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>Ana &lt;img src=x onerror=window.__xss=1&gt;</h2><p>Link de acesso externo</p><img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=https%3A%2F%2Fportal.example.test%2F%3Femployee_token%3DQA%2526token\" alt=\"Link acesso colaborador\"><p><a href=\"https://portal.example.test/?employee_token=QA%26token\">https://portal.example.test/?employee_token=QA%26token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Etiquetas EPI</title><style>body{font-family:Arial,sans-serif;padding:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.label{border:1px dashed var(--color-border);padding:8px;text-align:center;font-size:12px}img{width:110px;height:110px}</style></head><body><div class=\"grid\">\n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  \n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  </div></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "",
+      "events": []
+     }
+    ],
+    "dialogs": [
+     {
+      "type": "alert",
+      "message": "The print window could not be opened. Allow pop-ups for this site."
+     },
+     {
+      "type": "alert",
+      "message": "Não tem acesso."
+     },
+     {
+      "type": "alert",
+      "message": "Não tem acesso."
+     },
+     {
+      "type": "alert",
+      "message": "QA forbidden"
+     }
+    ],
+    "calls": [
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     },
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     },
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     }
+    ]
+   }
+  ],
+  "real_popup": {
+   "content": "Olá & €",
+   "focus_before_print": true
+  }
+ },
+ "es-ES": {
+  "steps": [
+   {
+    "label": "comercial",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"es-es\"><head><meta charset=\"utf-8\"><title>Historial comercial</title></head><body><h1>Historial comercial</h1><p>Filtros: Estado: todos</p><table><thead><tr><th scope=\"col\">Empresa</th><th scope=\"col\">Acción</th><th scope=\"col\">Responsable</th><th scope=\"col\">Fecha</th><th scope=\"col\">Resumen</th><th scope=\"col\">Detalles</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30/10/26, 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     }
+    ],
+    "dialogs": [],
+    "calls": []
+   },
+   {
+    "label": "QR do usuário",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"es-es\"><head><meta charset=\"utf-8\"><title>Historial comercial</title></head><body><h1>Historial comercial</h1><p>Filtros: Estado: todos</p><table><thead><tr><th scope=\"col\">Empresa</th><th scope=\"col\">Acción</th><th scope=\"col\">Responsable</th><th scope=\"col\">Fecha</th><th scope=\"col\">Resumen</th><th scope=\"col\">Detalles</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30/10/26, 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Acesso Funcionário\"></head><body><p><a href=\"https://fixture.example.test/?employee_token=QA%20%26%20token\">https://fixture.example.test/?employee_token=QA%20%26%20token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     }
+    ],
+    "dialogs": [],
+    "calls": []
+   },
+   {
+    "label": "portal do colaborador",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"es-es\"><head><meta charset=\"utf-8\"><title>Historial comercial</title></head><body><h1>Historial comercial</h1><p>Filtros: Estado: todos</p><table><thead><tr><th scope=\"col\">Empresa</th><th scope=\"col\">Acción</th><th scope=\"col\">Responsable</th><th scope=\"col\">Fecha</th><th scope=\"col\">Resumen</th><th scope=\"col\">Detalles</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30/10/26, 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Acesso Funcionário\"></head><body><p><a href=\"https://fixture.example.test/?employee_token=QA%20%26%20token\">https://fixture.example.test/?employee_token=QA%20%26%20token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>Ana &lt;img src=x onerror=window.__xss=1&gt;</h2><p>Link de acesso externo</p><img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=https%3A%2F%2Fportal.example.test%2F%3Femployee_token%3DQA%2526token\" alt=\"Link acesso colaborador\"><p><a href=\"https://portal.example.test/?employee_token=QA%26token\">https://portal.example.test/?employee_token=QA%26token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     }
+    ],
+    "dialogs": [],
+    "calls": [
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     }
+    ]
+   },
+   {
+    "label": "etiquetas de estoque",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"es-es\"><head><meta charset=\"utf-8\"><title>Historial comercial</title></head><body><h1>Historial comercial</h1><p>Filtros: Estado: todos</p><table><thead><tr><th scope=\"col\">Empresa</th><th scope=\"col\">Acción</th><th scope=\"col\">Responsable</th><th scope=\"col\">Fecha</th><th scope=\"col\">Resumen</th><th scope=\"col\">Detalles</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30/10/26, 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Acesso Funcionário\"></head><body><p><a href=\"https://fixture.example.test/?employee_token=QA%20%26%20token\">https://fixture.example.test/?employee_token=QA%20%26%20token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>Ana &lt;img src=x onerror=window.__xss=1&gt;</h2><p>Link de acesso externo</p><img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=https%3A%2F%2Fportal.example.test%2F%3Femployee_token%3DQA%2526token\" alt=\"Link acesso colaborador\"><p><a href=\"https://portal.example.test/?employee_token=QA%26token\">https://portal.example.test/?employee_token=QA%26token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Etiquetas EPI</title><style>body{font-family:Arial,sans-serif;padding:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.label{border:1px dashed var(--color-border);padding:8px;text-align:center;font-size:12px}img{width:110px;height:110px}</style></head><body><div class=\"grid\">\n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  \n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  </div></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     }
+    ],
+    "dialogs": [],
+    "calls": [
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     }
+    ]
+   },
+   {
+    "label": "comercial bloqueado",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"es-es\"><head><meta charset=\"utf-8\"><title>Historial comercial</title></head><body><h1>Historial comercial</h1><p>Filtros: Estado: todos</p><table><thead><tr><th scope=\"col\">Empresa</th><th scope=\"col\">Acción</th><th scope=\"col\">Responsable</th><th scope=\"col\">Fecha</th><th scope=\"col\">Resumen</th><th scope=\"col\">Detalles</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30/10/26, 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Acesso Funcionário\"></head><body><p><a href=\"https://fixture.example.test/?employee_token=QA%20%26%20token\">https://fixture.example.test/?employee_token=QA%20%26%20token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>Ana &lt;img src=x onerror=window.__xss=1&gt;</h2><p>Link de acesso externo</p><img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=https%3A%2F%2Fportal.example.test%2F%3Femployee_token%3DQA%2526token\" alt=\"Link acesso colaborador\"><p><a href=\"https://portal.example.test/?employee_token=QA%26token\">https://portal.example.test/?employee_token=QA%26token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Etiquetas EPI</title><style>body{font-family:Arial,sans-serif;padding:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.label{border:1px dashed var(--color-border);padding:8px;text-align:center;font-size:12px}img{width:110px;height:110px}</style></head><body><div class=\"grid\">\n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  \n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  </div></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "",
+      "events": []
+     }
+    ],
+    "dialogs": [
+     {
+      "type": "alert",
+      "message": "No se pudo abrir la ventana de impresión. Permita las ventanas emergentes para este sitio."
+     }
+    ],
+    "calls": [
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     }
+    ]
+   },
+   {
+    "label": "QR do usuário bloqueado",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"es-es\"><head><meta charset=\"utf-8\"><title>Historial comercial</title></head><body><h1>Historial comercial</h1><p>Filtros: Estado: todos</p><table><thead><tr><th scope=\"col\">Empresa</th><th scope=\"col\">Acción</th><th scope=\"col\">Responsable</th><th scope=\"col\">Fecha</th><th scope=\"col\">Resumen</th><th scope=\"col\">Detalles</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30/10/26, 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Acesso Funcionário\"></head><body><p><a href=\"https://fixture.example.test/?employee_token=QA%20%26%20token\">https://fixture.example.test/?employee_token=QA%20%26%20token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>Ana &lt;img src=x onerror=window.__xss=1&gt;</h2><p>Link de acesso externo</p><img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=https%3A%2F%2Fportal.example.test%2F%3Femployee_token%3DQA%2526token\" alt=\"Link acesso colaborador\"><p><a href=\"https://portal.example.test/?employee_token=QA%26token\">https://portal.example.test/?employee_token=QA%26token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Etiquetas EPI</title><style>body{font-family:Arial,sans-serif;padding:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.label{border:1px dashed var(--color-border);padding:8px;text-align:center;font-size:12px}img{width:110px;height:110px}</style></head><body><div class=\"grid\">\n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  \n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  </div></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "",
+      "events": []
+     }
+    ],
+    "dialogs": [
+     {
+      "type": "alert",
+      "message": "No se pudo abrir la ventana de impresión. Permita las ventanas emergentes para este sitio."
+     },
+     {
+      "type": "alert",
+      "message": "Não tem acesso."
+     }
+    ],
+    "calls": [
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     }
+    ]
+   },
+   {
+    "label": "portal do colaborador bloqueado",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"es-es\"><head><meta charset=\"utf-8\"><title>Historial comercial</title></head><body><h1>Historial comercial</h1><p>Filtros: Estado: todos</p><table><thead><tr><th scope=\"col\">Empresa</th><th scope=\"col\">Acción</th><th scope=\"col\">Responsable</th><th scope=\"col\">Fecha</th><th scope=\"col\">Resumen</th><th scope=\"col\">Detalles</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30/10/26, 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Acesso Funcionário\"></head><body><p><a href=\"https://fixture.example.test/?employee_token=QA%20%26%20token\">https://fixture.example.test/?employee_token=QA%20%26%20token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>Ana &lt;img src=x onerror=window.__xss=1&gt;</h2><p>Link de acesso externo</p><img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=https%3A%2F%2Fportal.example.test%2F%3Femployee_token%3DQA%2526token\" alt=\"Link acesso colaborador\"><p><a href=\"https://portal.example.test/?employee_token=QA%26token\">https://portal.example.test/?employee_token=QA%26token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Etiquetas EPI</title><style>body{font-family:Arial,sans-serif;padding:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.label{border:1px dashed var(--color-border);padding:8px;text-align:center;font-size:12px}img{width:110px;height:110px}</style></head><body><div class=\"grid\">\n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  \n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  </div></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "",
+      "events": []
+     }
+    ],
+    "dialogs": [
+     {
+      "type": "alert",
+      "message": "No se pudo abrir la ventana de impresión. Permita las ventanas emergentes para este sitio."
+     },
+     {
+      "type": "alert",
+      "message": "Não tem acesso."
+     },
+     {
+      "type": "alert",
+      "message": "Não tem acesso."
+     }
+    ],
+    "calls": [
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     },
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     }
+    ]
+   },
+   {
+    "label": "etiquetas de estoque bloqueado",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"es-es\"><head><meta charset=\"utf-8\"><title>Historial comercial</title></head><body><h1>Historial comercial</h1><p>Filtros: Estado: todos</p><table><thead><tr><th scope=\"col\">Empresa</th><th scope=\"col\">Acción</th><th scope=\"col\">Responsable</th><th scope=\"col\">Fecha</th><th scope=\"col\">Resumen</th><th scope=\"col\">Detalles</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30/10/26, 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Acesso Funcionário\"></head><body><p><a href=\"https://fixture.example.test/?employee_token=QA%20%26%20token\">https://fixture.example.test/?employee_token=QA%20%26%20token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>Ana &lt;img src=x onerror=window.__xss=1&gt;</h2><p>Link de acesso externo</p><img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=https%3A%2F%2Fportal.example.test%2F%3Femployee_token%3DQA%2526token\" alt=\"Link acesso colaborador\"><p><a href=\"https://portal.example.test/?employee_token=QA%26token\">https://portal.example.test/?employee_token=QA%26token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Etiquetas EPI</title><style>body{font-family:Arial,sans-serif;padding:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.label{border:1px dashed var(--color-border);padding:8px;text-align:center;font-size:12px}img{width:110px;height:110px}</style></head><body><div class=\"grid\">\n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  \n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  </div></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "",
+      "events": []
+     }
+    ],
+    "dialogs": [
+     {
+      "type": "alert",
+      "message": "No se pudo abrir la ventana de impresión. Permita las ventanas emergentes para este sitio."
+     },
+     {
+      "type": "alert",
+      "message": "Não tem acesso."
+     },
+     {
+      "type": "alert",
+      "message": "Não tem acesso."
+     }
+    ],
+    "calls": [
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     },
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     }
+    ]
+   },
+   {
+    "label": "portal: 403 sem popup",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"es-es\"><head><meta charset=\"utf-8\"><title>Historial comercial</title></head><body><h1>Historial comercial</h1><p>Filtros: Estado: todos</p><table><thead><tr><th scope=\"col\">Empresa</th><th scope=\"col\">Acción</th><th scope=\"col\">Responsable</th><th scope=\"col\">Fecha</th><th scope=\"col\">Resumen</th><th scope=\"col\">Detalles</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30/10/26, 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Acesso Funcionário\"></head><body><p><a href=\"https://fixture.example.test/?employee_token=QA%20%26%20token\">https://fixture.example.test/?employee_token=QA%20%26%20token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>Ana &lt;img src=x onerror=window.__xss=1&gt;</h2><p>Link de acesso externo</p><img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=https%3A%2F%2Fportal.example.test%2F%3Femployee_token%3DQA%2526token\" alt=\"Link acesso colaborador\"><p><a href=\"https://portal.example.test/?employee_token=QA%26token\">https://portal.example.test/?employee_token=QA%26token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Etiquetas EPI</title><style>body{font-family:Arial,sans-serif;padding:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.label{border:1px dashed var(--color-border);padding:8px;text-align:center;font-size:12px}img{width:110px;height:110px}</style></head><body><div class=\"grid\">\n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  \n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  </div></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "",
+      "events": []
+     }
+    ],
+    "dialogs": [
+     {
+      "type": "alert",
+      "message": "No se pudo abrir la ventana de impresión. Permita las ventanas emergentes para este sitio."
+     },
+     {
+      "type": "alert",
+      "message": "Não tem acesso."
+     },
+     {
+      "type": "alert",
+      "message": "Não tem acesso."
+     },
+     {
+      "type": "alert",
+      "message": "QA forbidden"
+     }
+    ],
+    "calls": [
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     },
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     },
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     }
+    ]
+   }
+  ],
+  "real_popup": {
+   "content": "Olá & €",
+   "focus_before_print": true
+  }
+ },
+ "fr-FR": {
+  "steps": [
+   {
+    "label": "comercial",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"fr-fr\"><head><meta charset=\"utf-8\"><title>Historique commercial</title></head><body><h1>Historique commercial</h1><p>Filtres : Statut : tous</p><table><thead><tr><th scope=\"col\">Entreprise</th><th scope=\"col\">Action</th><th scope=\"col\">Responsable</th><th scope=\"col\">Date</th><th scope=\"col\">Résumé</th><th scope=\"col\">Détails</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30/10/2026 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     }
+    ],
+    "dialogs": [],
+    "calls": []
+   },
+   {
+    "label": "QR do usuário",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"fr-fr\"><head><meta charset=\"utf-8\"><title>Historique commercial</title></head><body><h1>Historique commercial</h1><p>Filtres : Statut : tous</p><table><thead><tr><th scope=\"col\">Entreprise</th><th scope=\"col\">Action</th><th scope=\"col\">Responsable</th><th scope=\"col\">Date</th><th scope=\"col\">Résumé</th><th scope=\"col\">Détails</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30/10/2026 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Acesso Funcionário\"></head><body><p><a href=\"https://fixture.example.test/?employee_token=QA%20%26%20token\">https://fixture.example.test/?employee_token=QA%20%26%20token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     }
+    ],
+    "dialogs": [],
+    "calls": []
+   },
+   {
+    "label": "portal do colaborador",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"fr-fr\"><head><meta charset=\"utf-8\"><title>Historique commercial</title></head><body><h1>Historique commercial</h1><p>Filtres : Statut : tous</p><table><thead><tr><th scope=\"col\">Entreprise</th><th scope=\"col\">Action</th><th scope=\"col\">Responsable</th><th scope=\"col\">Date</th><th scope=\"col\">Résumé</th><th scope=\"col\">Détails</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30/10/2026 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Acesso Funcionário\"></head><body><p><a href=\"https://fixture.example.test/?employee_token=QA%20%26%20token\">https://fixture.example.test/?employee_token=QA%20%26%20token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>Ana &lt;img src=x onerror=window.__xss=1&gt;</h2><p>Link de acesso externo</p><img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=https%3A%2F%2Fportal.example.test%2F%3Femployee_token%3DQA%2526token\" alt=\"Link acesso colaborador\"><p><a href=\"https://portal.example.test/?employee_token=QA%26token\">https://portal.example.test/?employee_token=QA%26token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     }
+    ],
+    "dialogs": [],
+    "calls": [
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     }
+    ]
+   },
+   {
+    "label": "etiquetas de estoque",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"fr-fr\"><head><meta charset=\"utf-8\"><title>Historique commercial</title></head><body><h1>Historique commercial</h1><p>Filtres : Statut : tous</p><table><thead><tr><th scope=\"col\">Entreprise</th><th scope=\"col\">Action</th><th scope=\"col\">Responsable</th><th scope=\"col\">Date</th><th scope=\"col\">Résumé</th><th scope=\"col\">Détails</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30/10/2026 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Acesso Funcionário\"></head><body><p><a href=\"https://fixture.example.test/?employee_token=QA%20%26%20token\">https://fixture.example.test/?employee_token=QA%20%26%20token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>Ana &lt;img src=x onerror=window.__xss=1&gt;</h2><p>Link de acesso externo</p><img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=https%3A%2F%2Fportal.example.test%2F%3Femployee_token%3DQA%2526token\" alt=\"Link acesso colaborador\"><p><a href=\"https://portal.example.test/?employee_token=QA%26token\">https://portal.example.test/?employee_token=QA%26token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Etiquetas EPI</title><style>body{font-family:Arial,sans-serif;padding:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.label{border:1px dashed var(--color-border);padding:8px;text-align:center;font-size:12px}img{width:110px;height:110px}</style></head><body><div class=\"grid\">\n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  \n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  </div></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     }
+    ],
+    "dialogs": [],
+    "calls": [
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     }
+    ]
+   },
+   {
+    "label": "comercial bloqueado",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"fr-fr\"><head><meta charset=\"utf-8\"><title>Historique commercial</title></head><body><h1>Historique commercial</h1><p>Filtres : Statut : tous</p><table><thead><tr><th scope=\"col\">Entreprise</th><th scope=\"col\">Action</th><th scope=\"col\">Responsable</th><th scope=\"col\">Date</th><th scope=\"col\">Résumé</th><th scope=\"col\">Détails</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30/10/2026 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Acesso Funcionário\"></head><body><p><a href=\"https://fixture.example.test/?employee_token=QA%20%26%20token\">https://fixture.example.test/?employee_token=QA%20%26%20token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>Ana &lt;img src=x onerror=window.__xss=1&gt;</h2><p>Link de acesso externo</p><img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=https%3A%2F%2Fportal.example.test%2F%3Femployee_token%3DQA%2526token\" alt=\"Link acesso colaborador\"><p><a href=\"https://portal.example.test/?employee_token=QA%26token\">https://portal.example.test/?employee_token=QA%26token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Etiquetas EPI</title><style>body{font-family:Arial,sans-serif;padding:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.label{border:1px dashed var(--color-border);padding:8px;text-align:center;font-size:12px}img{width:110px;height:110px}</style></head><body><div class=\"grid\">\n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  \n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  </div></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "",
+      "events": []
+     }
+    ],
+    "dialogs": [
+     {
+      "type": "alert",
+      "message": "Impossible d'ouvrir la fenêtre d'impression. Autorisez les fenêtres contextuelles pour ce site."
+     }
+    ],
+    "calls": [
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     }
+    ]
+   },
+   {
+    "label": "QR do usuário bloqueado",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"fr-fr\"><head><meta charset=\"utf-8\"><title>Historique commercial</title></head><body><h1>Historique commercial</h1><p>Filtres : Statut : tous</p><table><thead><tr><th scope=\"col\">Entreprise</th><th scope=\"col\">Action</th><th scope=\"col\">Responsable</th><th scope=\"col\">Date</th><th scope=\"col\">Résumé</th><th scope=\"col\">Détails</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30/10/2026 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Acesso Funcionário\"></head><body><p><a href=\"https://fixture.example.test/?employee_token=QA%20%26%20token\">https://fixture.example.test/?employee_token=QA%20%26%20token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>Ana &lt;img src=x onerror=window.__xss=1&gt;</h2><p>Link de acesso externo</p><img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=https%3A%2F%2Fportal.example.test%2F%3Femployee_token%3DQA%2526token\" alt=\"Link acesso colaborador\"><p><a href=\"https://portal.example.test/?employee_token=QA%26token\">https://portal.example.test/?employee_token=QA%26token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Etiquetas EPI</title><style>body{font-family:Arial,sans-serif;padding:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.label{border:1px dashed var(--color-border);padding:8px;text-align:center;font-size:12px}img{width:110px;height:110px}</style></head><body><div class=\"grid\">\n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  \n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  </div></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "",
+      "events": []
+     }
+    ],
+    "dialogs": [
+     {
+      "type": "alert",
+      "message": "Impossible d'ouvrir la fenêtre d'impression. Autorisez les fenêtres contextuelles pour ce site."
+     },
+     {
+      "type": "alert",
+      "message": "Não tem acesso."
+     }
+    ],
+    "calls": [
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     }
+    ]
+   },
+   {
+    "label": "portal do colaborador bloqueado",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"fr-fr\"><head><meta charset=\"utf-8\"><title>Historique commercial</title></head><body><h1>Historique commercial</h1><p>Filtres : Statut : tous</p><table><thead><tr><th scope=\"col\">Entreprise</th><th scope=\"col\">Action</th><th scope=\"col\">Responsable</th><th scope=\"col\">Date</th><th scope=\"col\">Résumé</th><th scope=\"col\">Détails</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30/10/2026 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Acesso Funcionário\"></head><body><p><a href=\"https://fixture.example.test/?employee_token=QA%20%26%20token\">https://fixture.example.test/?employee_token=QA%20%26%20token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>Ana &lt;img src=x onerror=window.__xss=1&gt;</h2><p>Link de acesso externo</p><img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=https%3A%2F%2Fportal.example.test%2F%3Femployee_token%3DQA%2526token\" alt=\"Link acesso colaborador\"><p><a href=\"https://portal.example.test/?employee_token=QA%26token\">https://portal.example.test/?employee_token=QA%26token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Etiquetas EPI</title><style>body{font-family:Arial,sans-serif;padding:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.label{border:1px dashed var(--color-border);padding:8px;text-align:center;font-size:12px}img{width:110px;height:110px}</style></head><body><div class=\"grid\">\n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  \n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  </div></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "",
+      "events": []
+     }
+    ],
+    "dialogs": [
+     {
+      "type": "alert",
+      "message": "Impossible d'ouvrir la fenêtre d'impression. Autorisez les fenêtres contextuelles pour ce site."
+     },
+     {
+      "type": "alert",
+      "message": "Não tem acesso."
+     },
+     {
+      "type": "alert",
+      "message": "Não tem acesso."
+     }
+    ],
+    "calls": [
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     },
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     }
+    ]
+   },
+   {
+    "label": "etiquetas de estoque bloqueado",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"fr-fr\"><head><meta charset=\"utf-8\"><title>Historique commercial</title></head><body><h1>Historique commercial</h1><p>Filtres : Statut : tous</p><table><thead><tr><th scope=\"col\">Entreprise</th><th scope=\"col\">Action</th><th scope=\"col\">Responsable</th><th scope=\"col\">Date</th><th scope=\"col\">Résumé</th><th scope=\"col\">Détails</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30/10/2026 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Acesso Funcionário\"></head><body><p><a href=\"https://fixture.example.test/?employee_token=QA%20%26%20token\">https://fixture.example.test/?employee_token=QA%20%26%20token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>Ana &lt;img src=x onerror=window.__xss=1&gt;</h2><p>Link de acesso externo</p><img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=https%3A%2F%2Fportal.example.test%2F%3Femployee_token%3DQA%2526token\" alt=\"Link acesso colaborador\"><p><a href=\"https://portal.example.test/?employee_token=QA%26token\">https://portal.example.test/?employee_token=QA%26token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Etiquetas EPI</title><style>body{font-family:Arial,sans-serif;padding:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.label{border:1px dashed var(--color-border);padding:8px;text-align:center;font-size:12px}img{width:110px;height:110px}</style></head><body><div class=\"grid\">\n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  \n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  </div></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "",
+      "events": []
+     }
+    ],
+    "dialogs": [
+     {
+      "type": "alert",
+      "message": "Impossible d'ouvrir la fenêtre d'impression. Autorisez les fenêtres contextuelles pour ce site."
+     },
+     {
+      "type": "alert",
+      "message": "Não tem acesso."
+     },
+     {
+      "type": "alert",
+      "message": "Não tem acesso."
+     }
+    ],
+    "calls": [
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     },
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     }
+    ]
+   },
+   {
+    "label": "portal: 403 sem popup",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"fr-fr\"><head><meta charset=\"utf-8\"><title>Historique commercial</title></head><body><h1>Historique commercial</h1><p>Filtres : Statut : tous</p><table><thead><tr><th scope=\"col\">Entreprise</th><th scope=\"col\">Action</th><th scope=\"col\">Responsable</th><th scope=\"col\">Date</th><th scope=\"col\">Résumé</th><th scope=\"col\">Détails</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30/10/2026 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Acesso Funcionário\"></head><body><p><a href=\"https://fixture.example.test/?employee_token=QA%20%26%20token\">https://fixture.example.test/?employee_token=QA%20%26%20token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>Ana &lt;img src=x onerror=window.__xss=1&gt;</h2><p>Link de acesso externo</p><img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=https%3A%2F%2Fportal.example.test%2F%3Femployee_token%3DQA%2526token\" alt=\"Link acesso colaborador\"><p><a href=\"https://portal.example.test/?employee_token=QA%26token\">https://portal.example.test/?employee_token=QA%26token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Etiquetas EPI</title><style>body{font-family:Arial,sans-serif;padding:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.label{border:1px dashed var(--color-border);padding:8px;text-align:center;font-size:12px}img{width:110px;height:110px}</style></head><body><div class=\"grid\">\n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  \n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  </div></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "",
+      "events": []
+     }
+    ],
+    "dialogs": [
+     {
+      "type": "alert",
+      "message": "Impossible d'ouvrir la fenêtre d'impression. Autorisez les fenêtres contextuelles pour ce site."
+     },
+     {
+      "type": "alert",
+      "message": "Não tem acesso."
+     },
+     {
+      "type": "alert",
+      "message": "Não tem acesso."
+     },
+     {
+      "type": "alert",
+      "message": "QA forbidden"
+     }
+    ],
+    "calls": [
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     },
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     },
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     }
+    ]
+   }
+  ],
+  "real_popup": {
+   "content": "Olá & €",
+   "focus_before_print": true
+  }
+ },
+ "nb-NO": {
+  "steps": [
+   {
+    "label": "comercial",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"nb-no\"><head><meta charset=\"utf-8\"><title>Kommersiell historikk</title></head><body><h1>Kommersiell historikk</h1><p>Filtre: Status: alle</p><table><thead><tr><th scope=\"col\">Virksomhet</th><th scope=\"col\">Handling</th><th scope=\"col\">Ansvarlig</th><th scope=\"col\">Dato</th><th scope=\"col\">Sammendrag</th><th scope=\"col\">Detaljer</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30.10.2026, 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     }
+    ],
+    "dialogs": [],
+    "calls": []
+   },
+   {
+    "label": "QR do usuário",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"nb-no\"><head><meta charset=\"utf-8\"><title>Kommersiell historikk</title></head><body><h1>Kommersiell historikk</h1><p>Filtre: Status: alle</p><table><thead><tr><th scope=\"col\">Virksomhet</th><th scope=\"col\">Handling</th><th scope=\"col\">Ansvarlig</th><th scope=\"col\">Dato</th><th scope=\"col\">Sammendrag</th><th scope=\"col\">Detaljer</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30.10.2026, 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Acesso Funcionário\"></head><body><p><a href=\"https://fixture.example.test/?employee_token=QA%20%26%20token\">https://fixture.example.test/?employee_token=QA%20%26%20token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     }
+    ],
+    "dialogs": [],
+    "calls": []
+   },
+   {
+    "label": "portal do colaborador",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"nb-no\"><head><meta charset=\"utf-8\"><title>Kommersiell historikk</title></head><body><h1>Kommersiell historikk</h1><p>Filtre: Status: alle</p><table><thead><tr><th scope=\"col\">Virksomhet</th><th scope=\"col\">Handling</th><th scope=\"col\">Ansvarlig</th><th scope=\"col\">Dato</th><th scope=\"col\">Sammendrag</th><th scope=\"col\">Detaljer</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30.10.2026, 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Acesso Funcionário\"></head><body><p><a href=\"https://fixture.example.test/?employee_token=QA%20%26%20token\">https://fixture.example.test/?employee_token=QA%20%26%20token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>Ana &lt;img src=x onerror=window.__xss=1&gt;</h2><p>Link de acesso externo</p><img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=https%3A%2F%2Fportal.example.test%2F%3Femployee_token%3DQA%2526token\" alt=\"Link acesso colaborador\"><p><a href=\"https://portal.example.test/?employee_token=QA%26token\">https://portal.example.test/?employee_token=QA%26token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     }
+    ],
+    "dialogs": [],
+    "calls": [
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     }
+    ]
+   },
+   {
+    "label": "etiquetas de estoque",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"nb-no\"><head><meta charset=\"utf-8\"><title>Kommersiell historikk</title></head><body><h1>Kommersiell historikk</h1><p>Filtre: Status: alle</p><table><thead><tr><th scope=\"col\">Virksomhet</th><th scope=\"col\">Handling</th><th scope=\"col\">Ansvarlig</th><th scope=\"col\">Dato</th><th scope=\"col\">Sammendrag</th><th scope=\"col\">Detaljer</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30.10.2026, 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Acesso Funcionário\"></head><body><p><a href=\"https://fixture.example.test/?employee_token=QA%20%26%20token\">https://fixture.example.test/?employee_token=QA%20%26%20token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>Ana &lt;img src=x onerror=window.__xss=1&gt;</h2><p>Link de acesso externo</p><img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=https%3A%2F%2Fportal.example.test%2F%3Femployee_token%3DQA%2526token\" alt=\"Link acesso colaborador\"><p><a href=\"https://portal.example.test/?employee_token=QA%26token\">https://portal.example.test/?employee_token=QA%26token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Etiquetas EPI</title><style>body{font-family:Arial,sans-serif;padding:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.label{border:1px dashed var(--color-border);padding:8px;text-align:center;font-size:12px}img{width:110px;height:110px}</style></head><body><div class=\"grid\">\n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  \n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  </div></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     }
+    ],
+    "dialogs": [],
+    "calls": [
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     }
+    ]
+   },
+   {
+    "label": "comercial bloqueado",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"nb-no\"><head><meta charset=\"utf-8\"><title>Kommersiell historikk</title></head><body><h1>Kommersiell historikk</h1><p>Filtre: Status: alle</p><table><thead><tr><th scope=\"col\">Virksomhet</th><th scope=\"col\">Handling</th><th scope=\"col\">Ansvarlig</th><th scope=\"col\">Dato</th><th scope=\"col\">Sammendrag</th><th scope=\"col\">Detaljer</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30.10.2026, 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Acesso Funcionário\"></head><body><p><a href=\"https://fixture.example.test/?employee_token=QA%20%26%20token\">https://fixture.example.test/?employee_token=QA%20%26%20token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>Ana &lt;img src=x onerror=window.__xss=1&gt;</h2><p>Link de acesso externo</p><img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=https%3A%2F%2Fportal.example.test%2F%3Femployee_token%3DQA%2526token\" alt=\"Link acesso colaborador\"><p><a href=\"https://portal.example.test/?employee_token=QA%26token\">https://portal.example.test/?employee_token=QA%26token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Etiquetas EPI</title><style>body{font-family:Arial,sans-serif;padding:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.label{border:1px dashed var(--color-border);padding:8px;text-align:center;font-size:12px}img{width:110px;height:110px}</style></head><body><div class=\"grid\">\n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  \n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  </div></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "",
+      "events": []
+     }
+    ],
+    "dialogs": [
+     {
+      "type": "alert",
+      "message": "Kunne ikke åpne utskriftsvinduet. Tillat popup-vinduer for dette nettstedet."
+     }
+    ],
+    "calls": [
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     }
+    ]
+   },
+   {
+    "label": "QR do usuário bloqueado",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"nb-no\"><head><meta charset=\"utf-8\"><title>Kommersiell historikk</title></head><body><h1>Kommersiell historikk</h1><p>Filtre: Status: alle</p><table><thead><tr><th scope=\"col\">Virksomhet</th><th scope=\"col\">Handling</th><th scope=\"col\">Ansvarlig</th><th scope=\"col\">Dato</th><th scope=\"col\">Sammendrag</th><th scope=\"col\">Detaljer</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30.10.2026, 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Acesso Funcionário\"></head><body><p><a href=\"https://fixture.example.test/?employee_token=QA%20%26%20token\">https://fixture.example.test/?employee_token=QA%20%26%20token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>Ana &lt;img src=x onerror=window.__xss=1&gt;</h2><p>Link de acesso externo</p><img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=https%3A%2F%2Fportal.example.test%2F%3Femployee_token%3DQA%2526token\" alt=\"Link acesso colaborador\"><p><a href=\"https://portal.example.test/?employee_token=QA%26token\">https://portal.example.test/?employee_token=QA%26token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Etiquetas EPI</title><style>body{font-family:Arial,sans-serif;padding:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.label{border:1px dashed var(--color-border);padding:8px;text-align:center;font-size:12px}img{width:110px;height:110px}</style></head><body><div class=\"grid\">\n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  \n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  </div></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "",
+      "events": []
+     }
+    ],
+    "dialogs": [
+     {
+      "type": "alert",
+      "message": "Kunne ikke åpne utskriftsvinduet. Tillat popup-vinduer for dette nettstedet."
+     },
+     {
+      "type": "alert",
+      "message": "Não tem acesso."
+     }
+    ],
+    "calls": [
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     }
+    ]
+   },
+   {
+    "label": "portal do colaborador bloqueado",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"nb-no\"><head><meta charset=\"utf-8\"><title>Kommersiell historikk</title></head><body><h1>Kommersiell historikk</h1><p>Filtre: Status: alle</p><table><thead><tr><th scope=\"col\">Virksomhet</th><th scope=\"col\">Handling</th><th scope=\"col\">Ansvarlig</th><th scope=\"col\">Dato</th><th scope=\"col\">Sammendrag</th><th scope=\"col\">Detaljer</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30.10.2026, 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Acesso Funcionário\"></head><body><p><a href=\"https://fixture.example.test/?employee_token=QA%20%26%20token\">https://fixture.example.test/?employee_token=QA%20%26%20token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>Ana &lt;img src=x onerror=window.__xss=1&gt;</h2><p>Link de acesso externo</p><img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=https%3A%2F%2Fportal.example.test%2F%3Femployee_token%3DQA%2526token\" alt=\"Link acesso colaborador\"><p><a href=\"https://portal.example.test/?employee_token=QA%26token\">https://portal.example.test/?employee_token=QA%26token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Etiquetas EPI</title><style>body{font-family:Arial,sans-serif;padding:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.label{border:1px dashed var(--color-border);padding:8px;text-align:center;font-size:12px}img{width:110px;height:110px}</style></head><body><div class=\"grid\">\n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  \n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  </div></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "",
+      "events": []
+     }
+    ],
+    "dialogs": [
+     {
+      "type": "alert",
+      "message": "Kunne ikke åpne utskriftsvinduet. Tillat popup-vinduer for dette nettstedet."
+     },
+     {
+      "type": "alert",
+      "message": "Não tem acesso."
+     },
+     {
+      "type": "alert",
+      "message": "Não tem acesso."
+     }
+    ],
+    "calls": [
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     },
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     }
+    ]
+   },
+   {
+    "label": "etiquetas de estoque bloqueado",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"nb-no\"><head><meta charset=\"utf-8\"><title>Kommersiell historikk</title></head><body><h1>Kommersiell historikk</h1><p>Filtre: Status: alle</p><table><thead><tr><th scope=\"col\">Virksomhet</th><th scope=\"col\">Handling</th><th scope=\"col\">Ansvarlig</th><th scope=\"col\">Dato</th><th scope=\"col\">Sammendrag</th><th scope=\"col\">Detaljer</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30.10.2026, 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Acesso Funcionário\"></head><body><p><a href=\"https://fixture.example.test/?employee_token=QA%20%26%20token\">https://fixture.example.test/?employee_token=QA%20%26%20token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>Ana &lt;img src=x onerror=window.__xss=1&gt;</h2><p>Link de acesso externo</p><img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=https%3A%2F%2Fportal.example.test%2F%3Femployee_token%3DQA%2526token\" alt=\"Link acesso colaborador\"><p><a href=\"https://portal.example.test/?employee_token=QA%26token\">https://portal.example.test/?employee_token=QA%26token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Etiquetas EPI</title><style>body{font-family:Arial,sans-serif;padding:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.label{border:1px dashed var(--color-border);padding:8px;text-align:center;font-size:12px}img{width:110px;height:110px}</style></head><body><div class=\"grid\">\n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  \n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  </div></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "",
+      "events": []
+     }
+    ],
+    "dialogs": [
+     {
+      "type": "alert",
+      "message": "Kunne ikke åpne utskriftsvinduet. Tillat popup-vinduer for dette nettstedet."
+     },
+     {
+      "type": "alert",
+      "message": "Não tem acesso."
+     },
+     {
+      "type": "alert",
+      "message": "Não tem acesso."
+     }
+    ],
+    "calls": [
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     },
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     }
+    ]
+   },
+   {
+    "label": "portal: 403 sem popup",
+    "popups": [
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!DOCTYPE html><html lang=\"nb-no\"><head><meta charset=\"utf-8\"><title>Kommersiell historikk</title></head><body><h1>Kommersiell historikk</h1><p>Filtre: Status: alle</p><table><thead><tr><th scope=\"col\">Virksomhet</th><th scope=\"col\">Handling</th><th scope=\"col\">Ansvarlig</th><th scope=\"col\">Dato</th><th scope=\"col\">Sammendrag</th><th scope=\"col\">Detaljer</th></tr></thead><tbody><tr><td>Empresa QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>Atualização</td><td>Ana QA &lt;img src=x onerror=window.__xss=1&gt;</td><td>30.10.2026, 14:05</td><td>Plano alterado</td><td class=\"detail\">plan_name: start -> pro</td></tr></tbody></table></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Acesso Funcionário\"></head><body><p><a href=\"https://fixture.example.test/?employee_token=QA%20%26%20token\">https://fixture.example.test/?employee_token=QA%20%26%20token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Link do Colaborador</title><style>body{font-family:Segoe UI,Arial,sans-serif;padding:22px;text-align:center}img{width:240px;height:240px;margin:18px auto;display:block}a{word-break:break-all;color:#96401c}</style></head><body><h2>Ana &lt;img src=x onerror=window.__xss=1&gt;</h2><p>Link de acesso externo</p><img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=https%3A%2F%2Fportal.example.test%2F%3Femployee_token%3DQA%2526token\" alt=\"Link acesso colaborador\"><p><a href=\"https://portal.example.test/?employee_token=QA%26token\">https://portal.example.test/?employee_token=QA%26token</a></p></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "<!doctype html><html><head><meta charset=\"utf-8\"><title>Etiquetas EPI</title><style>body{font-family:Arial,sans-serif;padding:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.label{border:1px dashed var(--color-border);padding:8px;text-align:center;font-size:12px}img{width:110px;height:110px}</style></head><body><div class=\"grid\">\n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  \n    <div class=\"label\">\n      <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=420x420&qzone=4&ecc=M&format=png&color=000000&bgcolor=FFFFFF&data=%7B%22type%22%3A%22stock_item%22%2C%22id%22%3A7%2C%22code%22%3A%22QR%3C%26%3E%22%7D\" alt=\"QR item estoque\">\n      <div><strong>Luva &lt;img src=x onerror=window.__xss=1&gt;</strong></div>\n      <div>Tamanho-Luvas: M</div>\n      <div>Etiqueta: unidade | -</div>\n      <div>Impressora: -</div>\n      <div>Reimpressões: 0</div>\n      <div>Tamanho Uniforme: N/A</div>\n      <div>Tamanho: N/A</div>\n      <div>ID: 7</div>\n      <div>QR&lt;&amp;&gt;</div>\n      <div>Base &amp; Cia</div>\n    </div>\n  </div></body></html>",
+      "events": [
+       "open",
+       "write",
+       "close",
+       "focus",
+       "print"
+      ]
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=520,height=700"
+      ],
+      "html": "",
+      "events": []
+     },
+     {
+      "args": [
+       "",
+       "_blank",
+       "width=1100,height=800"
+      ],
+      "html": "",
+      "events": []
+     }
+    ],
+    "dialogs": [
+     {
+      "type": "alert",
+      "message": "Kunne ikke åpne utskriftsvinduet. Tillat popup-vinduer for dette nettstedet."
+     },
+     {
+      "type": "alert",
+      "message": "Não tem acesso."
+     },
+     {
+      "type": "alert",
+      "message": "Não tem acesso."
+     },
+     {
+      "type": "alert",
+      "message": "QA forbidden"
+     }
+    ],
+    "calls": [
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     },
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     },
+     {
+      "method": "POST",
+      "path": "/api/employee-portal-link",
+      "query": "",
+      "body": {
+       "actor_user_id": 7,
+       "employee_id": 31
+      }
+     }
+    ]
+   }
+  ],
+  "real_popup": {
+   "content": "Olá & €",
+   "focus_before_print": true
+  }
+ }
+}

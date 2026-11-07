@@ -1431,7 +1431,15 @@ movido; nenhum armazenamento no navegador; nenhum achado novo.
 
 ## 22. UBX Marca da plataforma (2026-11-06) — proposta da §21.7
 
-Implementada localmente nesta branch; **sem push, PR, merge ou deploy**. Não é uma C5.
+Marca integrada em 2026-11-06: Corporate [#1088](https://github.com/rocksbrothers-png/epi-controle/pull/1088),
+main `bc85dfe3feff061999bf2417ff394fdd852ea6e4`; SaaS [#462](https://github.com/rocksbrothers-png/epi-controle-app/pull/462),
+main `3f9374bd2934feec57c7e8ba153f5afab0b65a85`. Conferência em 2026-11-07:
+13 checks aprovados e 2 pulados por produto; CodeQL Python e JavaScript aprovado nas duas bases.
+Os resultados pulados não contam como aprovação. Na publicação posterior de Marca, os workflows
+dos dois PRs e CodeQL foram aprovados; o Chromium C3 passou no CI apesar da divergência local
+registrada. O texto da implementação abaixo preserva o histórico local.
+
+Registro original da implementação local; não é uma C5.
 Bases: Corporate `68855d8f0aa6972a33022f761a3f6760ef2c9ea4` (C4 #1087) e SaaS
 `8551768723859a781d1802f371601048129e2e67` (C4 #461). No início: nenhuma PR aberta,
 13 checks pós-merge aprovados e 2 pulados em cada produto. Os pulados não são aprovações.
@@ -1544,8 +1552,110 @@ base correspondente. Nenhuma alteração de dados ou infraestrutura a desfazer.
 
 ### 22.6 Continuidade do plano completo
 
-Marca está implementada localmente, pendente de revisão e autorização para publicação/integração.
-Próximas propostas separadas: impressão compartilhada (`openAndPrintPopup`) e shell/topbar.
+Marca integrada pelos PRs #1088 (Corporate) e #462 (SaaS).
+Impressão compartilhada implementada localmente na §23; shell/topbar é a próxima proposta separada.
 Continuam pendentes fluxos de Compras, Entregas, Estoque, Migração e resíduos de outros domínios;
 Migração por último entre os domínios. Navegação/bootstrap e limpeza dos shims permanecem no final,
 com auditoria de autorização e estado. Não há percentual global documentado para reportar.
+
+## 23. UBX impressão compartilhada (2026-11-07) — continuação da §21.7
+
+**Implementação local, sem commit, push, PR, merge ou deploy desta fatia.** Marca já integrada (§22).
+Bases confirmadas por fetch: Corporate `bc85dfe3feff061999bf2417ff394fdd852ea6e4` e SaaS
+`3f9374bd2934feec57c7e8ba153f5afab0b65a85`. As duas branches independentes partem das respectivas main.
+Não se trata de uma nova etapa do Comercial: é infraestrutura de UI compartilhada do plano completo.
+
+### 23.1 Inventário, dependências e fronteiras
+
+`openAndPrintPopup(html, features = 'width=1100,height=800')` foi para
+`static/js/modules/shared/ui/print-popup.js` (34 linhas), carregado uma vez, antes dos consumidores e do app.
+Preservada a global legada, com fachada congelada `__EPI_SHARED_PRINT_POPUP__` e flag idempotente.
+Não foi criada camada business/integrations sem responsabilidade correspondente.
+
+| Consumidor real | Origem | Opções / efeito quando bloqueado |
+|---|---|---|
+| `printCommercialHistory` | `commercial/ui/commercial-view.js` | 1100×800; alerta comercial traduzido |
+| `printEmployeeAccessQr` | `employees/ui/employees-view.js` | 520×700; alerta legado |
+| `printEmployeePortalLink` | `employees/ui/employees-view.js` | 520×700; mesma integração do portal e alerta legado |
+| `printStockLabels` | `app.js` | padrão; retorno sem alerta |
+
+A busca atual corrige a descrição genérica de “relatórios” nas propostas históricas: estes são os
+quatro chamadores efetivos. Os chamadores permanecem intactos. `safeOn` continua global no app e
+é resolvido somente quando o helper é chamado, após o boot; sem chamada no carregamento do módulo.
+Demais dependências: `globalThis.open`, documento da popup, `setTimeout` e `console.warn`.
+Sem estado, refs, rede, storage, cache ou permissões dentro do helper.
+
+### 23.2 Contrato preservado e segurança
+
+- Mesmos argumentos de `open`, coerção `String(html || '').trim()`, retorno nulo quando bloqueado e
+  retorno da própria popup para HTML vazio. Mesma ordem document.open → write → close.
+- Foco antes da impressão; timer de 80 ms quando completo; caso contrário load com once e fallback
+  de 500 ms. O comportamento legado permite duas impressões (load + fallback); não foi deduplicado.
+- Falhas de focus/print continuam contidas com o mesmo aviso. Falhas anteriores, incluindo abertura,
+  escrita e conversão, continuam propagadas. Nenhuma mensagem, regra ou idioma foi alterado.
+- O helper continua recebendo HTML pronto: não é sanitizador. Os escapes e a construção das URLs
+  permanecem nos chamadores. Não se deve passar texto externo diretamente como HTML confiável.
+  Autorizações do portal e escopo de tenant/empresa/unidade continuam no backend, sem mudança.
+  A prova de navegador cobre 403 sem popup, conteúdo especial/malicioso e chamadas dos consumidores;
+  o smoke adicional usa Window/Document reais com focus/print interceptados para evitar diálogo do SO.
+
+### 23.3 Métricas e prova do escopo
+
+| Métrica | Main com Marca | Esta fatia local |
+|---|---:|---:|
+| Linhas físicas (`wc -l`) do app.js | 16.292 | 16.269 |
+| Declarações superiores | 669 | 668 |
+| Funções superiores | 551 | 550 |
+| Entradas de endpoint no app (guarda) | 93 | 93 |
+| Arquivos JS em modules | 57 | 58 |
+| Ciclos entre scripts (namespaces) | 0 | 0 |
+| Ciclos internos do app (AST) | 5 | 5 |
+
+AST de todo o app remanescente idêntica à base, retirando somente openAndPrintPopup. Corpo extraído
+equivalente, normalizando apenas duas chaves neutras de if exigidas pelo lint. Permanecem as 36
+instruções de efeito na composição; init, listeners, bootstrap e os consumidores não foram modificados.
+A guarda remove apenas essa declaração pelo --update e registra sua extração. Zero ciclos de namespaces
+não significa ausência de dependências globais legadas (como safeOn).
+index.html regenerado separadamente; F4/F5B atualizados pelas funções oficiais, sem flexibilizar gates.
+
+### 23.4 Caracterização e validação
+
+- Fixture literal obtida de cada base antes da extração: `fixtures/app-before-ubx-print-popup.js.txt`.
+  `print-popup-runtime.js`: **740 comparações por produto**, antes e depois, sem divergências.
+  Relógio determinístico; valores de HTML/opções, readyState, load antes/depois do fallback, once,
+  ordem dos efeitos, identidade de retorno e falhas de cada operação, síncronas e assíncronas.
+  Um oráculo independente fixa os principais resultados esperados.
+- `print-popup-mutations.js`: **22/22 mutações detectadas**, somente em memória: opções/alvo/retorno,
+  coerção/trim, escrita, ordem, foco, impressão, erros, readyState, evento e temporizadores.
+- `scripts/browser/ubx_print_popup.py`: **45 passos de consumidores + 5 popups reais por produto**,
+  cinco idiomas, equivalentes à referência gravada contra o static da própria base antes de extrair.
+  Apenas a origem efêmera do servidor local é normalizada; HTML, paths, queries, eventos, alertas e
+  payloads permanecem exatos. Observações brutas preservadas no pacote de evidências.
+  Acrescentado ao workflow existente; nenhum teste, golden ou gate anterior foi removido ou relaxado.
+- Suíte JS: **696 testes por produto**. Python selecionado: **342 Corporate / 293 SaaS**, sem pulados;
+  guarda, contrato HTTP, build/assets, F4/F5B, escopo comercial, I18N, CSP e saída/logotipos XSS.
+  ESLint, Ruff, sintaxe, guarda e build aprovados. Um aviso de depreciação do pytest em cada produto.
+- Regressões adicionais de navegador e seus resultados: ver relatório local desta entrega.
+  CI/CodeQL da nova fatia não executados remotamente: esta implementação não foi publicada.
+
+### 23.5 Plano completo e próxima fatia
+
+Inventário reproduzível: `node scripts/audit_app_js.js --json /tmp/ubx-inventory.json --summary`.
+Os 550 nomes, localização, domínio inferido, dependências e efeitos foram exportados por produto no
+pacote local de revisão. A classificação por nome é heurística; não define por si só a fronteira de uma fatia.
+Continuam cinco SCC internos (maior: 10 declarações) e forte acoplamento a state, refs, tr e permissões.
+
+Próxima proposta formal da §21.7: **shell/topbar**, começando pela apresentação
+`updateTopbarCompanyBadge` em `modules/shell/ui/`. Dependências: usuário atual, DOM do badge,
+escapeHtml, tr e EpiI18n; chamador applyRoleVisibility. Preservar leitura do usuário a cada chamada,
+fallback unit_name/current_unit_name, classes, HTML escapado e retorno sem badge.
+Caracterizar usuário/empresa/unidade ausentes, acesso geral, mudança de usuário/tenant/idioma e nomes
+maliciosos nos cinco idiomas. Não mover applyRoleVisibility nem suas decisões de autorização junto
+com a apresentação. O inventário do restante do contexto do usuário precede qualquer ampliação da fatia.
+
+Depois permanecem fluxos de Compras, Entregas, Estoque e resíduos dos demais domínios; Migração por
+último entre os domínios. Navegação/bootstrap (Etapa 3) e limpeza dos shims ficam no final, com auditoria
+de estado e autorização. Pagamentos fora desta UBX. Sem percentual global: não existe denominador aprovado.
+
+Rollback local: descartar exclusivamente o diff da impressão e regenerar index/digestos com a base
+correspondente. Nenhuma mudança de dados, segredos, configuração de produção ou infraestrutura.

@@ -92,11 +92,11 @@ class Fixture(commercial.Fixture):
         if self.boot_gate_active and self.boot_order == 'tenant-before-shell' and path == '/app.js':
             self.pending_app = route
             self.page.evaluate('window.__qaAppHeld = true')
-            return
+            return None
         if self.boot_gate_active and self.boot_order == 'tenant-after-shell' and path == '/api/tenant/resolve':
             self.pending_tenant = route
             self.page.evaluate('window.__qaTenantHeld = true')
-            return
+            return None
         if path in ['/api/login', '/api/auth/me']:
             body = json.loads(request.post_data or '{}')
             self.calls.append({'method': request.method, 'path': path, 'query': urlsplit(request.url).query, 'body': body})
@@ -108,7 +108,7 @@ class Fixture(commercial.Fixture):
             if self.hold_bootstrap:
                 self.pending_route = route
                 self.page.evaluate('window.__qaBootstrapHeld = true')
-                return
+                return None
             if self.bootstrap_status != 200:
                 self.calls.append({'method': request.method, 'path': path, 'query': '', 'body': None})
                 return route.fulfill(status=self.bootstrap_status, json={'error': 'QA bootstrap failure', 'message': 'QA bootstrap failure'})

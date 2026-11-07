@@ -7820,6 +7820,7 @@ require('./commercial-integrations-runtime')({ testAsync, test, assert, eq });
 require('./commercial-view-runtime')({ testAsync, test, assert, eq });
 require('./commercial-shared-runtime')({ testAsync, test, assert, eq });
 require('./platform-brand-runtime')({ testAsync, test, assert, eq });
+require('./print-popup-runtime')({ testAsync, test, assert, eq });
 require('./users-active-runtime')({ test, assert, eq });
 
 (async () => {

@@ -320,9 +320,17 @@ Detalhes em [`UBX_APPJS_AUDITORIA.md` §21](UBX_APPJS_AUDITORIA.md#21-ubx-comerc
 - 1.735 comparações × 5 idiomas com a cópia literal (0 divergências), 17/19 sabotagens detectadas (2 mutantes
   equivalentes) e Chromium nos cinco idiomas contra a referência gravada da `main`.
 
-## UBX Marca da plataforma (2026-11-06) — implementação local da §21.7
+## UBX Marca da plataforma (2026-11-06) — integrada, §21.7
 
-**Nesta branch, sem push/PR/merge/deploy; ainda não integrada à main.** Detalhes em
+Marca integrada em 2026-11-06: Corporate [#1088](https://github.com/rocksbrothers-png/epi-controle/pull/1088),
+main `bc85dfe3feff061999bf2417ff394fdd852ea6e4`; SaaS [#462](https://github.com/rocksbrothers-png/epi-controle-app/pull/462),
+main `3f9374bd2934feec57c7e8ba153f5afab0b65a85`. Conferência em 2026-11-07:
+13 checks aprovados e 2 pulados por produto; CodeQL Python e JavaScript aprovado nas duas bases.
+Os resultados pulados não contam como aprovação. Na publicação posterior de Marca, os workflows
+dos dois PRs e CodeQL foram aprovados; o Chromium C3 passou no CI apesar da divergência local
+registrada. O texto da implementação abaixo preserva o histórico local.
+
+Detalhes em
 [`UBX_APPJS_AUDITORIA.md` §22](UBX_APPJS_AUDITORIA.md#22-ubx-marca-da-plataforma-2026-11-06--proposta-da-217).
 
 - Sete funções de Marca em `modules/platform-brand/ui/platform-brand-view.js`; HTTP canônico em
@@ -334,9 +342,23 @@ Detalhes em [`UBX_APPJS_AUDITORIA.md` §21](UBX_APPJS_AUDITORIA.md#21-ubx-comerc
 - 820 comparações nos cinco idiomas, 25/25 mutações detectadas, Chromium contra referência da própria
   base, guarda/build/F4/F5B e regressões aplicáveis. Sem percentual global: não existe denominador aprovado.
 
+## UBX impressão compartilhada (2026-11-07) — implementação local da §21.7
+
+Detalhes em `UBX_APPJS_AUDITORIA.md` §23. Sem commit/push/PR/merge/deploy desta fatia.
+
+- `openAndPrintPopup` → `modules/shared/ui/print-popup.js`, global legada preservada, fachada congelada.
+  Consumidores confirmados: Comercial, Colaboradores e etiquetas de Estoque. Chamadores intactos.
+- `app.js`: 16.292 → 16.269 linhas físicas; 669 → 668 declarações; 551 → 550 funções; 93 endpoints.
+  Cinco ciclos internos permanecem; zero ciclos entre scripts segundo a guarda.
+- 740 comparações por produto sem divergências; 22/22 mutações; 45 passos Chromium + 5 popups reais
+  nos cinco idiomas por produto. Suíte JS 696; Python selecionado 342 Corporate / 293 SaaS.
+- Inventário completo remanescente gerado pelo auditor AST e preservado no pacote local de revisão.
+  Sem percentual global: não existe denominador aprovado.
+
 ## Próximo passo
-A Marca implementada nesta branch aguarda revisão e autorização para publicação e integração.
-As propostas seguintes da §21.7 continuam separadas: `openAndPrintPopup` e shell/topbar, cada uma
-com autorização própria. O plano completo mantém pendentes Compras e demais domínios operacionais;
-Migração fica por último entre os domínios. Navegação/bootstrap (Etapa 3) e a limpeza dos shims
+A impressão local aguarda revisão e autorização específica para publicação e integração.
+A próxima proposta da §21.7 é shell/topbar, começando pela apresentação de updateTopbarCompanyBadge;
+applyRoleVisibility e suas decisões de autorização permanecem fora dessa extração inicial.
+O plano completo mantém pendentes Compras, Entregas, Estoque e resíduos dos demais domínios;
+Migração fica por último entre os domínios. Navegação/bootstrap (Etapa 3) e limpeza dos shims
 ficam no final, com auditoria de autorização e estado. Pagamentos ficam fora da UBX.

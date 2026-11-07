@@ -302,6 +302,9 @@
       "renderPlatformBrand",
       "platformBrandDisplayName",
       "savePlatformBrand"
+    ],
+    "js/modules/shared/ui/print-popup.js": [
+      "openAndPrintPopup"
     ]
   },
   "declarations": [
@@ -692,7 +695,6 @@
     "onSubmitModuleVisibility",
     "onboardingModal",
     "onboardingStep",
-    "openAndPrintPopup",
     "openConferenciaModal",
     "openDeliveryDetailDrawer",
     "openDeliveryEmployeeLink",

@@ -3927,25 +3927,11 @@ function applyPerformanceHardeningVisibility() {
   document.body?.classList.toggle('ux-performance-hardening-enabled', isUxPerformanceHardeningEnabled());
 }
 
-function closeMobileMenu() {
-  document.body?.classList.remove('mobile-menu-open');
-  if (refs.mobileMenuToggle) refs.mobileMenuToggle.setAttribute('aria-expanded', 'false');
-}
+// closeMobileMenu: modules/shell/ui/shell-view.js (global legado).
 
-function openMobileMenu() {
-  document.body?.classList.add('mobile-menu-open');
-  if (refs.mobileMenuToggle) refs.mobileMenuToggle.setAttribute('aria-expanded', 'true');
-}
+// openMobileMenu: modules/shell/ui/shell-view.js (global legado).
 
-function applyMobileUxVisibility() {
-  const enabled = isUxMobileEnabled();
-  document.body?.classList.toggle('ux-mobile-enabled', enabled);
-  if (!enabled) closeMobileMenu();
-  // O botão ☰ passa a ser sempre visível: no mobile abre/fecha a gaveta; no
-  // desktop recolhe/expande a sidebar (auditoria Navegação §6).
-  if (refs.mobileMenuToggle) refs.mobileMenuToggle.hidden = false;
-  applySidebarCollapsed();
-}
+// applyMobileUxVisibility: modules/shell/ui/shell-view.js (global legado).
 
 // ── Preferências pessoais de interface: DONO ÚNICO (Isolamento, PR C) ────────
 //
@@ -4155,27 +4141,11 @@ globalThis.__EPI_PREFS__ = Object.freeze({
 // A constante `SIDEBAR_COLLAPSED_KEY` saiu na frente de Isolamento (PR C):
 // ela nomeava uma chave de `localStorage` que não existe mais. Quem responde
 // agora é o dono das preferências pessoais, e o escopo é USER.
-function isSidebarCollapsedPref() {
-  return preferenciasDoPrincipal().sidebar === 'collapsed';
-}
+// isSidebarCollapsedPref: modules/shell/ui/shell-view.js (global legado).
 
-function applySidebarCollapsed() {
-  // O colapso mini-rail só se aplica fora do modo mobile (lá a sidebar é gaveta).
-  const collapsed = !isUxMobileEnabled() && isSidebarCollapsedPref();
-  document.body?.classList.toggle('sidebar-collapsed', collapsed);
-  if (refs.mobileMenuToggle && !isUxMobileEnabled()) {
-    refs.mobileMenuToggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
-    refs.mobileMenuToggle.setAttribute(
-      'aria-label',
-      collapsed ? trEpi('nav.expandMenu', 'Expandir menu') : trEpi('nav.collapseMenu', 'Recolher menu'),
-    );
-  }
-}
+// applySidebarCollapsed: modules/shell/ui/shell-view.js (global legado).
 
-function toggleSidebarCollapsed() {
-  // `definirPreferencias` já reaplica a tela e persiste no servidor.
-  definirPreferencias({ sidebar: isSidebarCollapsedPref() ? 'expanded' : 'collapsed' });
-}
+// toggleSidebarCollapsed: modules/shell/ui/shell-view.js (global legado).
 
 function bindMobileUxBehavior() {
   if (globalThis.__EPI_UX_MOBILE_BOUND__) return;
@@ -4304,28 +4274,8 @@ function applyRoleVisibility() {
 // P2-2 — toggle de tema claro/escuro (opt-in, persistido em localStorage).
 // O bootstrap inline no <head> já aplica o data-theme antes do paint; aqui só
 // sincronizamos o ícone/estado do botão e tratamos o clique.
-function applyThemeToggleUI() {
-  const btn = document.getElementById('theme-toggle');
-  if (!btn) return;
-  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
-  btn.textContent = dark ? '☀️' : '🌙';
-  btn.setAttribute('aria-pressed', dark ? 'true' : 'false');
-  btn.title = dark ? (globalThis.EpiI18n?.attributeFor?.(btn,"title",'theme.toDark','Tema escuro ativo — clique para claro') ?? tr('theme.toDark', 'Tema escuro ativo — clique para claro')) : (globalThis.EpiI18n?.attributeFor?.(btn,"title",'theme.toLight','Tema claro ativo — clique para escuro') ?? tr('theme.toLight', 'Tema claro ativo — clique para escuro'));
-}
-function setupThemeToggle() {
-  const btn = document.getElementById('theme-toggle');
-  if (!btn) return;
-  applyThemeToggleUI();
-  // O botão da topbar era um SEGUNDO escritor de tema: aplicava no DOM e
-  // gravava a chave de dispositivo por conta própria, sem passar pelo drawer.
-  // Duas gravações independentes da mesma preferência é como uma delas
-  // sobrevive a uma correção feita só na outra — foi o `ISOL C-12` que o
-  // encontrou. Agora os dois caminhos têm o mesmo dono.
-  bindAppListener(btn, 'click', () => {
-    const dark = document.documentElement.getAttribute('data-theme') === 'dark';
-    definirPreferencias({ tema: dark ? 'light' : 'dark' });
-  });
-}
+// applyThemeToggleUI: modules/shell/ui/topbar-view.js (global legado).
+// setupThemeToggle: modules/shell/ui/topbar-view.js (global legado).
 
 // ── Painel de Configuração em Drawer (auditoria Navegação §6.2/§7) ───────────
 // A engrenagem abre um drawer lateral SOBRE a tela atual (sem trocar de rota,
@@ -4335,37 +4285,11 @@ function setupThemeToggle() {
 // As constantes `SETTINGS_DENSITY_KEY` e `SETTINGS_THEME_KEY` saíram na frente
 // de Isolamento (PR C) pelo mesmo motivo da `SIDEBAR_COLLAPSED_KEY`: nomeavam
 // chaves de `localStorage` com escopo DEVICE, que deixaram de existir.
-function applyTableDensityPref() {
-  document.body?.classList.toggle('ux-density-compact', preferenciasDoPrincipal().densidade === 'compact');
-}
+// applyTableDensityPref: modules/shell/ui/settings-drawer.js (global legado).
 
-function _settingsDrawerBodyHtml() {
-  const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
-  const lang = (globalThis.EpiI18n && globalThis.EpiI18n.lang) || 'pt-BR';
-  const density = preferenciasDoPrincipal().densidade;
-  const langs = [['pt-BR', 'Português'], ['en-GB', 'English'], ['es-ES', 'Español'], ['fr-FR', 'Français'], ['nb-NO', 'Bokmål']];
-  const opt = (v, cur, label) => `<option value="${v}"${v === cur ? ' selected' : ''}>${escapeHtml(label)}</option>`;
-  const advanced = hasConfigurationAccess()
-    ? `<button type="button" class="ghost settings-advanced" id="settings-advanced">${tr('settings.advanced', 'Configurações avançadas')}</button>`
-    : '';
-  return `<div class="settings-drawer">
-    <label class="settings-field"><span>${tr('settings.theme', 'Tema')}</span>
-      <select id="settings-theme">${opt('light', theme, tr('settings.themeLight', 'Claro'))}${opt('dark', theme, tr('settings.themeDark', 'Escuro'))}</select></label>
-    <label class="settings-field"><span>${tr('settings.language', 'Idioma')}</span>
-      <select id="settings-language">${langs.map(([c, n]) => opt(c, lang, n)).join('')}</select></label>
-    <label class="settings-field"><span>${tr('settings.density', 'Densidade da tabela')}</span>
-      <select id="settings-density">${opt('normal', density, tr('settings.densityNormal', 'Normal'))}${opt('compact', density, tr('settings.densityCompact', 'Compacta'))}</select></label>
-    <p class="hint">${tr('settings.hint', 'As preferências são salvas na sua conta e acompanham você em qualquer dispositivo.')}</p>
-    ${advanced}
-  </div>`;
-}
+// _settingsDrawerBodyHtml: modules/shell/ui/settings-drawer.js (global legado).
 
-function _settingsDrawerFooterHtml() {
-  return `<button type="button" class="ghost" id="settings-restore">${tr('settings.restore', 'Restaurar padrão')}</button>`
-    + '<span style="flex:1"></span>'
-    + `<button type="button" class="ghost" id="settings-cancel">${tr('cancel', 'Cancelar')}</button>`
-    + `<button type="button" class="primary" id="settings-save">${tr('save', 'Salvar')}</button>`;
-}
+// _settingsDrawerFooterHtml: modules/shell/ui/settings-drawer.js (global legado).
 
 // Fachada do drawer sobre o dono das preferências. Mantida com a MESMA
 // assinatura de antes (`theme`/`lang`/`density`) porque é o que o drawer
@@ -4383,81 +4307,14 @@ function _applySettings({ theme, lang, density }) {
   }
 }
 
-function openSettingsDrawer() {
-  if (typeof globalThis.dsOpenDrawer !== 'function') {
-    // Fallback (drawer indisponível): mantém o acesso à página de configuração.
-    if (hasConfigurationAccess()) {
-      navigateToView('configuracao', { historyMode: isSpaNavigationEnabled() ? 'push' : null, partial: false });
-    }
-    return;
-  }
-  globalThis.dsOpenDrawer({
-    title: tr('settings.title', 'Configurações'),
-    bodyHtml: _settingsDrawerBodyHtml(),
-    footerHtml: _settingsDrawerFooterHtml(),
-  });
-  const root = document.getElementById('ds-drawer-root');
-  if (!root) { return; }
-  const val = (sel, fallback) => root.querySelector(sel)?.value || fallback;
-  bindAppListener(root.querySelector('#settings-save'), 'click', () => {
-    _applySettings({
-      theme: val('#settings-theme', 'light'),
-      lang: val('#settings-language', 'pt-BR'),
-      density: val('#settings-density', 'normal'),
-    });
-    globalThis.dsCloseDrawer();
-  });
-  bindAppListener(root.querySelector('#settings-cancel'), 'click', () => globalThis.dsCloseDrawer());
-  bindAppListener(root.querySelector('#settings-restore'), 'click', () => {
-    // Reseta os campos para o padrão; o usuário confirma em Salvar.
-    if (root.querySelector('#settings-theme')) { root.querySelector('#settings-theme').value = 'light'; }
-    if (root.querySelector('#settings-language')) { root.querySelector('#settings-language').value = 'pt-BR'; }
-    if (root.querySelector('#settings-density')) { root.querySelector('#settings-density').value = 'normal'; }
-  });
-  bindAppListener(root.querySelector('#settings-advanced'), 'click', () => {
-    globalThis.dsCloseDrawer();
-    navigateToView('configuracao', { historyMode: isSpaNavigationEnabled() ? 'push' : null, partial: false });
-  });
-}
+// openSettingsDrawer: modules/shell/ui/settings-drawer.js (global legado).
 
 // P1-4 — badge de empresa/unidade ativa no topbar.
-function updateTopbarCompanyBadge() {
-  const badge = document.getElementById('topbar-company-badge');
-  if (!badge) return;
-  const company = state.user?.company_name;
-  const unit = state.user?.unit_name || state.user?.current_unit_name;
-  if (!company) {
-    badge.hidden = false;
-    badge.textContent = (globalThis.EpiI18n?.textFor?.(badge,'topbar.generalAccess','Acesso geral') ?? tr('topbar.generalAccess', 'Acesso geral'));
-    badge.classList.add('topbar-company-badge--general');
-    return;
-  }
-  badge.classList.remove('topbar-company-badge--general');
-  badge.hidden = false;
-  const label = unit ? `${company} · ${unit}` : company;
-  badge.innerHTML = `<span class="topbar-company-badge__dot" aria-hidden="true"></span><span class="topbar-company-badge__text">${escapeHtml(label)}</span>`;
-}
+// updateTopbarCompanyBadge: modules/shell/ui/topbar-view.js (global legado).
 
 // P1-3 — um rótulo de grupo só aparece se houver ao menos um .menu-link visível
 // antes do próximo rótulo. Roda após applyRoleVisibility ajustar a visibilidade.
-function applyMenuGroupVisibility() {
-  const menu = document.getElementById('menu');
-  if (!menu) return;
-  const children = Array.from(menu.children);
-  let currentLabel = null;
-  let groupHasVisible = false;
-  const commit = () => { if (currentLabel) currentLabel.style.display = groupHasVisible ? '' : 'none'; };
-  children.forEach((node) => {
-    if (node.matches('[data-menu-group]')) {
-      commit();
-      currentLabel = node;
-      groupHasVisible = false;
-    } else if (node.classList.contains('menu-link') && node.style.display !== 'none') {
-      groupHasVisible = true;
-    }
-  });
-  commit();
-}
+// applyMenuGroupVisibility: modules/shell/ui/shell-view.js (global legado).
 
 function populateRoleOptions() {
   const roleKeys = {

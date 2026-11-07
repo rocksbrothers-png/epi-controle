@@ -1560,7 +1560,7 @@ com auditoria de autorização e estado. Não há percentual global documentado 
 
 ## 23. UBX impressão compartilhada (2026-11-07) — continuação da §21.7
 
-**Implementação local, sem commit, push, PR, merge ou deploy desta fatia.** Marca já integrada (§22).
+**Impressão integrada em [#1089](https://github.com/rocksbrothers-png/epi-controle/pull/1089).** Marca integrada (§22). As métricas abaixo preservam a implementação validada antes da publicação.
 Bases confirmadas por fetch: Corporate `bc85dfe3feff061999bf2417ff394fdd852ea6e4` e SaaS
 `3f9374bd2934feec57c7e8ba153f5afab0b65a85`. As duas branches independentes partem das respectivas main.
 Não se trata de uma nova etapa do Comercial: é infraestrutura de UI compartilhada do plano completo.
@@ -1636,7 +1636,7 @@ index.html regenerado separadamente; F4/F5B atualizados pelas funções oficiais
   guarda, contrato HTTP, build/assets, F4/F5B, escopo comercial, I18N, CSP e saída/logotipos XSS.
   ESLint, Ruff, sintaxe, guarda e build aprovados. Um aviso de depreciação do pytest em cada produto.
 - Regressões adicionais de navegador e seus resultados: ver relatório local desta entrega.
-  CI/CodeQL da nova fatia não executados remotamente: esta implementação não foi publicada.
+  Registro histórico local. Impressão posteriormente integrada em #1089; base conferida em 2026-11-07: `a443e1256473c175f32dcd5b1240a15d96114d4f`.
 
 ### 23.5 Plano completo e próxima fatia
 
@@ -1659,3 +1659,130 @@ de estado e autorização. Pagamentos fora desta UBX. Sem percentual global: nã
 
 Rollback local: descartar exclusivamente o diff da impressão e regenerar index/digestos com a base
 correspondente. Nenhuma mudança de dados, segredos, configuração de produção ou infraestrutura.
+
+
+## 24. UBX Shell/Topbar (2026-11-07) — continuidade da §21.7/§23.5
+
+### 24.1 Fronteira e inventário antes da extração
+
+Inventário detalhado: [UBX_SHELL_TOPBAR_INVENTARIO.csv](UBX_SHELL_TOPBAR_INVENTARIO.csv).
+São 70 funções relacionadas por produto: 62 no app e oito com donos já existentes; 14 extraídas,
+56 preservadas no respectivo dono. As linhas do CSV referem-se à base anterior à extração.
+Inclui responsabilidade, chamadores, dependências, DOM/endpoints/efeitos, autorização, destino e risco.
+
+| Módulo `modules/shell/ui/` | Funções extraídas |
+|---|---|
+| `shell-view.js` | closeMobileMenu, openMobileMenu, applyMobileUxVisibility, isSidebarCollapsedPref, applySidebarCollapsed, toggleSidebarCollapsed, applyMenuGroupVisibility |
+| `topbar-view.js` | updateTopbarCompanyBadge, applyThemeToggleUI, setupThemeToggle |
+| `settings-drawer.js` | applyTableDensityPref, _settingsDrawerBodyHtml, _settingsDrawerFooterHtml, openSettingsDrawer |
+
+Módulos UI coesos; nenhuma camada business/integrations artificial. Globais legadas síncronas e
+assinaturas preservadas, namespaces congelados e guardas de carga idempotente. `state` e `refs`
+são lidos pela ponte dentro de cada chamada; não há cópia persistente de principal ou preferências.
+Dependências globais legadas (tr, escapeHtml, safeOn, dono de preferências, drawer) permanecem explícitas.
+
+Permanecem no app: applyRoleVisibility e sua projeção do usuário; dono canônico de preferências,
+_applySettings/aplicarPreferenciasNaTela, autenticação/logout, bootstrap, init, registradores,
+bindMobileUxBehavior (inclui permissão de Compras), bindMenuNavigation, histórico/breadcrumb/abas.
+Marca e Perfil Master mantêm seus módulos donos. Não foi criado seletor global de contexto inexistente.
+A chamada direta repetida de setupThemeToggle já criava closures distintas na base; essa semântica
+foi preservada. O uso normal continua protegido pelos boot guards, testado com recarga dos scripts.
+
+### 24.2 Segurança, paridade e prova de escopo
+
+O AST inteiro do app remanescente é idêntico à base removendo somente as 14 declarações.
+Corpos extraídos equivalentes após normalizar apenas aliases de state/refs e chaves neutras do lint.
+Os 36 efeitos de composição, assinaturas, chamadores, ordem de eventos, autorização e persistência
+permanecem. Nenhum endpoint, backend, dependência, CSS ou configuração de produção alterado.
+Template literals preservam exatamente o whitespace original, verificados pelo teste diferencial.
+
+Corporate e SaaS foram caracterizados separadamente contra as respectivas bases. Diferenças
+legítimas entre produtos foram preservadas; não houve cópia de app.js entre produtos.
+As novas funções/módulos e harness são equivalentes nos dois produtos, mas cada fixture original
+foi extraída do seu próprio app. Dados do navegador são sintéticos; nenhuma sessão real ou segredo.
+Nomes maliciosos de empresa/unidade mantêm escape e nenhum código injetado executa.
+
+| Métrica | Main com Impressão | Shell/Topbar |
+|---|---:|---:|
+| Linhas físicas do app.js (`wc -l`) | 16.269 | 16.126 |
+| Declarações superiores | 668 | 654 |
+| Funções superiores | 550 | 536 |
+| Endpoints no app (guarda) | 93 | 93 |
+| Arquivos JS em modules | 58 | 61 |
+| SCC internos do app | 5 | 5 |
+| Ciclos entre scripts (namespaces) | 0 | 0 |
+
+### 24.3 Caracterização, mutações e regressões
+
+- Fixture literal de cada base: `static/js/test/fixtures/app-before-ubx-shell-topbar.js.txt`.
+  `shell-topbar-runtime.js`: 725 comparações por produto nos cinco idiomas, sem divergências;
+  DOM/eventos/storage/retornos/erros, dono real de preferências, troca de contexto e papéis.
+- `shell-topbar-mutations.js`: 29/29 mutações detectadas em cada produto, exclusivamente em memória;
+  abertura/fechamento, permissões de menu, contexto atual, escapes, tema/densidade, drawer,
+  namespace e guarda de carga. SaaS pendente na interrupção foi concluído na retomada.
+- Suíte JavaScript: 699 aprovados por produto. Testes antigos de drawer/sidebar leem também os
+  módulos servidos; todas as assertivas originais preservadas. Suítes UBX anteriores intactas.
+- Python selecionado: 342 Corporate / 293 SaaS, sem pulados; segurança, CSP, saída XSS,
+  contrato HTTP, escopo comercial/multi-tenant, I18N, assets/build e F4/F5B. Um aviso pytest por produto.
+- Regressões Chromium adicionais aprovadas nos dois produtos e nos cinco idiomas: Marca (80 passos),
+  Impressão (45 passos + cinco popups reais), I18N geral, CSP com seis controles negativos,
+  navegação (transferência, arquivamento, perda de acesso, clique duplo e recargas). C3 passou
+  na branch e na main exata nos cinco idiomas; instabilidade histórica não reproduzida nesta execução.
+- Guarda UBX, build, sintaxe, ESLint dos módulos/testes novos e Ruff do harness aprovados.
+  F4/F5B recalculados pelas funções oficiais; nenhum gate flexibilizado.
+- Chromium local: 10/10 casos funcionais e 260 passos por produto (cinco idiomas × duas ordens).
+  Comparação visual estrita: 107/110 capturas idênticas; as demais falham somente em
+  `13-topbar.png` (16–17 pixels), com as mesmas variantes encontradas nas capturas da própria main.
+  Isso não equivale a uma aprovação visual. CI e classificação final no relatório e PR desta fatia.
+  `scripts/browser/ubx_shell_topbar.py --output /tmp/shell --baseline-static /tmp/main/static`
+  exercita cinco idiomas, desktop/mobile, login/logout reais, preferências por usuário/aba,
+  contexto atual, navegação, scripts repetidos, drawer, erro 403 e bootstrap degradado/recuperação.
+
+### 24.4 Diagnóstico de I18N na base
+
+`EpiI18n.ready` é uma Promise já resolvida e não representa o término do tenant-init. A resposta de
+`/api/tenant/resolve` pode chegar antes ou depois de app.js montar os rótulos mobile; o handler
+`epi:langchange` usa debounce real de 60 ms. Main × main reproduziu diferenças de bindings/aria
+no primeiro carregamento e título ainda pendente. Nenhuma função de produção de I18N foi alterada.
+
+O harness espera o widget real criado após tenant-init e observa a fila de debounce preservando
+atraso, argumentos, cancelamento e this. Controla separadamente as duas ordens reais de rede:
+`tenant-before-shell` e `tenant-after-shell`, entregando as mesmas respostas, sem sleeps artificiais.
+A referência deste teste novo foi registrada novamente apenas contra o static imutável da main,
+para as duas ordens. A referência inicial e as reproduções main × main permanecem nas evidências.
+Nenhum atributo DOM é descartado; HTML completo é comparado por hash, com observação bruta salva.
+Só a origem efêmera local é normalizada. Nenhum golden de C1–C4/Marca/Impressão foi alterado.
+
+Chromium por software e perfil sRGB idênticos na base/branch; a comparação PNG continua exata,
+sem limiar ou tolerância. Mesmo assim, main × main reproduziu diferença de 17 pixels nos contornos
+arredondados da captura mobile 13-topbar.png (geometria igual, DOM/estado/eventos iguais), também
+em processos novos. O gate visual permanece estrito. Se falhar no CI, o PR fica BLOQUEADO para
+integração até resolução ou decisão expressa; não contar essa execução como aprovação visual.
+Capturas, geometria, reprodução e resultados por idioma ficam nas evidências de publicação.
+Esse controle de teste não corrige a variação preexistente da inicialização de I18N em produção.
+A regressão histórica de Chromium C3 permanece habilitada com sua referência original.
+Nas capturas controladas de cada base foram encontradas, por SHA-256, ambas as variantes exatas
+observadas em todas as diferenças da branch (pt-BR/en-GB/nb-NO Corporate; pt-BR/nb-NO SaaS).
+A prova e os arquivos originais estão no pacote de revisão, sem reduzir o gate a uma tolerância.
+
+### 24.5 Plano completo restante e próxima proposta
+
+Inventário completo reproduzível: `node scripts/audit_app_js.js --json /tmp/app-inventory.json --summary`.
+Permanecem 536 funções: 416 síncronas e 120 async; 654 declarações ao todo. O inventário AST por
+produto e a prova de escopo ficam no pacote de revisão. Classificação de domínio por nome é heurística.
+Ainda há cinco SCC (maior com dez declarações), state com fan-in 186, tr 161 e refs 79;
+init tem 985 linhas, loadBootstrap 159 e showView 133. Zero ciclos entre scripts não elimina esse acoplamento.
+
+C1, SEC-C1-1, C2, C3, C4, Marca e Impressão estão integradas; Shell/Topbar aguarda integração
+expressamente autorizada. Próxima proposta do plano completo: Compras, começando por uma fatia
+coesa de apresentação/seletores sem efeitos (candidatos isBuyerQuotationStatus e purchaseStatusBadge),
+com inventário próprio, chamados/dependências, caracterização e revisão antes de ampliar escopo.
+Os 48 itens/788 linhas classificados como Compras incluem dados e funções; não são 48 funções puras.
+Não antecipar HTTP, permissões, confirmação/recebimento nem mutações de estoque junto da apresentação.
+
+Depois: Entregas, Estoque e resíduos dos demais domínios; Migração por último entre domínios.
+Navegação/bootstrap (Etapa 3) e limpeza dos shims permanecem no final, com auditoria de estado e
+autorização. Pagamentos fora da UBX. Sem percentual global: inexiste denominador aprovado.
+Rollback após integração: reverter exclusivamente o commit desta fatia e regenerar index/digestos
+pelos mecanismos oficiais; nenhuma migração de dados. Publicação autorizada apenas em PR rascunho;
+merge/deploy e qualquer implementação da próxima fatia exigem autorização expressa.

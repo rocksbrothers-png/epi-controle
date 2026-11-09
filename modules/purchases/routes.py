@@ -337,8 +337,9 @@ def handle_post_purchase_request_workflow(handler, parsed, payload, match):
             )
         except (PurchaseGovernanceError, PurchaseConflictError) as exc:
             pr = get_purchase_request_by_id(connection, pr_id) or {}
-            return _governance_response(handler, connection, actor, exc, 'purchase_request', pr_id,
-                                        pr.get('company_id'), str(payload.get('action') or ''))
+            _governance_response(handler, connection, actor, exc, 'purchase_request', pr_id,
+                                 pr.get('company_id'), str(payload.get('action') or ''))
+            return
         connection.commit()
         return send_json(handler, 200, result)
 
@@ -479,7 +480,7 @@ def _governance_response(handler, connection, actor, exc, entity_type, entity_id
     body = {'error': str(exc), 'code': exc.code}
     if getattr(exc, 'details', None):
         body['details'] = exc.details
-    return send_json(handler, exc.status, body)
+    send_json(handler, exc.status, body)
 
 
 def _load_po_for_action(connection, handler, parsed, payload, match, permission):
@@ -549,8 +550,9 @@ def handle_post_purchase_order_approve(handler, parsed, payload, match):
                 payload.get('decisions') or [], payload.get('postponed_until'), ip,
             )
         except (PurchaseGovernanceError, PurchaseConflictError) as exc:
-            return _governance_response(handler, connection, actor, exc, 'purchase_order', po['id'],
-                                        po.get('company_id'), decision)
+            _governance_response(handler, connection, actor, exc, 'purchase_order', po['id'],
+                                 po.get('company_id'), decision)
+            return
         connection.commit()
         return send_json(handler, 200, result)
 
@@ -846,11 +848,8 @@ def handle_get_purchase_limits(handler, parsed, payload, match):
                 raise PermissionError('Perfil sem empresa vinculada.')
         data = get_purchase_limits(connection, company_id)
         data['company_id'] = company_id
-        data['can_manage'] = (
-            actor.get('role') != 'master_admin'
-            and PERM_PURCHASE_LIMITS_MANAGE in set(actor.get('permissions') or [])
-        ) or _actor_can_manage_limits(actor)
-        return send_json(handler, 200, {'ok': True, 'data': data})
+        data['can_manage'] = _actor_can_manage_limits(actor)
+        send_json(handler, 200, {'ok': True, 'data': data})
 
 
 def _actor_can_manage_limits(actor):
@@ -882,9 +881,10 @@ def handle_post_purchase_limits(handler, parsed, payload, match):
                 int(actor['id']), actor.get('full_name') or '', ip, actor.get('role') or '',
             )
             connection.commit()
-            return send_json(handler, 409, {'error': str(exc), 'code': exc.code, 'details': exc.details})
+            send_json(handler, 409, {'error': str(exc), 'code': exc.code, 'details': exc.details})
+            return
         connection.commit()
-        return send_json(handler, 200, {'ok': True, 'data': result})
+        send_json(handler, 200, {'ok': True, 'data': result})
 
 
 def register_routes(router):

@@ -473,12 +473,9 @@ def _build_low_stock_size_demands(demand, balances):
     return rows
 
 
-def _record_purchase_event(connection, company_id, entity_type, entity_id, action, status_from, status_to, comment, actor_user_id, actor_name, ip_address='', actor_role='', reason='', destination=''):
-    now = datetime.now(UTC).isoformat()
-    connection.execute(
-        'INSERT INTO purchase_events (company_id, entity_type, entity_id, action, status_from, status_to, comment, actor_user_id, actor_name, actor_role, reason, destination, ip_address, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        (company_id, entity_type, entity_id, action, status_from, status_to, comment, actor_user_id, actor_name, actor_role, reason, destination, ip_address, now)
-    )
+# CO-1: a gravação vive no módulo folha `audit` (sem ciclo com approval_limits);
+# o nome histórico continua aqui para os chamadores e testes existentes.
+from modules.purchases.audit import record_purchase_event as _record_purchase_event  # noqa: E402
 
 
 def ensure_purchase_request_action_scope(connection, actor, purchase_request, *, actor_operational_unit_id=None):

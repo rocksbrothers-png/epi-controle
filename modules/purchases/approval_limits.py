@@ -32,6 +32,7 @@ from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
 from core.auth import ensure_permission
 from core.permissions import PERM_PURCHASE_LIMITS_MANAGE
+from modules.purchases.audit import record_purchase_event
 from modules.purchases.governance import PurchaseConflictError
 
 CURRENCY = 'BRL'
@@ -207,8 +208,6 @@ def set_purchase_limit(connection, actor, *, value, expected_version, currency=N
     A empresa vem do ATOR, nunca do payload: não há como apontar outra empresa.
     Não faz commit — o chamador confirma a transação.
     """
-    from modules.purchases.service import _record_purchase_event
-
     ensure_permission(actor, PERM_PURCHASE_LIMITS_MANAGE)
     company_id = actor.get('company_id')
     if not company_id:
@@ -244,7 +243,7 @@ def set_purchase_limit(connection, actor, *, value, expected_version, currency=N
 
     before = format_threshold(old_value) or ''
     after = format_threshold(new_value) or ''
-    _record_purchase_event(
+    record_purchase_event(
         connection, int(company_id), 'company', int(company_id), action, before, after,
         f'Limite de alçada de PO ({CURRENCY}): {before or "não configurado"} → {after or "não configurado"}.',
         int(actor['id']), actor.get('full_name') or '', ip_address, actor.get('role') or '',

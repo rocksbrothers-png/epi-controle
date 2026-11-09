@@ -397,7 +397,9 @@ def main():
     golden = {} if args.record else json.loads(GOLDEN.read_text())
     results = []
     with sync_playwright() as pw:
-        options = {'headless': True, 'args': ['--no-sandbox', '--disable-gpu', '--force-color-profile=srgb', '--disable-skia-runtime-opts']}
+        # Partial raster varia bordas AA na própria main (13-topbar); raster completo
+        # preserva CSS/DOM e a comparação PNG byte a byte, sem tolerância visual.
+        options = {'headless': True, 'args': ['--no-sandbox', '--disable-gpu', '--force-color-profile=srgb', '--disable-skia-runtime-opts', '--disable-partial-raster']}
         if os.environ.get('CHROMIUM_EXECUTABLE'):
             options['executable_path'] = os.environ['CHROMIUM_EXECUTABLE']
         browser = pw.chromium.launch(**options)

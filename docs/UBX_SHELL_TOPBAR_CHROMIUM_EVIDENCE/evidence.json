@@ -1,0 +1,202 @@
+{
+  "repo": "epi-controle",
+  "initial_head": "29ca818dc15cf214337896b5ebe33e1655b3f80b",
+  "main": "a443e1256473c175f32dcd5b1240a15d96114d4f",
+  "browser": "ChromeHeadlessShell 145.0.7632.6",
+  "playwright": "1.58.0",
+  "ubuntu": "24.04.5",
+  "python_container": "3.12.3",
+  "ci_python": "3.11.18",
+  "matrix": {
+    "locales": [
+      "pt-BR",
+      "en-GB",
+      "es-ES",
+      "fr-FR",
+      "nb-NO"
+    ],
+    "orders": [
+      "tenant-before-shell",
+      "tenant-after-shell"
+    ],
+    "revisions": [
+      "main",
+      "branch"
+    ],
+    "repetitions_each": 2,
+    "viewport_start": [
+      1440,
+      1000
+    ],
+    "viewport_capture13": [
+      390,
+      844
+    ],
+    "dpr": 1,
+    "functional_steps_each_prefix": 13,
+    "comparisons_per_complete_matrix": 40
+  },
+  "experiments": [
+    {
+      "series": "host-no-partial",
+      "repo": "epi-controle",
+      "comparisons": 40,
+      "passed": 40,
+      "failed": 0,
+      "nonzero_pixel_counts": [],
+      "pixel_rows": 0,
+      "components": {},
+      "max_channel_delta": 0
+    },
+    {
+      "series": "host-one-thread",
+      "repo": "epi-controle",
+      "comparisons": 40,
+      "passed": 30,
+      "failed": 10,
+      "nonzero_pixel_counts": [
+        16,
+        17,
+        43
+      ],
+      "pixel_rows": 216,
+      "components": {
+        "topbar-company-badge": 10,
+        "current-date": 168,
+        "mobile-menu-toggle": 38
+      },
+      "max_channel_delta": 7
+    },
+    {
+      "series": "host-original",
+      "repo": "epi-controle",
+      "comparisons": 40,
+      "passed": 34,
+      "failed": 6,
+      "nonzero_pixel_counts": [
+        17,
+        44,
+        55
+      ],
+      "pixel_rows": 232,
+      "components": {
+        "topbar-company-badge": 22,
+        "current-date": 134,
+        "mobile-menu-toggle": 76
+      },
+      "max_channel_delta": 7
+    },
+    {
+      "series": "host-restored-control",
+      "repo": "epi-controle",
+      "comparisons": 40,
+      "passed": 30,
+      "failed": 10,
+      "nonzero_pixel_counts": [
+        16,
+        17
+      ],
+      "pixel_rows": 166,
+      "components": {
+        "topbar-company-badge": 6,
+        "current-date": 160
+      },
+      "max_channel_delta": 7
+    },
+    {
+      "series": "ubuntu-no-partial",
+      "repo": "epi-controle",
+      "comparisons": 40,
+      "passed": 40,
+      "failed": 0,
+      "nonzero_pixel_counts": [],
+      "pixel_rows": 0,
+      "components": {},
+      "max_channel_delta": 0
+    },
+    {
+      "series": "ubuntu-original",
+      "repo": "epi-controle",
+      "comparisons": 40,
+      "passed": 34,
+      "failed": 6,
+      "nonzero_pixel_counts": [
+        17,
+        43
+      ],
+      "pixel_rows": 154,
+      "components": {
+        "topbar-company-badge": 12,
+        "mobile-menu-toggle": 14,
+        "other": 2,
+        "current-date": 126
+      },
+      "max_channel_delta": 7
+    }
+  ],
+  "representative": {
+    "series": "ubuntu-original",
+    "repo": "epi-controle",
+    "locale": "en-GB",
+    "order": "tenant-after-shell",
+    "comparison": "main-branch-1",
+    "pixels": 43,
+    "image_size": [
+      358,
+      169
+    ],
+    "original_modes": [
+      "RGB",
+      "RGB"
+    ],
+    "alpha_reference": [
+      255,
+      255
+    ],
+    "alpha_result": [
+      255,
+      255
+    ],
+    "dpr": 1,
+    "geometry": {
+      "x": 16,
+      "y": 16,
+      "width": 358,
+      "height": 168.125,
+      "top": 16,
+      "right": 374,
+      "bottom": 184.125,
+      "left": 16
+    },
+    "delta_counts": {
+      "1": 31,
+      "2": 5,
+      "3": 5,
+      "7": 1,
+      "4": 1
+    },
+    "components": {
+      "topbar-company-badge": 4,
+      "mobile-menu-toggle": 7,
+      "other": 1,
+      "current-date": 31
+    },
+    "png_bytes_equal": false,
+    "bbox": [
+      13,
+      31,
+      317,
+      146
+    ]
+  },
+  "files": {
+    "main.png": "88e37c521e5f6bd4bbac751007977e673c454cf23c9f995f12f39ddd1223b410",
+    "branch.png": "4364c10058a6420e3a31518b6a57d3ac69ae4625071d83d36d9f169d43555b63",
+    "difference.png": "84c2d3a0a6953b015fca10ef9291784e63c133e4b57cd6cc0c9a0e952eab3bd3",
+    "enlargement.png": "f829689e1d8471491ac2364c308ed889499bb83487b234eabaa857d145c29713",
+    "pixels-rgba.csv": "c6ec4ea65757061bbae0012cfeb39694631b0684ff1dcd2aea1360f34c234b61"
+  },
+  "assertions_unchanged": 22,
+  "production_and_golden_changes": 0,
+  "limitation": "Original CI ZIPs recovered to connector references but executor transfer blocked; screenshots above are from local Ubuntu reproductions, not CI artifacts."
+}

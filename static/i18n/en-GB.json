@@ -4523,7 +4523,14 @@
       "m_8e6c75803f30": "Payment not found.",
       "m_a962e8e6afc0": "Mercado Pago declined the operation. Check the details and try again.",
       "m_8a91cff7f61b": "The payment service is currently unavailable. Please try again shortly.",
-      "m_efb40f2baa92": "Notification receipt is unavailable."
+      "m_efb40f2baa92": "Notification receipt is unavailable.",
+      "m_015878fca38a": "Unknown error code: {code}",
+      "m_b2d05999fbde": "Invalid row_id for the cursor",
+      "m_c5ffbe0a4698": "Invalid sort_value for the cursor",
+      "m_a77a4c731108": "Invalid employee identifier.",
+      "m_5f7147290799": "Invalid pagination parameters.",
+      "m_f9bbf9eb303b": "Your profile is not allowed to run this query.",
+      "m_2d622c0f7907": "Employee not available within your scope."
     },
     "fields": {
       "title": "Title",

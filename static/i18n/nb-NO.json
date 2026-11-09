@@ -4523,7 +4523,14 @@
       "m_8e6c75803f30": "Betalingen ble ikke funnet.",
       "m_a962e8e6afc0": "Mercado Pago avviste operasjonen. Kontroller opplysningene og prøv igjen.",
       "m_8a91cff7f61b": "Betalingstjenesten er ikke tilgjengelig akkurat nå. Prøv igjen om litt.",
-      "m_efb40f2baa92": "Mottak av varsler er ikke tilgjengelig."
+      "m_efb40f2baa92": "Mottak av varsler er ikke tilgjengelig.",
+      "m_015878fca38a": "Ukjent feilkode: {code}",
+      "m_b2d05999fbde": "Ugyldig row_id for markøren",
+      "m_c5ffbe0a4698": "Ugyldig sort_value for markøren",
+      "m_a77a4c731108": "Ugyldig ansatt-ID.",
+      "m_5f7147290799": "Ugyldige pagineringsparametere.",
+      "m_f9bbf9eb303b": "Profilen har ikke tilgang til dette oppslaget.",
+      "m_2d622c0f7907": "Den ansatte er ikke tilgjengelig i ditt omfang."
     },
     "fields": {
       "title": "Tittel",

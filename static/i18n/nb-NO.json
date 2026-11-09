@@ -4552,7 +4552,7 @@
       "m_23c33bcb396d": "Konfigurasjonsversjonen er påkrevd for å lagre godkjenningsgrensen.",
       "m_a96e89ac7570": "Godkjenningsgrensen ble endret av en annen bruker. Last inn på nytt og prøv igjen.",
       "m_6f3f1274a095": "Et selskap er påkrevd for å konfigurere godkjenningsgrensen.",
-      "m_2b22d2d19444": "Profilen har ikke tilknyttet selskap."
+      "m_2b22d2d19444": "Profilen har ikke tilknyttet selskap.",
       "m_015878fca38a": "Ukjent feilkode: {code}",
       "m_b2d05999fbde": "Ugyldig row_id for markøren",
       "m_c5ffbe0a4698": "Ugyldig sort_value for markøren",

@@ -4552,7 +4552,7 @@
       "m_23c33bcb396d": "The configuration version is required to save the approval limit.",
       "m_a96e89ac7570": "The approval limit was changed by another user. Reload and try again.",
       "m_6f3f1274a095": "A company is required to configure the approval limit.",
-      "m_2b22d2d19444": "Profile has no linked company."
+      "m_2b22d2d19444": "Profile has no linked company.",
       "m_015878fca38a": "Unknown error code: {code}",
       "m_b2d05999fbde": "Invalid row_id for the cursor",
       "m_c5ffbe0a4698": "Invalid sort_value for the cursor",

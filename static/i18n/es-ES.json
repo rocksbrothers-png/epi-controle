@@ -4552,7 +4552,7 @@
       "m_23c33bcb396d": "La versión de la configuración es obligatoria para guardar el límite de aprobación.",
       "m_a96e89ac7570": "El límite de aprobación fue modificado por otro usuario. Recargue e inténtelo de nuevo.",
       "m_6f3f1274a095": "La empresa es obligatoria para configurar el límite de aprobación.",
-      "m_2b22d2d19444": "Perfil sin empresa vinculada."
+      "m_2b22d2d19444": "Perfil sin empresa vinculada.",
       "m_015878fca38a": "Código de error desconocido: {code}",
       "m_b2d05999fbde": "row_id no válido para el cursor",
       "m_c5ffbe0a4698": "sort_value no válido para el cursor",

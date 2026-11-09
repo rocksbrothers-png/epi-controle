@@ -379,3 +379,9 @@ O plano completo mantém pendentes Entregas, Estoque e resíduos dos demais dom�
 Migração fica por último entre domínios. Navegação/bootstrap (Etapa 3) e limpeza dos shims
 ficam no final, com auditoria de autorização e estado. Pagamentos ficam fora da UBX.
 C1, SEC-C1-1, C2, C3, C4, Marca e Impressão integradas. Sem percentual global: não há denominador aprovado.
+
+## Compras CO-1 (2026-11-09): alçada configurável e segregação de aprovação
+
+Detalhes em [`COMPRAS_CO1_GOVERNANCA.md`](COMPRAS_CO1_GOVERNANCA.md). A interface nova nasce modular:
+`static/js/modules/purchases/{business,integrations,ui}/purchase-limits-*` (cartão em Configuração). `app.js`: 0 linhas
+alteradas. As telas legadas de aprovação de PO no `app.js` continuam como estão; as regras novas valem pelo backend.

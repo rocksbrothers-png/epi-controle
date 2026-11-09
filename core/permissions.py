@@ -111,6 +111,10 @@ PERM_PO_RECEIVE = 'purchase_orders:receive'
 PERM_PO_REVIEW = 'purchase_orders:review'
 
 PERM_FINANCE_VIEW = 'finance:view'
+# CO-1 (D-1): configurar o limite de alçada de PO. EXCLUSIVA do Administrador
+# Geral da empresa: o Aprovador administra o budget, mas não define o próprio
+# limite, e `finance:view` (consulta) nunca concede edição.
+PERM_PURCHASE_LIMITS_MANAGE = 'purchase_limits:manage'
 PERM_SUPPLIERS_MANAGE = 'suppliers:manage'
 PERM_UNIT_LINKS_MANAGE = 'unit_links:manage'
 
@@ -268,6 +272,7 @@ PERMISSIONS: dict[str, frozenset[str]] = {
             PERM_DATA_MIGRATION_MANAGE,
             PERM_EPI_EVALUATION_VIEW, PERM_EPI_EVALUATION_DECIDE, PERM_EPI_SUGGESTION_ACCEPT,
             PERM_COMPANY_SETTINGS_VIEW, PERM_COMPANY_SETTINGS_UPDATE,
+            PERM_PURCHASE_LIMITS_MANAGE,
         })
         | PPE_TEST_GENERAL_ADMIN_PERMISSIONS
     ),

@@ -22,6 +22,10 @@ from modules.purchases.service import (
 )
 
 ADMIN = {'id': 1, 'company_id': 1, 'role': 'general_admin', 'full_name': 'Admin Geral', 'linked_employee_id': None}
+# CO-1 (D-17): quem cria o PO (ADMIN) não o aprova. As aprovações destes testes
+# são feitas por um Aprovador independente; a proibição tem testes próprios em
+# tests/test_co1_purchase_governance.py.
+APPROVER = {'id': 5, 'company_id': 1, 'role': 'approver', 'full_name': 'Aprovador', 'linked_employee_id': None}
 
 
 def _conn():
@@ -197,10 +201,10 @@ def _to_pending(conn):
 def test_approve_single_level_full():
     conn = _conn()
     po_id = _to_pending(conn)
-    out = approve_purchase_order(conn, ADMIN, get_purchase_order_by_id(conn, po_id), 'approved', 'ok', [], '', '')
+    out = approve_purchase_order(conn, APPROVER, get_purchase_order_by_id(conn, po_id), 'approved', 'ok', [], '', '')
     assert out['status'] == 'approved' and out['pending_next_level'] is False
     po = get_purchase_order_by_id(conn, po_id)
-    assert po['approved_by_user_id'] == 1
+    assert po['approved_by_user_id'] == APPROVER['id']
     item = conn.execute('SELECT * FROM purchase_order_items WHERE purchase_order_id = ?', (po_id,)).fetchone()
     assert item['quantity_approved'] == 3 and item['status'] == 'approved'
 
@@ -231,7 +235,7 @@ def test_approve_partial_with_item_decisions():
     po_id = _to_pending(conn)
     item = conn.execute('SELECT id FROM purchase_order_items WHERE purchase_order_id = ?', (po_id,)).fetchone()
     decisions = [{'item_id': item['id'], 'approved': False, 'rejection_reason': 'Valor acima do esperado'}]
-    out = approve_purchase_order(conn, ADMIN, get_purchase_order_by_id(conn, po_id), 'partially_approved', '', decisions, '', '')
+    out = approve_purchase_order(conn, APPROVER, get_purchase_order_by_id(conn, po_id), 'partially_approved', '', decisions, '', '')
     assert out['status'] == 'partially_approved'
     row = conn.execute('SELECT * FROM purchase_order_items WHERE id = ?', (item['id'],)).fetchone()
     assert row['status'] == 'rejected' and row['quantity_approved'] == 0
@@ -246,7 +250,7 @@ def test_approve_multilevel_two_steps():
     conn = _conn()
     _set_threshold(conn, 1, 10)  # total 30 >= 10 -> exige 2 níveis
     po_id = _to_pending(conn)
-    first = approve_purchase_order(conn, ADMIN, get_purchase_order_by_id(conn, po_id), 'approved', '', [], '', '')
+    first = approve_purchase_order(conn, APPROVER, get_purchase_order_by_id(conn, po_id), 'approved', '', [], '', '')
     assert first['status'] == 'pending_approval' and first['pending_next_level'] is True
     # segundo nível, por aprovador DIFERENTE (segregação de funções)
     second = approve_purchase_order(conn, ADMIN2, get_purchase_order_by_id(conn, po_id), 'approved', 'finance ok', [], '', '')
@@ -259,7 +263,7 @@ def test_approve_multilevel_second_step_needs_finance_permission():
     conn = _conn()
     _set_threshold(conn, 1, 10)
     po_id = _to_pending(conn)
-    approve_purchase_order(conn, ADMIN, get_purchase_order_by_id(conn, po_id), 'approved', '', [], '', '')
+    approve_purchase_order(conn, APPROVER, get_purchase_order_by_id(conn, po_id), 'approved', '', [], '', '')
     # role 'user' não possui finance:view
     plain_user = {'id': 4, 'company_id': 1, 'role': 'user', 'full_name': 'Usuário', 'linked_employee_id': None}
     with pytest.raises(PermissionError):
@@ -270,17 +274,17 @@ def test_approve_multilevel_blocks_same_approver():
     conn = _conn()
     _set_threshold(conn, 1, 10)
     po_id = _to_pending(conn)
-    approve_purchase_order(conn, ADMIN, get_purchase_order_by_id(conn, po_id), 'approved', '', [], '', '')
+    approve_purchase_order(conn, APPROVER, get_purchase_order_by_id(conn, po_id), 'approved', '', [], '', '')
     # mesmo aprovador tentando finalizar o segundo nível
-    with pytest.raises(PermissionError):
-        approve_purchase_order(conn, ADMIN, get_purchase_order_by_id(conn, po_id), 'approved', '', [], '', '')
+    with pytest.raises(PermissionError, match='aprovador diferente'):
+        approve_purchase_order(conn, APPROVER, get_purchase_order_by_id(conn, po_id), 'approved', '', [], '', '')
 
 
 # ── receive + conferência (estoque) + fechamento ──────────────────────────────
 
 def _to_approved(conn):
     po_id = _to_pending(conn)
-    approve_purchase_order(conn, ADMIN, get_purchase_order_by_id(conn, po_id), 'approved', 'ok', [], '', '')
+    approve_purchase_order(conn, APPROVER, get_purchase_order_by_id(conn, po_id), 'approved', 'ok', [], '', '')
     return po_id
 
 

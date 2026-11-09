@@ -1195,6 +1195,24 @@
     "connectors": {
       "demo": "Loja de demonstração (piloto)",
       "httpJson": "API REST/JSON genérica (v1)"
+    },
+    "limits": {
+      "title": "Limite de alçada de pedidos de compra",
+      "hint": "Pedidos com valor total igual ou acima deste limite exigem um segundo nível de aprovação, feito por outro aprovador com permissão financeira. Quem criou o pedido ou a requisição de origem nunca o aprova.",
+      "company": "Empresa",
+      "current": "Limite atual",
+      "notConfigured": "Sem limite configurado — todos os pedidos usam um nível de aprovação.",
+      "inputLabel": "Novo limite (BRL)",
+      "save": "Salvar limite",
+      "remove": "Remover limite",
+      "saved": "Limite de alçada salvo.",
+      "removed": "Limite de alçada removido.",
+      "invalid": "Informe um valor maior que zero, com até duas casas decimais (ex.: 15000,00).",
+      "tooLarge": "Valor acima do máximo permitido.",
+      "loadError": "Não foi possível carregar o limite de alçada.",
+      "saveError": "Não foi possível salvar o limite de alçada.",
+      "removeConfirm": "Remover o limite de alçada? Todos os pedidos voltarão a exigir um único nível de aprovação.",
+      "lastUpdate": "Última alteração: {date} por {name}."
     }
   },
   "plan": {
@@ -4523,7 +4541,18 @@
       "m_8e6c75803f30": "Pagamento não encontrado.",
       "m_a962e8e6afc0": "O Mercado Pago recusou a operação. Revise os dados e tente novamente.",
       "m_8a91cff7f61b": "Serviço de pagamento indisponível no momento. Tente novamente em instantes.",
-      "m_efb40f2baa92": "Recebimento de notificações indisponível."
+      "m_efb40f2baa92": "Recebimento de notificações indisponível.",
+      "m_57b3e8480285": "Aprovação recusada: quem criou a requisição não pode aprová-la. A requisição continua pendente de aprovação por outro responsável.",
+      "m_222b3e8dad96": "Aprovação recusada: quem criou o pedido de compra ou a requisição de origem não pode aprová-lo. O pedido continua pendente de aprovação por outro responsável.",
+      "m_7671dafc8607": "A aprovação de requisição deve ser feita pelo fluxo de aprovação, com registro do aprovador.",
+      "m_355b48a6023d": "O pedido de compra foi alterado por outro usuário e não está mais aguardando esta decisão. Recarregue para ver o estado atual.",
+      "m_e04563f4d75c": "Limite de alçada inválido: informe um valor maior que zero, com até duas casas decimais.",
+      "m_84f737ad70cb": "Limite de alçada acima do máximo permitido.",
+      "m_7a68e965ad95": "Moeda não suportada para o limite de alçada.",
+      "m_23c33bcb396d": "Versão da configuração obrigatória para salvar o limite de alçada.",
+      "m_a96e89ac7570": "O limite de alçada foi alterado por outro usuário. Recarregue e tente novamente.",
+      "m_6f3f1274a095": "Empresa obrigatória para configurar o limite de alçada.",
+      "m_2b22d2d19444": "Perfil sem empresa vinculada."
     },
     "fields": {
       "title": "Título",

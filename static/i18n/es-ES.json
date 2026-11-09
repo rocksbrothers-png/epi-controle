@@ -1195,6 +1195,24 @@
     "connectors": {
       "demo": "Tienda de demostración (piloto)",
       "httpJson": "API REST/JSON genérica (v1)"
+    },
+    "limits": {
+      "title": "Límite de aprobación de órdenes de compra",
+      "hint": "Las órdenes con un total igual o superior a este límite requieren un segundo nivel de aprobación, realizado por otro aprobador con permiso financiero. Quien creó la orden o la solicitud de origen nunca la aprueba.",
+      "company": "Empresa",
+      "current": "Límite actual",
+      "notConfigured": "Sin límite configurado: todas las órdenes usan un nivel de aprobación.",
+      "inputLabel": "Nuevo límite (BRL)",
+      "save": "Guardar límite",
+      "remove": "Eliminar límite",
+      "saved": "Límite de aprobación guardado.",
+      "removed": "Límite de aprobación eliminado.",
+      "invalid": "Indique un valor mayor que cero, con hasta dos decimales (p. ej.: 15000,00).",
+      "tooLarge": "Valor por encima del máximo permitido.",
+      "loadError": "No se pudo cargar el límite de aprobación.",
+      "saveError": "No se pudo guardar el límite de aprobación.",
+      "removeConfirm": "¿Eliminar el límite de aprobación? Todas las órdenes volverán a requerir un único nivel de aprobación.",
+      "lastUpdate": "Última modificación: {date} por {name}."
     }
   },
   "plan": {
@@ -4523,7 +4541,18 @@
       "m_8e6c75803f30": "Pago no encontrado.",
       "m_a962e8e6afc0": "Mercado Pago rechazó la operación. Revise los datos e inténtelo de nuevo.",
       "m_8a91cff7f61b": "El servicio de pago no está disponible en este momento. Inténtelo de nuevo en unos instantes.",
-      "m_efb40f2baa92": "La recepción de notificaciones no está disponible."
+      "m_efb40f2baa92": "La recepción de notificaciones no está disponible.",
+      "m_57b3e8480285": "Aprobación rechazada: quien creó la solicitud no puede aprobarla. La solicitud sigue pendiente de aprobación por otro responsable.",
+      "m_222b3e8dad96": "Aprobación rechazada: quien creó la orden de compra o la solicitud de origen no puede aprobarla. La orden sigue pendiente de aprobación por otro responsable.",
+      "m_7671dafc8607": "La aprobación de la solicitud debe hacerse por el flujo de aprobación, con registro del aprobador.",
+      "m_355b48a6023d": "La orden de compra fue modificada por otro usuario y ya no espera esta decisión. Recargue para ver el estado actual.",
+      "m_e04563f4d75c": "Límite de aprobación no válido: indique un valor mayor que cero, con hasta dos decimales.",
+      "m_84f737ad70cb": "Límite de aprobación por encima del máximo permitido.",
+      "m_7a68e965ad95": "Moneda no admitida para el límite de aprobación.",
+      "m_23c33bcb396d": "La versión de la configuración es obligatoria para guardar el límite de aprobación.",
+      "m_a96e89ac7570": "El límite de aprobación fue modificado por otro usuario. Recargue e inténtelo de nuevo.",
+      "m_6f3f1274a095": "La empresa es obligatoria para configurar el límite de aprobación.",
+      "m_2b22d2d19444": "Perfil sin empresa vinculada."
     },
     "fields": {
       "title": "Título",

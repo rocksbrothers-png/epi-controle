@@ -1195,6 +1195,24 @@
     "connectors": {
       "demo": "Boutique de démonstration (pilote)",
       "httpJson": "API REST/JSON générique (v1)"
+    },
+    "limits": {
+      "title": "Plafond d'approbation des bons de commande",
+      "hint": "Les commandes d'un montant égal ou supérieur à ce plafond exigent un second niveau d'approbation, par un autre approbateur disposant de l'autorisation financière. La personne qui a créé la commande ou la demande d'origine ne l'approuve jamais.",
+      "company": "Entreprise",
+      "current": "Plafond actuel",
+      "notConfigured": "Aucun plafond configuré — toutes les commandes utilisent un seul niveau d'approbation.",
+      "inputLabel": "Nouveau plafond (BRL)",
+      "save": "Enregistrer le plafond",
+      "remove": "Supprimer le plafond",
+      "saved": "Plafond d'approbation enregistré.",
+      "removed": "Plafond d'approbation supprimé.",
+      "invalid": "Saisissez une valeur supérieure à zéro, avec au plus deux décimales (ex. : 15000,00).",
+      "tooLarge": "Valeur supérieure au maximum autorisé.",
+      "loadError": "Impossible de charger le plafond d'approbation.",
+      "saveError": "Impossible d'enregistrer le plafond d'approbation.",
+      "removeConfirm": "Supprimer le plafond d'approbation ? Toutes les commandes n'exigeront plus qu'un seul niveau d'approbation.",
+      "lastUpdate": "Dernière modification : {date} par {name}."
     }
   },
   "plan": {
@@ -4523,7 +4541,18 @@
       "m_8e6c75803f30": "Paiement introuvable.",
       "m_a962e8e6afc0": "Mercado Pago a refusé l'opération. Vérifiez les informations et réessayez.",
       "m_8a91cff7f61b": "Le service de paiement est momentanément indisponible. Réessayez dans quelques instants.",
-      "m_efb40f2baa92": "La réception des notifications est indisponible."
+      "m_efb40f2baa92": "La réception des notifications est indisponible.",
+      "m_57b3e8480285": "Approbation refusée : la personne qui a créé la demande ne peut pas l'approuver. La demande reste en attente d'approbation par un autre responsable.",
+      "m_222b3e8dad96": "Approbation refusée : la personne qui a créé le bon de commande ou la demande d'origine ne peut pas l'approuver. La commande reste en attente d'approbation par un autre responsable.",
+      "m_7671dafc8607": "L'approbation de la demande doit passer par le circuit d'approbation, avec enregistrement de l'approbateur.",
+      "m_355b48a6023d": "Le bon de commande a été modifié par un autre utilisateur et n'attend plus cette décision. Rechargez pour voir son état actuel.",
+      "m_e04563f4d75c": "Plafond d'approbation invalide : saisissez une valeur supérieure à zéro, avec au plus deux décimales.",
+      "m_84f737ad70cb": "Plafond d'approbation supérieur au maximum autorisé.",
+      "m_7a68e965ad95": "Devise non prise en charge pour le plafond d'approbation.",
+      "m_23c33bcb396d": "La version de la configuration est obligatoire pour enregistrer le plafond d'approbation.",
+      "m_a96e89ac7570": "Le plafond d'approbation a été modifié par un autre utilisateur. Rechargez et réessayez.",
+      "m_6f3f1274a095": "Une entreprise est obligatoire pour configurer le plafond d'approbation.",
+      "m_2b22d2d19444": "Profil sans entreprise associée."
     },
     "fields": {
       "title": "Titre",

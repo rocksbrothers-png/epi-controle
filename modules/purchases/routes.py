@@ -4,7 +4,7 @@ import base64
 from contextlib import closing
 from urllib.parse import parse_qs
 
-from core.auth import ensure_resource_company
+from core.auth import ensure_company_access, ensure_resource_company
 from core.database import get_connection
 from core.permissions import (
     PERM_FINANCE_VIEW,
@@ -17,11 +17,12 @@ from core.permissions import (
     PERM_PURCHASE_REQUESTS_VIEW,
     PERM_PURCHASE_REQUESTS_UPDATE,
     PERM_PURCHASE_REQUESTS_CREATE,
+    PERM_PURCHASE_LIMITS_MANAGE,
     PERM_SETTINGS_UPDATE,
     PERM_SUPPLIERS_MANAGE,
     PERM_UNIT_LINKS_MANAGE,
 )
-from core.repository import get_epi_by_id, get_unit_by_id, authorize_action
+from core.repository import authorize_action, authorize_action_any, get_epi_by_id, get_unit_by_id
 from modules.employees.service import actor_operational_unit_id
 from modules.units.service import ensure_unit_operational, fetch_units
 from core.security import resolve_actor_user_id
@@ -33,7 +34,9 @@ from epi_backend.purchase_import import parse_purchase_quote_file
 UTC = timezone.utc
 
 
+from modules.purchases.governance import PurchaseConflictError, PurchaseGovernanceError
 from modules.purchases.service import (
+    _record_purchase_event,
     ReceiptValidationError,
     actor_company_id_or_query,
     add_purchase_order_file,
@@ -327,10 +330,15 @@ def handle_post_purchase_request_workflow(handler, parsed, payload, match):
         actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_PURCHASE_REQUESTS_VIEW)
         pr_id = int(match.group(1))
         ip = str(getattr(handler, 'client_address', ('',))[0] or '')
-        result = apply_purchase_request_workflow_action(
-            connection, actor, pr_id, payload, ip,
-            actor_operational_unit_id=actor_operational_unit_id,
-        )
+        try:
+            result = apply_purchase_request_workflow_action(
+                connection, actor, pr_id, payload, ip,
+                actor_operational_unit_id=actor_operational_unit_id,
+            )
+        except (PurchaseGovernanceError, PurchaseConflictError) as exc:
+            pr = get_purchase_request_by_id(connection, pr_id) or {}
+            return _governance_response(handler, connection, actor, exc, 'purchase_request', pr_id,
+                                        pr.get('company_id'), str(payload.get('action') or ''))
         connection.commit()
         return send_json(handler, 200, result)
 
@@ -448,6 +456,32 @@ def handle_post_purchase_request_save_prices(handler, parsed, payload, match):
 
 # ── POST /api/purchase-orders (criar PO + workflow) ───────────────────────────
 
+# ── CO-1: governança de aprovação ─────────────────────────────────────────────
+
+def _governance_response(handler, connection, actor, exc, entity_type, entity_id, company_id, decision=''):
+    """Recusa de governança (403) ou conflito de estado (409) com ``code``.
+
+    A transação da tentativa é desfeita (nada do que ela faria persiste) e a
+    recusa é auditada numa transação própria — sem isso o rollback apagaria
+    também o registro da tentativa.
+    """
+    from modules.purchases.governance import PurchaseConflictError
+    connection.rollback()
+    action = 'approval_conflict' if isinstance(exc, PurchaseConflictError) else 'approval_denied'
+    if company_id:
+        _record_purchase_event(
+            connection, int(company_id), entity_type, int(entity_id or 0), action, '', '',
+            f'{exc.code}: decisão "{decision or "-"}" recusada.',
+            int(actor['id']), actor.get('full_name') or '',
+            str(getattr(handler, 'client_address', ('',))[0] or ''), actor.get('role') or '',
+        )
+        connection.commit()
+    body = {'error': str(exc), 'code': exc.code}
+    if getattr(exc, 'details', None):
+        body['details'] = exc.details
+    return send_json(handler, exc.status, body)
+
+
 def _load_po_for_action(connection, handler, parsed, payload, match, permission):
     actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), permission)
     po_id = int(match.group(1))
@@ -507,11 +541,16 @@ def handle_post_purchase_order_approve(handler, parsed, payload, match):
     with closing(get_connection()) as connection:
         actor, po = _load_po_for_action(connection, handler, parsed, payload, match, PERM_PO_APPROVE)
         ip = str(getattr(handler, 'client_address', ('',))[0] or '')
-        result = approve_purchase_order(
-            connection, actor, po,
-            str(payload.get('decision') or ''), payload.get('comment'),
-            payload.get('decisions') or [], payload.get('postponed_until'), ip,
-        )
+        decision = str(payload.get('decision') or '')
+        try:
+            result = approve_purchase_order(
+                connection, actor, po,
+                decision, payload.get('comment'),
+                payload.get('decisions') or [], payload.get('postponed_until'), ip,
+            )
+        except (PurchaseGovernanceError, PurchaseConflictError) as exc:
+            return _governance_response(handler, connection, actor, exc, 'purchase_order', po['id'],
+                                        po.get('company_id'), decision)
         connection.commit()
         return send_json(handler, 200, result)
 
@@ -686,6 +725,12 @@ def handle_get_company_purchase_config(handler, parsed, payload, match):
         raw_cid = str(query.get('company_id', [''])[0] or '').strip() or str(actor.get('company_id') or '').strip()
         if not raw_cid or raw_cid == 'None':
             return send_json(handler, 200, {'config': {}})
+        if not raw_cid.isdigit():
+            raise ValueError('Empresa inválida.')
+        # CO-1: a configuração (que inclui a alçada) é da empresa do ator.
+        # Antes, qualquer perfil com purchase_requests:view lia a de outra
+        # empresa informando company_id na query.
+        ensure_company_access(actor, int(raw_cid))
         config = get_company_purchase_config(connection, int(raw_cid))
         return send_json(handler, 200, {'config': config})
 
@@ -780,11 +825,75 @@ def handle_post_purchase_quote_file_parse(handler, parsed, payload, match):
 
 # ── Registro ──────────────────────────────────────────────────────────────────
 
+# ── CO-1: limite de alçada (D-1, D-2) ─────────────────────────────────────────
+
+def handle_get_purchase_limits(handler, parsed, payload, match):
+    """Limite vigente da empresa. Leitura para quem configura (Administrador
+    Geral) ou consulta valores financeiros (finance:view)."""
+    from modules.purchases.approval_limits import get_purchase_limits
+    with closing(get_connection()) as connection:
+        actor = authorize_action_any(
+            connection, resolve_actor_user_id(handler, parsed), [PERM_PURCHASE_LIMITS_MANAGE, PERM_FINANCE_VIEW]
+        )
+        if actor.get('role') == 'master_admin':
+            raw_cid = str(parse_qs(parsed.query).get('company_id', [''])[0] or '').strip()
+            if not raw_cid.isdigit():
+                raise ValueError('Empresa é obrigatória.')
+            company_id = int(raw_cid)
+        else:
+            company_id = int(actor.get('company_id') or 0)
+            if not company_id:
+                raise PermissionError('Perfil sem empresa vinculada.')
+        data = get_purchase_limits(connection, company_id)
+        data['company_id'] = company_id
+        data['can_manage'] = (
+            actor.get('role') != 'master_admin'
+            and PERM_PURCHASE_LIMITS_MANAGE in set(actor.get('permissions') or [])
+        ) or _actor_can_manage_limits(actor)
+        return send_json(handler, 200, {'ok': True, 'data': data})
+
+
+def _actor_can_manage_limits(actor):
+    from core.auth import ensure_permission
+    try:
+        ensure_permission(actor, PERM_PURCHASE_LIMITS_MANAGE)
+    except PermissionError:
+        return False
+    return bool(actor.get('company_id'))
+
+
+def handle_post_purchase_limits(handler, parsed, payload, match):
+    """Cria, altera ou remove (``value: null``) o limite da empresa do ator."""
+    from modules.purchases.approval_limits import set_purchase_limit
+    require_fields(payload, ['actor_user_id', 'expected_version'])
+    with closing(get_connection()) as connection:
+        actor = authorize_action(connection, resolve_actor_user_id(handler, parsed, payload), PERM_PURCHASE_LIMITS_MANAGE)
+        ip = str(getattr(handler, 'client_address', ('',))[0] or '')
+        try:
+            result = set_purchase_limit(
+                connection, actor, value=payload.get('value'), expected_version=payload.get('expected_version'),
+                currency=payload.get('currency'), ip_address=ip,
+            )
+        except PurchaseConflictError as exc:
+            connection.rollback()
+            _record_purchase_event(
+                connection, int(actor['company_id']), 'company', int(actor['company_id']),
+                'purchase_limit_conflict', '', '', f'{exc.code}: versão enviada {payload.get("expected_version")!r}.',
+                int(actor['id']), actor.get('full_name') or '', ip, actor.get('role') or '',
+            )
+            connection.commit()
+            return send_json(handler, 409, {'error': str(exc), 'code': exc.code, 'details': exc.details})
+        connection.commit()
+        return send_json(handler, 200, {'ok': True, 'data': result})
+
+
 def register_routes(router):
     # GET
     router.register('GET', '/api/requests',                                  handle_get_epi_requests)
     router.register('GET', '/api/authorized-suppliers',                           handle_get_authorized_suppliers)
     router.register('GET', r'^/api/authorized-suppliers/(\d+)/purchase-orders$',  handle_get_supplier_pos, regex=True)
+    router.register('GET', '/api/purchase-limits',                              handle_get_purchase_limits)
+    router.register('POST', '/api/purchase-limits',                             handle_post_purchase_limits)
     router.register('GET', '/api/company-purchase-config',                         handle_get_company_purchase_config)
     router.register('POST', '/api/purchases/lot-label-ocr', handle_post_purchase_lot_label_ocr)
     router.register('POST', '/api/company-purchase-config',                        handle_post_company_purchase_config)

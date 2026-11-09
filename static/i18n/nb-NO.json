@@ -1195,6 +1195,24 @@
     "connectors": {
       "demo": "Demobutikk (pilot)",
       "httpJson": "Generisk REST/JSON-API (v1)"
+    },
+    "limits": {
+      "title": "Godkjenningsgrense for innkjøpsordrer",
+      "hint": "Ordrer med totalbeløp lik eller over denne grensen krever et andre godkjenningsnivå, utført av en annen godkjenner med økonomitilgang. Den som opprettet ordren eller den opprinnelige rekvisisjonen godkjenner den aldri.",
+      "company": "Selskap",
+      "current": "Gjeldende grense",
+      "notConfigured": "Ingen grense konfigurert — alle ordrer bruker ett godkjenningsnivå.",
+      "inputLabel": "Ny grense (BRL)",
+      "save": "Lagre grense",
+      "remove": "Fjern grense",
+      "saved": "Godkjenningsgrensen er lagret.",
+      "removed": "Godkjenningsgrensen er fjernet.",
+      "invalid": "Oppgi en verdi større enn null, med opptil to desimaler (f.eks. 15000,00).",
+      "tooLarge": "Verdien overstiger maksimum tillatt.",
+      "loadError": "Kunne ikke laste inn godkjenningsgrensen.",
+      "saveError": "Kunne ikke lagre godkjenningsgrensen.",
+      "removeConfirm": "Fjerne godkjenningsgrensen? Alle ordrer vil igjen kreve ett godkjenningsnivå.",
+      "lastUpdate": "Sist endret: {date} av {name}."
     }
   },
   "plan": {
@@ -4523,7 +4541,18 @@
       "m_8e6c75803f30": "Betalingen ble ikke funnet.",
       "m_a962e8e6afc0": "Mercado Pago avviste operasjonen. Kontroller opplysningene og prøv igjen.",
       "m_8a91cff7f61b": "Betalingstjenesten er ikke tilgjengelig akkurat nå. Prøv igjen om litt.",
-      "m_efb40f2baa92": "Mottak av varsler er ikke tilgjengelig."
+      "m_efb40f2baa92": "Mottak av varsler er ikke tilgjengelig.",
+      "m_57b3e8480285": "Godkjenning avvist: den som opprettet rekvisisjonen kan ikke godkjenne den. Rekvisisjonen venter fortsatt på godkjenning fra en annen ansvarlig.",
+      "m_222b3e8dad96": "Godkjenning avvist: den som opprettet innkjøpsordren eller den opprinnelige rekvisisjonen kan ikke godkjenne den. Ordren venter fortsatt på godkjenning fra en annen ansvarlig.",
+      "m_7671dafc8607": "Godkjenning av rekvisisjon må skje gjennom godkjenningsflyten, med registrering av godkjenneren.",
+      "m_355b48a6023d": "Innkjøpsordren ble endret av en annen bruker og venter ikke lenger på denne beslutningen. Last inn på nytt for å se gjeldende status.",
+      "m_e04563f4d75c": "Ugyldig godkjenningsgrense: oppgi en verdi større enn null, med opptil to desimaler.",
+      "m_84f737ad70cb": "Godkjenningsgrensen overstiger maksimum tillatt.",
+      "m_7a68e965ad95": "Valutaen støttes ikke for godkjenningsgrensen.",
+      "m_23c33bcb396d": "Konfigurasjonsversjonen er påkrevd for å lagre godkjenningsgrensen.",
+      "m_a96e89ac7570": "Godkjenningsgrensen ble endret av en annen bruker. Last inn på nytt og prøv igjen.",
+      "m_6f3f1274a095": "Et selskap er påkrevd for å konfigurere godkjenningsgrensen.",
+      "m_2b22d2d19444": "Profilen har ikke tilknyttet selskap."
     },
     "fields": {
       "title": "Tittel",

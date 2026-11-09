@@ -342,9 +342,9 @@ Detalhes em
 - 820 comparações nos cinco idiomas, 25/25 mutações detectadas, Chromium contra referência da própria
   base, guarda/build/F4/F5B e regressões aplicáveis. Sem percentual global: não existe denominador aprovado.
 
-## UBX impressão compartilhada (2026-11-07) — implementação local da §21.7
+## UBX impressão compartilhada (2026-11-07) — integrada, §21.7
 
-Detalhes em `UBX_APPJS_AUDITORIA.md` §23. Sem commit/push/PR/merge/deploy desta fatia.
+Detalhes em `UBX_APPJS_AUDITORIA.md` §23. Integrada em [#1089](https://github.com/rocksbrothers-png/epi-controle/pull/1089); base conferida em 2026-11-07: `a443e1256473c175f32dcd5b1240a15d96114d4f`.
 
 - `openAndPrintPopup` → `modules/shared/ui/print-popup.js`, global legada preservada, fachada congelada.
   Consumidores confirmados: Comercial, Colaboradores e etiquetas de Estoque. Chamadores intactos.
@@ -355,10 +355,27 @@ Detalhes em `UBX_APPJS_AUDITORIA.md` §23. Sem commit/push/PR/merge/deploy desta
 - Inventário completo remanescente gerado pelo auditor AST e preservado no pacote local de revisão.
   Sem percentual global: não existe denominador aprovado.
 
+## UBX Shell/Topbar (2026-11-07) — §21.7/§23.5, implementação e publicação em rascunho
+
+Detalhes e riscos em `UBX_APPJS_AUDITORIA.md` §24; inventário em `UBX_SHELL_TOPBAR_INVENTARIO.csv`.
+
+- 70 funções inventariadas, 14 extraídas em `modules/shell/ui/{shell-view,topbar-view,settings-drawer}.js`,
+  56 mantidas com seus donos. Autorização, sessão, bootstrap, preferências e navegação global preservados.
+- `app.js`: 16.269 → 16.126 linhas físicas; 668 → 654 declarações; 550 → 536 funções; 93 endpoints.
+  AST remanescente idêntico, cinco SCC internos, zero ciclos entre scripts segundo a guarda.
+- 725 comparações por produto; 29/29 mutações detectadas em ambos; JavaScript 699 por produto;
+  Python ampliado 362 Corporate / 313 SaaS (20 F3 adicionais por produto). Guarda, F4/F5B, CSP, lint/build e I18N preservados.
+- Chromium cobre cinco idiomas e duas ordens de tenant-init, desktop/mobile e contexto/principal atual: 260 passos funcionais
+  equivalentes. PNG estrito 107/110; restrição visual reproduzida na base (§24.4). A variação de bindings de I18N foi reproduzida na main e documentada na §24.4; harness usa sinais
+  reais, preserva as duas ordens e não adiciona sleeps. Resultados finais/CI/CodeQL no relatório e PR.
+- Publicação limitada a dois PRs em rascunho. Nenhum merge, deploy ou próxima fatia autorizado.
+
 ## Próximo passo
-A impressão local aguarda revisão e autorização específica para publicação e integração.
-A próxima proposta da §21.7 é shell/topbar, começando pela apresentação de updateTopbarCompanyBadge;
-applyRoleVisibility e suas decisões de autorização permanecem fora dessa extração inicial.
-O plano completo mantém pendentes Compras, Entregas, Estoque e resíduos dos demais domínios;
-Migração fica por último entre os domínios. Navegação/bootstrap (Etapa 3) e limpeza dos shims
+
+Aguardar autorização de integração de Shell/Topbar. Depois, propor Compras (Fase 2), começando
+por apresentação/seletores sem efeitos; inventariar antes de ampliar a fatia. Candidatos iniciais:
+isBuyerQuotationStatus e purchaseStatusBadge. HTTP, permissões e recebimento/estoque separados.
+O plano completo mantém pendentes Entregas, Estoque e resíduos dos demais domínios;
+Migração fica por último entre domínios. Navegação/bootstrap (Etapa 3) e limpeza dos shims
 ficam no final, com auditoria de autorização e estado. Pagamentos ficam fora da UBX.
+C1, SEC-C1-1, C2, C3, C4, Marca e Impressão integradas. Sem percentual global: não há denominador aprovado.

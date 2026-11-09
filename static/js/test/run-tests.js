@@ -1202,7 +1202,8 @@ test('estoque: painel Gestão de Validade tem markup, wiring e i18n', () => {
 });
 
 test('navegação: engrenagem abre Drawer de Configuração (sem trocar de rota)', () => {
-  const js = _read('app.js');
+  // Mesmas assertivas sobre a composição real servida (app + módulo extraído).
+  const js = _read('app.js') + _read('js/modules/shell/ui/settings-drawer.js');
   // a engrenagem abre o drawer (não navega para a página)
   assert(js.includes("bindAppListener(refs.topConfigTrigger, 'click', openSettingsDrawer)"), 'engrenagem não abre o drawer');
   assert(js.includes('function openSettingsDrawer'), 'openSettingsDrawer ausente');
@@ -1253,7 +1254,8 @@ test('navegação: seta Voltar sempre funcional com fallback ao Dashboard + brea
 });
 
 test('navegação: sidebar recolhível no desktop tem wiring + persistência + CSS', () => {
-  const js = _read('app.js');
+  // Mesmas assertivas sobre a composição real servida (app + módulo extraído).
+  const js = _read('app.js') + _read('js/modules/shell/ui/shell-view.js');
   // preferência persistida e helpers presentes
   // ATUALIZADO na frente de Isolamento (PR C), pelo mesmo motivo do gate do
   // drawer: a preferência de sidebar continua persistida, mas o dono passou a
@@ -7821,6 +7823,7 @@ require('./commercial-view-runtime')({ testAsync, test, assert, eq });
 require('./commercial-shared-runtime')({ testAsync, test, assert, eq });
 require('./platform-brand-runtime')({ testAsync, test, assert, eq });
 require('./print-popup-runtime')({ testAsync, test, assert, eq });
+require('./shell-topbar-runtime')({ testAsync, test, assert, eq });
 require('./users-active-runtime')({ test, assert, eq });
 
 (async () => {

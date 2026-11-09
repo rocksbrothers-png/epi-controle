@@ -4523,7 +4523,14 @@
       "m_8e6c75803f30": "Pagamento não encontrado.",
       "m_a962e8e6afc0": "O Mercado Pago recusou a operação. Revise os dados e tente novamente.",
       "m_8a91cff7f61b": "Serviço de pagamento indisponível no momento. Tente novamente em instantes.",
-      "m_efb40f2baa92": "Recebimento de notificações indisponível."
+      "m_efb40f2baa92": "Recebimento de notificações indisponível.",
+      "m_015878fca38a": "código de erro desconhecido: {code}",
+      "m_b2d05999fbde": "row_id inválido para cursor",
+      "m_c5ffbe0a4698": "sort_value inválido para cursor",
+      "m_a77a4c731108": "Identificador de colaborador inválido.",
+      "m_5f7147290799": "Parâmetros de paginação inválidos.",
+      "m_f9bbf9eb303b": "Perfil sem permissão para esta consulta.",
+      "m_2d622c0f7907": "Colaborador indisponível no seu escopo."
     },
     "fields": {
       "title": "Título",

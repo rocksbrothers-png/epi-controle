@@ -7825,6 +7825,7 @@ require('./platform-brand-runtime')({ testAsync, test, assert, eq });
 require('./print-popup-runtime')({ testAsync, test, assert, eq });
 require('./shell-topbar-runtime')({ testAsync, test, assert, eq });
 require('./users-active-runtime')({ test, assert, eq });
+require('./employee-ppe-360-lifecycle-runtime')({ test, testAsync, assert, eq });
 
 (async () => {
   for (const t of asyncTests) {

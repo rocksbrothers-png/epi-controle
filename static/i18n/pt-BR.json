@@ -4553,6 +4553,13 @@
       "m_a96e89ac7570": "O limite de alçada foi alterado por outro usuário. Recarregue e tente novamente.",
       "m_6f3f1274a095": "Empresa obrigatória para configurar o limite de alçada.",
       "m_2b22d2d19444": "Perfil sem empresa vinculada."
+      "m_015878fca38a": "código de erro desconhecido: {code}",
+      "m_b2d05999fbde": "row_id inválido para cursor",
+      "m_c5ffbe0a4698": "sort_value inválido para cursor",
+      "m_a77a4c731108": "Identificador de colaborador inválido.",
+      "m_5f7147290799": "Parâmetros de paginação inválidos.",
+      "m_f9bbf9eb303b": "Perfil sem permissão para esta consulta.",
+      "m_2d622c0f7907": "Colaborador indisponível no seu escopo."
     },
     "fields": {
       "title": "Título",

@@ -33,6 +33,8 @@ DONE = ['purchases', 'ppe_tests', 'stock', 'data_migration', 'employees', 'units
         'deliveries', 'outsourced_companies', 'portal', 'payments', 'epis', 'tenant', 'settings', 'auth',
         'legal_entities', 'feedback', 'companies', 'commercial', 'company_settings', 'devolutions',
         'safety_library', 'reports', 'i18n',
+        # Ficha 360° de EPI (F0): contrato somente leitura.
+        'employee_ppe_360',
         # Camada compartilhada (fora de modules/): autenticação, arquivamento, HTTP, compras comuns.
         'core', 'epi_backend', 'app',
         # Só existe no SaaS (cadastro público); no Corporate é ignorado.

@@ -385,3 +385,11 @@ C1, SEC-C1-1, C2, C3, C4, Marca e Impressão integradas. Sem percentual global: 
 Detalhes em [`COMPRAS_CO1_GOVERNANCA.md`](COMPRAS_CO1_GOVERNANCA.md). A interface nova nasce modular:
 `static/js/modules/purchases/{business,integrations,ui}/purchase-limits-*` (cartão em Configuração). `app.js`: 0 linhas
 alteradas. As telas legadas de aprovação de PO no `app.js` continuam como estão; as regras novas valem pelo backend.
+## Ficha 360° — F0 (2026-11-09): fundação modular do domínio
+
+Detalhes em [`FICHA_360_F0_CONTRATOS.md`](FICHA_360_F0_CONTRATOS.md). Funcionalidade nova nasce modularizada:
+
+- `static/js/modules/employee-ppe-360/{business,ui}` (contrato de apresentação e ciclo de vida) e
+  `modules/employee_ppe_360/contract.py` (autorização, escopo, paginação e envelope; somente leitura, sem rota).
+- Guarda de domínio `static/js/test/employee-ppe-360-boundary.js`, com sabotagens em
+  `tests/test_employee_ppe_360_boundary.py`. `app.js`: 0 linhas alteradas; 654 declarações e 93 endpoints (sem mudança, base pós-Shell/Topbar).

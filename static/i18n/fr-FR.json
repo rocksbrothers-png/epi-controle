@@ -4553,6 +4553,13 @@
       "m_a96e89ac7570": "Le plafond d'approbation a été modifié par un autre utilisateur. Rechargez et réessayez.",
       "m_6f3f1274a095": "Une entreprise est obligatoire pour configurer le plafond d'approbation.",
       "m_2b22d2d19444": "Profil sans entreprise associée."
+      "m_015878fca38a": "Code d'erreur inconnu : {code}",
+      "m_b2d05999fbde": "row_id invalide pour le curseur",
+      "m_c5ffbe0a4698": "sort_value invalide pour le curseur",
+      "m_a77a4c731108": "Identifiant de collaborateur invalide.",
+      "m_5f7147290799": "Paramètres de pagination invalides.",
+      "m_f9bbf9eb303b": "Profil non autorisé pour cette consultation.",
+      "m_2d622c0f7907": "Collaborateur indisponible dans votre périmètre."
     },
     "fields": {
       "title": "Titre",

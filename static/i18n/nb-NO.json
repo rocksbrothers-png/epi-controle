@@ -4553,6 +4553,13 @@
       "m_a96e89ac7570": "Godkjenningsgrensen ble endret av en annen bruker. Last inn på nytt og prøv igjen.",
       "m_6f3f1274a095": "Et selskap er påkrevd for å konfigurere godkjenningsgrensen.",
       "m_2b22d2d19444": "Profilen har ikke tilknyttet selskap."
+      "m_015878fca38a": "Ukjent feilkode: {code}",
+      "m_b2d05999fbde": "Ugyldig row_id for markøren",
+      "m_c5ffbe0a4698": "Ugyldig sort_value for markøren",
+      "m_a77a4c731108": "Ugyldig ansatt-ID.",
+      "m_5f7147290799": "Ugyldige pagineringsparametere.",
+      "m_f9bbf9eb303b": "Profilen har ikke tilgang til dette oppslaget.",
+      "m_2d622c0f7907": "Den ansatte er ikke tilgjengelig i ditt omfang."
     },
     "fields": {
       "title": "Tittel",

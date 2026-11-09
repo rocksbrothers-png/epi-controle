@@ -230,8 +230,9 @@ def test_envelope_de_erro_so_tem_codigo_e_mensagem_generica(code):
 
 
 def test_codigo_de_erro_desconhecido_e_bug_de_programacao():
-    with pytest.raises(ValueError):
-        ContractError('QUALQUER')
+    # O construtor recusa o código antes do raise (CodeQL: exceção sempre lançada).
+    with pytest.raises(ValueError, match='código de erro desconhecido'):
+        raise ContractError('QUALQUER')
 
 
 # ── Limites arquiteturais ────────────────────────────────────────────────────

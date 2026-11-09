@@ -473,12 +473,9 @@ def _build_low_stock_size_demands(demand, balances):
     return rows
 
 
-def _record_purchase_event(connection, company_id, entity_type, entity_id, action, status_from, status_to, comment, actor_user_id, actor_name, ip_address='', actor_role='', reason='', destination=''):
-    now = datetime.now(UTC).isoformat()
-    connection.execute(
-        'INSERT INTO purchase_events (company_id, entity_type, entity_id, action, status_from, status_to, comment, actor_user_id, actor_name, actor_role, reason, destination, ip_address, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        (company_id, entity_type, entity_id, action, status_from, status_to, comment, actor_user_id, actor_name, actor_role, reason, destination, ip_address, now)
-    )
+# CO-1: a gravação vive no módulo folha `audit` (sem ciclo com approval_limits);
+# o nome histórico continua aqui para os chamadores e testes existentes.
+from modules.purchases.audit import record_purchase_event as _record_purchase_event  # noqa: E402
 
 
 def ensure_purchase_request_action_scope(connection, actor, purchase_request, *, actor_operational_unit_id=None):
@@ -592,6 +589,12 @@ def apply_purchase_request_item_approval(connection, actor, pr_id, payload, ip_a
     ).fetchall()
     items = [row_to_dict(row) for row in item_rows]
     decisions, status_to, totals = normalize_purchase_item_approval_decisions(items, payload)
+    # D-17: quem criou a requisição não aprova itens dela (recusar continua
+    # permitido — não é aprovação).
+    segregation = {}
+    if any(decision.get('approved') for decision in decisions):
+        from modules.purchases.governance import ensure_not_self_approving_purchase_request
+        segregation = ensure_not_self_approving_purchase_request(connection, actor, pr)
     now = datetime.now(UTC).isoformat()
     summary_parts = []
     for decision in decisions:
@@ -671,6 +674,8 @@ def apply_purchase_request_item_approval(connection, actor, pr_id, payload, ip_a
         '',
         'closed',
     )
+    _record_unverifiable_segregation(connection, actor, 'purchase_request', int(pr_id), int(pr['company_id']),
+                                     segregation, ip_address)
     structured_log(
         'info',
         'purchase.workflow.item_approval_completed',
@@ -1525,12 +1530,13 @@ def set_company_purchase_config(connection, actor, company_id, require_admin_rev
     Um valor guardado que não seja objeto JSON é tratado como ausente — não há
     o que preservar nele, e propagá-lo faria o merge estourar.
     """
-    import json as _json
-    from core.meta import set_meta
-    stored = get_company_purchase_config(connection, int(company_id))
-    config = dict(stored) if isinstance(stored, dict) else {}
+    # CO-1: a mesma chave guarda o limite de alçada e sua versão. Leitura e
+    # escrita sob a trava da linha de configuração (approval_limits), para que
+    # esta gravação e uma alteração de alçada concorrente não se apaguem.
+    from modules.purchases.approval_limits import locked_purchase_config, store_purchase_config
+    config = locked_purchase_config(connection, int(company_id))
     config['require_admin_review'] = bool(require_admin_review)
-    set_meta(connection, f'purchase_config_{int(company_id)}', _json.dumps(config))
+    store_purchase_config(connection, int(company_id), config)
     _record_purchase_event(
         connection, int(company_id), 'company', int(company_id), 'purchase_config_updated', '', '',
         f'Revisão do Admin: {"exigida" if config["require_admin_review"] else "dispensada"}.',
@@ -2153,6 +2159,12 @@ def update_purchase_request_status(connection, actor, pr, new_status, comment, p
     """
     if new_status not in _PURCHASE_REQUEST_VALID_STATUSES:
         raise ValueError('Status inválido para requisição de compra.')
+    if new_status in ('approved', 'partially_approved'):
+        # CO-1 (D-17): aprovar exige o fluxo de aprovação (permissão de
+        # aprovação, decisão por item e segregação). Esta rota genérica não
+        # é usada para isso por nenhum cliente e não pode servir de atalho.
+        from modules.purchases.governance import MSG_APPROVAL_STATUS_ROUTE, PurchaseGovernanceError
+        raise PurchaseGovernanceError('PURCHASE_APPROVAL_REQUIRES_WORKFLOW', MSG_APPROVAL_STATUS_ROUTE)
     pr_id = int(pr['id'])
     # EST-V3.5-R3 (idempotência + concorrência): trava a linha da requisição e lê
     # o status ATUAL sob a trava. Assim reenvios e execuções concorrentes NÃO
@@ -2404,13 +2416,25 @@ def ensure_purchase_order_action_scope(connection, actor, po, *, actor_operation
             raise PermissionError('PO fora das unidades de compras vinculadas ao usuário.')
 
 
-def _po_company_approval_threshold(connection, company_id):
-    config = get_company_purchase_config(connection, int(company_id))
-    raw = config.get('po_approval_threshold') if isinstance(config, dict) else 0
+def _po_company_approval_threshold(connection, company_id, *, for_share=False):
+    """Limite de alçada vigente (``Decimal``) ou ``None`` (sem limite).
+
+    CO-1: fonte única é ``po_approval_threshold`` em ``purchase_config_{empresa}``,
+    lido em Decimal (``approval_limits.read_threshold``). Ausência continua sendo
+    "sem limite" (um nível) — nunca zero. ``for_share`` faz a aprovação esperar
+    uma alteração de limite em andamento (Postgres), para decidir sobre o valor
+    confirmado.
+    """
+    import json as _json
+    from epi_backend.db import _is_sqlite_connection
+    from modules.purchases.approval_limits import config_key, read_threshold
+    suffix = ' FOR SHARE' if for_share and not _is_sqlite_connection(connection) else ''
+    row = connection.execute('SELECT value FROM app_meta WHERE key = ?' + suffix, (config_key(company_id),)).fetchone()
     try:
-        return float(raw or 0)
+        config = _json.loads(row['value']) if row else {}
     except (TypeError, ValueError):
-        return 0.0
+        config = {}
+    return read_threshold(config)
 
 
 def _resolve_order_legal_entity(connection, company_id, payload):
@@ -2731,8 +2755,49 @@ def _apply_po_item_approval_decisions(connection, po_id, decisions, now):
 
 
 def approve_purchase_order(connection, actor, po, decision, comment, decisions, postponed_until, ip_address):
-    assert_approval_allowed(po['status'], decision)
+    from epi_backend.db import _is_sqlite_connection
+    from epi_backend.purchase_order_workflow import PO_APPROVAL_DECISIONS
+    from modules.purchases.governance import (
+        APPROVING_DECISIONS,
+        MSG_PO_STATE_CHANGED,
+        PurchaseConflictError,
+        ensure_independent_second_level,
+        ensure_not_self_approving_purchase_order,
+    )
+
+    # CO-1: a decisão é atômica. Trava PR → PO (mesma ordem do recebimento) e
+    # relê o PO SOB a trava: duas decisões simultâneas são serializadas e a
+    # segunda vê o estado que a primeira persistiu. SQLite: BEGIN IMMEDIATE;
+    # Postgres: SELECT … FOR UPDATE.
+    sqlite = _is_sqlite_connection(connection)
+    if sqlite and not connection.in_transaction:
+        connection.execute('BEGIN IMMEDIATE')
+    lock_suffix = '' if sqlite else ' FOR UPDATE'
+    if po.get('purchase_request_id'):
+        connection.execute(
+            'SELECT id FROM purchase_requests WHERE id = ?' + lock_suffix, (int(po['purchase_request_id']),)
+        ).fetchone()
+    locked = connection.execute('SELECT * FROM purchase_orders WHERE id = ?' + lock_suffix, (int(po['id']),)).fetchone()
+    if not locked:
+        raise ValueError('PO não encontrada.')
+    po = row_to_dict(locked)
+    try:
+        assert_approval_allowed(po['status'], decision)
+    except ValueError:
+        if str(decision or '').strip() in PO_APPROVAL_DECISIONS:
+            # Estado persistido não aceita mais esta decisão (outra decisão
+            # concorrente, reenvio ou registro obsoleto na tela): 409 com o
+            # estado atual, sem gravar nada.
+            raise PurchaseConflictError(
+                'PURCHASE_ORDER_STATE_CHANGED', MSG_PO_STATE_CHANGED,
+                details={'status': po['status'], 'status_label': po_status_label(po['status'])},
+            ) from None
+        raise
     decision = str(decision or '').strip()
+    # D-17: quem criou o PO ou qualquer requisição de origem não o aprova.
+    segregation = {}
+    if decision in APPROVING_DECISIONS:
+        segregation = ensure_not_self_approving_purchase_order(connection, actor, po)
     comment = str(comment or '').strip()
     now = datetime.now(UTC).isoformat()
     company_id = int(po['company_id'])
@@ -2758,10 +2823,10 @@ def approve_purchase_order(connection, actor, po, decision, comment, decisions, 
     # de funções — o aprovador final deve ser diferente do primeiro nível.
     if decision in ('approved', 'partially_approved') and prior_approvals >= 1:
         ensure_permission(actor, PERM_FINANCE_VIEW)
-        if int(actor['id']) in prior_approver_ids:
-            raise PermissionError('O segundo nível de aprovação exige um aprovador diferente do primeiro.')
+        # Por PESSOA (contas ligadas ao mesmo colaborador), não só por conta.
+        ensure_independent_second_level(connection, actor, prior_approver_ids)
 
-    threshold = _po_company_approval_threshold(connection, company_id)
+    threshold = _po_company_approval_threshold(connection, company_id, for_share=True)
     next_status, finalizes = resolve_approval_outcome(
         decision, prior_approvals=prior_approvals, total_value=po.get('total_value'), threshold=threshold,
     )
@@ -2798,8 +2863,23 @@ def approve_purchase_order(connection, actor, po, decision, comment, decisions, 
         comment, int(actor['id']), actor.get('full_name') or '', ip_address, actor.get('role') or '',
         destination='buyer' if next_status in ('approved', 'partially_approved') else 'closed',
     )
+    _record_unverifiable_segregation(connection, actor, 'purchase_order', po_id, company_id, segregation, ip_address)
     pending_next_level = (decision in ('approved', 'partially_approved') and not finalizes)
     return {'ok': True, 'status': next_status, 'pending_next_level': pending_next_level}
+
+
+def _record_unverifiable_segregation(connection, actor, entity_type, entity_id, company_id, segregation, ip_address):
+    """Registra, junto com a decisão, que algum criador de origem não pôde ser
+    verificado (vínculo legado ausente). Não libera nem bloqueia nada: torna o
+    caso auditável em vez de silencioso (CO-1, D-17)."""
+    missing = int((segregation or {}).get('unverifiable_links') or 0)
+    if not missing:
+        return
+    _record_purchase_event(
+        connection, int(company_id), entity_type, int(entity_id), 'segregation_unverifiable', '', '',
+        f'Segregação de funções: {missing} vínculo(s) de criador ausente(s) no registro de origem.',
+        int(actor['id']), actor.get('full_name') or '', ip_address, actor.get('role') or '',
+    )
 
 
 def _add_po_received_items_to_stock(connection, po, actor, now, flags=None):

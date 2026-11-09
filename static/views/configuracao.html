@@ -346,6 +346,31 @@
               <span id="compras-config-feedback" style="font-size:13px;margin-left:10px;"></span>
             </div>
           </div>
+          <!-- CO-1 (D-1/D-2): limite de alçada de PO. Módulo static/js/modules/purchases/ui/purchase-limits-view.js;
+               visível só com purchase_limits:manage (Administrador Geral). O backend é quem autoriza. -->
+          <div class="card form-stack" id="purchase-limit-config-card" hidden>
+            <div class="section-intro">
+              <span class="eyebrow" data-i18n="nav.purchases">Compras</span>
+              <h3 data-i18n="purchase.limits.title">Limite de alçada de pedidos de compra</h3>
+              <p class="hint" data-i18n="purchase.limits.hint">Pedidos com valor total igual ou acima deste limite exigem um segundo nível de aprovação, feito por outro aprovador com permissão financeira. Quem criou o pedido ou a requisição de origem nunca o aprova.</p>
+            </div>
+            <dl class="purchase-limit-summary">
+              <dt data-i18n="purchase.limits.company">Empresa</dt>
+              <dd id="purchase-limit-company"></dd>
+              <dt data-i18n="purchase.limits.current">Limite atual</dt>
+              <dd id="purchase-limit-current" aria-live="polite"></dd>
+            </dl>
+            <p class="hint" id="purchase-limit-meta"></p>
+            <label for="purchase-limit-input"><span data-i18n="purchase.limits.inputLabel">Novo limite (BRL)</span>
+              <input id="purchase-limit-input" type="text" inputmode="decimal" autocomplete="off" maxlength="16"
+                     placeholder="15000,00" aria-describedby="purchase-limit-feedback">
+            </label>
+            <div class="form-actions">
+              <button class="btn" type="button" id="purchase-limit-save-btn" data-i18n="purchase.limits.save">Salvar limite</button>
+              <button class="ghost" type="button" id="purchase-limit-remove-btn" hidden data-i18n="purchase.limits.remove">Remover limite</button>
+              <span id="purchase-limit-feedback" role="status" aria-live="polite"></span>
+            </div>
+          </div>
         </div>
       </section>
 

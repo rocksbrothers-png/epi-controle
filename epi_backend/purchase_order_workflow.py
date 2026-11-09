@@ -21,6 +21,8 @@ Ciclo de vida (alinhado ao frontend em app.js openPoDetail):
     checked → /receive closed → closed
 """
 
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
+
 # Reaproveita os motivos de reprovação por item já usados nas requisições.
 from epi_backend.purchase_workflow import PURCHASE_APPROVAL_REJECTION_REASONS
 
@@ -103,23 +105,33 @@ def assert_receive_allowed(current_status, action):
     return act
 
 
+def _money(value):
+    """Valor monetário → Decimal(2 casas) pela representação textual, sem
+    aritmética de ponto flutuante. Inválido/ausente → None."""
+    if value is None or value == '' or isinstance(value, bool):
+        return None
+    try:
+        number = Decimal(str(value).strip())
+    except (InvalidOperation, ValueError):
+        return None
+    if not number.is_finite():
+        return None
+    return number.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+
 def required_approval_levels(total_value, threshold):
     """Quantos níveis de aprovação a PO exige.
 
     Acima (ou igual) ao limite configurado pela empresa, exige um segundo nível
-    (financeiro/diretor). Limite ausente ou <= 0 desativa o multi-nível.
+    (financeiro/diretor). Limite ausente ou <= 0 desativa o multi-nível — a
+    ausência de configuração nunca vira "limite zero" (CO-1, D-2). A comparação
+    é feita em Decimal com 2 casas (CO-1: sem ponto flutuante em dinheiro).
     """
-    try:
-        total = float(total_value or 0)
-    except (TypeError, ValueError):
-        total = 0.0
-    try:
-        limit = float(threshold or 0)
-    except (TypeError, ValueError):
-        limit = 0.0
-    if limit > 0 and total >= limit:
-        return 2
-    return 1
+    limit = _money(threshold)
+    if limit is None or limit <= 0:
+        return 1
+    total = _money(total_value) or Decimal('0.00')
+    return 2 if total >= limit else 1
 
 
 def resolve_approval_outcome(decision, *, prior_approvals, total_value, threshold):

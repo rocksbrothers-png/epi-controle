@@ -1195,6 +1195,24 @@
     "connectors": {
       "demo": "Demo store (pilot)",
       "httpJson": "Generic REST/JSON API (v1)"
+    },
+    "limits": {
+      "title": "Purchase order approval limit",
+      "hint": "Orders with a total equal to or above this limit require a second approval level, by another approver with financial permission. Whoever created the order or its source requisition never approves it.",
+      "company": "Company",
+      "current": "Current limit",
+      "notConfigured": "No limit configured — all orders use a single approval level.",
+      "inputLabel": "New limit (BRL)",
+      "save": "Save limit",
+      "remove": "Remove limit",
+      "saved": "Approval limit saved.",
+      "removed": "Approval limit removed.",
+      "invalid": "Enter a value greater than zero with up to two decimal places (e.g. 15000.00).",
+      "tooLarge": "Value exceeds the maximum allowed.",
+      "loadError": "Could not load the approval limit.",
+      "saveError": "Could not save the approval limit.",
+      "removeConfirm": "Remove the approval limit? All orders will go back to requiring a single approval level.",
+      "lastUpdate": "Last change: {date} by {name}."
     }
   },
   "plan": {
@@ -4524,6 +4542,17 @@
       "m_a962e8e6afc0": "Mercado Pago declined the operation. Check the details and try again.",
       "m_8a91cff7f61b": "The payment service is currently unavailable. Please try again shortly.",
       "m_efb40f2baa92": "Notification receipt is unavailable.",
+      "m_57b3e8480285": "Approval refused: whoever created the requisition cannot approve it. The requisition remains pending approval by another person.",
+      "m_222b3e8dad96": "Approval refused: whoever created the purchase order or its source requisition cannot approve it. The order remains pending approval by another person.",
+      "m_7671dafc8607": "Requisition approval must go through the approval workflow, with the approver recorded.",
+      "m_355b48a6023d": "The purchase order was changed by another user and is no longer awaiting this decision. Reload to see its current state.",
+      "m_e04563f4d75c": "Invalid approval limit: enter a value greater than zero with up to two decimal places.",
+      "m_84f737ad70cb": "Approval limit exceeds the maximum allowed.",
+      "m_7a68e965ad95": "Currency not supported for the approval limit.",
+      "m_23c33bcb396d": "The configuration version is required to save the approval limit.",
+      "m_a96e89ac7570": "The approval limit was changed by another user. Reload and try again.",
+      "m_6f3f1274a095": "A company is required to configure the approval limit.",
+      "m_2b22d2d19444": "Profile has no linked company.",
       "m_015878fca38a": "Unknown error code: {code}",
       "m_b2d05999fbde": "Invalid row_id for the cursor",
       "m_c5ffbe0a4698": "Invalid sort_value for the cursor",

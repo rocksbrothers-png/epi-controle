@@ -21,7 +21,9 @@ def _conn():
             company_id INTEGER NOT NULL,
             unit_id INTEGER NOT NULL,
             status TEXT NOT NULL,
-            updated_at TEXT NOT NULL DEFAULT ''
+            updated_at TEXT NOT NULL DEFAULT '',
+            -- CO-1 (D-17): coluna real do esquema; a aprovação compara o criador.
+            created_by_user_id INTEGER
         );
         CREATE TABLE purchase_request_items (
             id INTEGER PRIMARY KEY,
@@ -81,7 +83,8 @@ def _actor(role='approver', user_id=10, company_id=1):
 
 def _insert_request(connection, status='pending_approval', unit_id=7):
     connection.execute(
-        'INSERT INTO purchase_requests (id, company_id, unit_id, status) VALUES (1, 1, ?, ?)',
+        # Criada por outro usuário (99): o aprovador destes testes não é o criador.
+        'INSERT INTO purchase_requests (id, company_id, unit_id, status, created_by_user_id) VALUES (1, 1, ?, ?, 99)',
         (unit_id, status),
     )
 

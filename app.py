@@ -38,7 +38,7 @@ from epi_backend.config import (
     PASSWORD_RECOVERY_KEY,
     UTC,
 )
-from core.database import PostgresConnectionWrapper, db_pool_status, get_connection
+from core.database import PoolSaturatedError, PostgresConnectionWrapper, db_pool_status, get_connection
 from core import csp as csp_policy
 from core.http_cache import is_no_store, resolve_cache_control
 from core.root_routing import is_flutter_root_redirect_enabled, resolve_root_request
@@ -84,6 +84,7 @@ from epi_backend.http_utils import (
     redact_sensitive_query,
     require_fields,
     send_bytes,
+    send_db_pool_saturated,
     send_json,
     structured_log,
 )
@@ -969,6 +970,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
         except (BrokenPipeError, ConnectionResetError):
             structured_log('info', 'http.client_disconnected', method='GET', path=parsed.path)
             return
+        except PoolSaturatedError:
+            return send_db_pool_saturated(self, 'GET', parsed.path)
         except Exception as exc:
             structured_log('error', 'http.unhandled_error', method='GET', path=parsed.path, error=str(exc))
             try:
@@ -1050,6 +1053,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
         except (BrokenPipeError, ConnectionResetError):
             structured_log('info', 'http.client_disconnected', method='POST', path=parsed.path)
             return
+        except PoolSaturatedError:
+            return send_db_pool_saturated(self, 'POST', parsed.path)
         except Exception as exc:
             structured_log('error', 'http.unhandled_error', method='POST', path=parsed.path, error=str(exc))
             try:
@@ -1101,6 +1106,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
         except (BrokenPipeError, ConnectionResetError):
             structured_log('info', 'http.client_disconnected', method='PUT', path=parsed.path)
             return
+        except PoolSaturatedError:
+            return send_db_pool_saturated(self, 'PUT', parsed.path)
         except Exception as exc:
             structured_log('error', 'http.unhandled_error', method='PUT', path=parsed.path, error=str(exc))
             try:
@@ -1146,6 +1153,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
         except (BrokenPipeError, ConnectionResetError):
             structured_log('info', 'http.client_disconnected', method='DELETE', path=parsed.path)
             return
+        except PoolSaturatedError:
+            return send_db_pool_saturated(self, 'DELETE', parsed.path)
         except Exception as exc:
             structured_log('error', 'http.unhandled_error', method='DELETE', path=parsed.path, error=str(exc))
             try:
@@ -1157,6 +1166,18 @@ class EpiHandler(SimpleHTTPRequestHandler):
 
 # ── Server startup ───────────────────────────────────────────────────────────
 
+# P0 (docs/POSTGRES_POOL_P0.md): o socketserver usa listen backlog 5. Com mais
+# de ~5 conexões chegando juntas, o kernel descarta o SYN excedente e o cliente
+# só retransmite depois de ~1 s (medido: p95 de 1 s com 10 conexões simultâneas
+# e timeouts com 50). O kernel limita o valor a net.core.somaxconn.
+HTTP_REQUEST_QUEUE_SIZE = max(5, int(os.environ.get('HTTP_REQUEST_QUEUE_SIZE', '128')))
+
+
+class EpiHTTPServer(ThreadingHTTPServer):
+    request_queue_size = HTTP_REQUEST_QUEUE_SIZE
+    daemon_threads = True
+
+
 def main():
     import threading as _threading
 
@@ -1164,12 +1185,12 @@ def main():
 
     # O Render precisa detectar a porta em < 60s: servidor sobe ANTES de init_db.
     try:
-        server = ThreadingHTTPServer(('0.0.0.0', port), EpiHandler)
+        server = EpiHTTPServer(('0.0.0.0', port), EpiHandler)
     except Exception as exc:
         structured_log('error', 'server.bind_failed', port=port, error=str(exc))
         raise
 
-    structured_log('info', 'server.binding', port=port)
+    structured_log('info', 'server.binding', port=port, request_queue_size=EpiHTTPServer.request_queue_size)
     structured_log(
         'info',
         'auth.config',

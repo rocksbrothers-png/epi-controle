@@ -405,23 +405,21 @@ def execute_claim(job_id, owner, attempt, *, connection_factory):
 
         return {'id': int(job_id), 'status': result['status'], 'result_job_id': result.get('job_id')}
     finally:
+        lock_pendente = False
         if locked:
             try:
                 connection.rollback()
                 connection.execute('SELECT pg_advisory_unlock(%s, %s)', (_ADVISORY_NS, int(job_id)))
                 connection.commit()
             except Exception:
-                # Resíduo P2-B (fail-closed, só liveness): se o unlock falhar numa
-                # conexão ainda VIVA, o close() abaixo a devolve ao pool (putconn)
-                # sem derrubar o advisory de sessão, e o job pode ficar preso em
-                # 'running' — nunca escrita indevida. A correção completa (descartar
-                # o backend do pool) fica na fatia de hardening de recuperação; um
-                # backend morto já é descartado pelo pool, liberando o lock.
-                try:
-                    connection.rollback()
-                except Exception:
-                    pass
-        connection.close()
+                # Resíduo P2-B, fechado no P0 do pool: o advisory é de SESSÃO e o
+                # rollback não o solta. Se o unlock falhar, a conexão é DESCARTADA
+                # (não volta ao pool); fechar a sessão no servidor libera o lock.
+                lock_pendente = True
+        if lock_pendente and hasattr(connection, 'discard'):
+            connection.discard()
+        else:
+            connection.close()
 
 
 def _decrypt_payload(job, company_id, actor_user_id):

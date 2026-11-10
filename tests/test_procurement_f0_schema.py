@@ -190,9 +190,10 @@ def test_send_email_requires_recipient(monkeypatch):
 class _FakeSMTP:
     sent = []
 
-    def __init__(self, host, port):
+    def __init__(self, host, port, timeout=None):
         self.host = host
         self.port = port
+        self.timeout = timeout
 
     def __enter__(self):
         return self

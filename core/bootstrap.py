@@ -70,10 +70,29 @@ def _memo_catalogo_do_bootstrap(connection):
         fechar_memo_catalogo(connection)
 
 
+@_contextmanager
+def _conexao_do_bootstrap(connection, sessao):
+    """Devolve a conexão do bootstrap ao pool — ou a DESCARTA (P0).
+
+    ``pg_try_advisory_lock`` é de SESSÃO: o ``rollback`` que o pool faz na
+    devolução não o solta. Se o bootstrap terminar (por exceção ou por falha do
+    ``pg_advisory_unlock``) com o lock ainda preso, a conexão é fechada em vez
+    de reaproveitada; fechar a sessão no servidor libera o lock. Sem isso, uma
+    requisição HTTP herdaria a conexão segurando o lock de inicialização e os
+    próximos bootstraps (outra instância, reinício) não o obteriam.
+    """
+    try:
+        yield connection
+    finally:
+        if sessao.get('advisory_lock_pendente') and hasattr(connection, 'discard'):
+            connection.discard()
+        else:
+            connection.close()
+
+
 def init_db():
     import os as _os
     import time as _time
-    from contextlib import closing as _closing
     from datetime import datetime as _datetime, timezone as _timezone
     from epi_backend.unit_jv_lifecycle import (
         ensure_unit_joint_venture_periods_table as _ensure_jv_table,
@@ -100,7 +119,8 @@ def init_db():
     if not connection:
         raise RuntimeError(f'Falha ao conectar no banco após {retries} tentativas: {last_error}')
 
-    with _closing(connection) as connection, _memo_catalogo_do_bootstrap(connection):
+    sessao_bootstrap = {'advisory_lock_pendente': False}
+    with _conexao_do_bootstrap(connection, sessao_bootstrap) as connection, _memo_catalogo_do_bootstrap(connection):
         schema.run_schema_precheck(connection)
         advisory_lock_acquired = False
         if _DB_CONNECTOR and _DATABASE_URL:
@@ -122,6 +142,7 @@ def init_db():
                     )
                 if lock_acquired:
                     advisory_lock_acquired = True
+                    sessao_bootstrap['advisory_lock_pendente'] = True
                     break
                 if lock_attempt < lock_retries:
                     _time.sleep(lock_retry_delay)
@@ -554,6 +575,7 @@ def init_db():
         if advisory_lock_acquired:
             try:
                 connection.execute('SELECT pg_advisory_unlock(?)', (advisory_lock_key,))
+                sessao_bootstrap['advisory_lock_pendente'] = False
             except Exception as exc:
                 structured_log('warning', 'db.init_lock_release_failed', lock_key=advisory_lock_key, error=str(exc))
         connection.commit()

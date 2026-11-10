@@ -8,12 +8,18 @@ ao envio original: STARTTLS + login, variáveis SMTP_HOST/SMTP_PORT/SMTP_USER/
 SMTP_PASSWORD/SMTP_FROM.
 """
 
+import os
 import smtplib
 from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 from epi_backend.http_utils import structured_log
+
+# P0 (docs/POSTGRES_POOL_P0.md): sem prazo, um servidor SMTP que aceita a
+# conexão e não responde prende a thread — e, nos envios feitos com a conexão
+# do banco aberta (cotação, pedido de compra), também uma vaga do pool.
+SMTP_TIMEOUT_SECONDS = float(os.environ.get('SMTP_TIMEOUT_SECONDS', '30'))
 
 
 def smtp_configured() -> bool:
@@ -61,7 +67,7 @@ def send_email(to_email, subject, body, html_body=None, attachments=None, reply_
     if reply_to:
         msg['Reply-To'] = reply_to
 
-    with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as smtp:
+    with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=SMTP_TIMEOUT_SECONDS) as smtp:
         smtp.ehlo()
         smtp.starttls()
         smtp.login(SMTP_USER, SMTP_PASSWORD)

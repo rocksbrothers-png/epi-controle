@@ -162,3 +162,62 @@ não é confiável — isso é anterior a este P0 e independe dele.
 
 Testes locais não provam capacidade de produção. A liberação exige observar
 `/api/db-pool/status` e os eventos `db.pool_saturated` no ambiente real.
+
+## 7. P0.1 — Revisão adversarial de concorrência
+
+Revisão do `BoundedConnectionPool` com testes determinísticos (o
+entrelaçamento é forçado por eventos entre threads, sem `sleep`). Cada defeito
+foi reproduzido antes da correção (`tests/test_db_pool_p0_concurrency.py`).
+
+| # | Defeito reproduzido | Correção |
+|---|---|---|
+| 1 | `closeall()` enquanto `getconn()` está dentro do `connect` (fora da trava): o pool **encerrado entregava** a conexão nova | Ao voltar do `connect`, o encerramento é verificado com a trava: a conexão é fechada e `PoolError` é levantado |
+| 2 | Mesma janela no ping de uma conexão ociosa | Mesmo tratamento |
+| 3 | Falha no meio da abertura inicial (`minconn`) deixava as conexões já abertas órfãs | São fechadas antes de relançar |
+| 4 | Duas devoluções simultâneas da mesma conexão: **dois `rollback` concorrentes** e a conexão guardada duas vezes (seria entregue a dois donos) | A posse é tomada com a trava antes da limpeza; a segunda devolução sai sem tocar na conexão |
+| 5 | Devolução dupla sequencial **fechava a conexão já ociosa** no pool | Reconhecida como duplicata e ignorada |
+
+Durante a limpeza a conexão continua contando no teto (ainda está aberta no
+banco). O pool não distingue a devolução atrasada de um dono antigo depois de
+a conexão ter sido reentregue; essa garantia é do `PostgresConnectionWrapper`,
+que só devolve uma vez por aquisição.
+
+### Advisory locks de sessão
+
+`ROLLBACK` não solta advisory lock de sessão (medido em
+`tests_postgres/test_db_pool_p0_postgres.py`). Os dois únicos usos — bootstrap
+e job assíncrono de migração — passam por `core/session_locks.py`, que
+descarta a conexão sempre que houver dúvida:
+
+* tentativa de aquisição que levantou exceção (antes: a conexão voltava ao pool);
+* saída por exceção com o lock preso;
+* `pg_advisory_unlock` que levantou exceção **ou devolveu `false`** (antes: `false` era tratado como sucesso);
+* dúvida anterior não é desfeita por um unlock posterior (o lock é reentrante).
+
+Um guarda de teste reprova qualquer `pg_try_advisory_lock`/`pg_advisory_unlock`
+novo fora desse acompanhamento.
+
+### Compatibilidade com Supabase — BLOQUEIO DE CONFIGURAÇÃO antes do deploy
+
+Documentação do Supabase (Supavisor):
+
+* **Conexão direta** e **pooler em modo sessão (porta 5432)**: cada cliente tem
+  uma sessão dedicada; advisory locks de sessão funcionam.
+* **Pooler em modo transação (porta 6543)**: *não suporta* recursos de sessão
+  (`SET`, `LISTEN/NOTIFY`, advisory locks). Cada transação pode cair em um
+  backend diferente: o lock é adquirido num backend e o unlock chega a outro.
+
+Efeito no modo transação: o lock de bootstrap e o de job deixam de serializar
+de forma confiável e podem ficar presos num backend do pooler. A aplicação
+detecta o caso (unlock devolve `false` → `db.init_lock_release_unconfirmed`) e
+descarta a conexão do lado dela, mas **não consegue** soltar o lock no backend
+do pooler.
+
+O modo usado em produção **não foi confirmado**: exigiria ler a
+`DATABASE_URL`, que é credencial. Consulta somente leitura a `pg_locks` nos
+dois projetos não encontrou advisory lock preso no momento da revisão — o que
+não prova o modo. **Antes do deploy**, o responsável deve confirmar no painel
+(Render → Environment) que a `DATABASE_URL` aponta para a conexão direta ou
+para o pooler na porta **5432**. Se apontar para a 6543, trocar para a 5432
+(ou conexão direta) é pré-requisito para o advisory lock ser confiável; o
+restante do pool funciona nos três modos.

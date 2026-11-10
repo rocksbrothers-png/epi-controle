@@ -98,6 +98,7 @@ class BoundedConnectionPool:
         self._cond = threading.Condition(threading.Lock())
         self._idle = deque()      # (conn, devolvida_em)
         self._in_use = {}         # id(conn) -> conn
+        self._returning = set()   # ids em devolução (limpeza fora da trava); ainda contam no teto
         self._opening = 0
         self._waiting = 0
         self.closed = False
@@ -106,9 +107,16 @@ class BoundedConnectionPool:
             'timeouts_total': 0, 'waited_total': 0, 'peak_in_use': 0,
             'max_wait_ms': 0.0, 'wait_ms_total': 0.0,
         }
-        for _ in range(minconn):
-            self._idle.append((self._connect(), self._clock()))
-            self._stats['created_total'] += 1
+        try:
+            for _ in range(minconn):
+                self._idle.append((self._connect(), self._clock()))
+                self._stats['created_total'] += 1
+        except BaseException:
+            # Falha no meio da abertura inicial: as já abertas não ficam órfãs.
+            for conn, _ in self._idle:
+                _close_quietly(conn)
+            self._idle.clear()
+            raise
 
     # ── aquisição ────────────────────────────────────────────────────────────
     def getconn(self):
@@ -160,21 +168,43 @@ class BoundedConnectionPool:
                     raise
                 with self._cond:
                     self._opening -= 1
-                    self._in_use[id(conn)] = conn
                     self._stats['created_total'] += 1
-                    self._record_acquire(started, waited)
+                    # closeall() pode ter rodado enquanto o connect estava fora
+                    # da trava: pool encerrado não entrega conexão nova.
+                    closed = self.closed
+                    if closed:
+                        self._cond.notify()
+                    else:
+                        self._in_use[id(conn)] = conn
+                        self._record_acquire(started, waited)
+                if closed:
+                    _close_quietly(conn)
+                    raise PoolError('connection pool is closed')
                 return conn
 
-            if self._usable(conn, ping=stale):
+            try:
+                usable = self._usable(conn, ping=stale)
+            except BaseException:
+                usable = False
+                raise
+            finally:
                 with self._cond:
-                    self._record_acquire(started, waited)
+                    # mesma janela do connect: o ping roda fora da trava
+                    closed = self.closed
+                    if usable and not closed:
+                        self._record_acquire(started, waited)
+                    else:
+                        self._in_use.pop(id(conn), None)
+                        if not usable:
+                            self._stats['discarded_total'] += 1
+                        self._cond.notify()
+                if not usable or closed:
+                    _close_quietly(conn)
+            if closed:
+                raise PoolError('connection pool is closed')
+            if usable:
                 return conn
-            # conexão ociosa quebrada: descarta e tenta de novo dentro do mesmo prazo
-            _close_quietly(conn)
-            with self._cond:
-                self._in_use.pop(id(conn), None)
-                self._stats['discarded_total'] += 1
-                self._cond.notify()
+            # conexão ociosa quebrada: descartada; tenta de novo dentro do mesmo prazo
             self._on_event('discarded', reason='broken_idle_connection')
 
     def _reserve(self, deadline, final=False):
@@ -220,26 +250,53 @@ class BoundedConnectionPool:
 
     # ── devolução ────────────────────────────────────────────────────────────
     def putconn(self, conn, discard=False):
+        """Devolve ``conn``. Só UMA devolução é dona da conexão.
+
+        A limpeza (rollback) é I/O e roda fora da trava; por isso a posse é
+        tomada antes, com a trava: uma segunda devolução simultânea da mesma
+        conexão encontra-a "em devolução" e sai sem tocá-la — sem rollback
+        concorrente, sem fechar o que a primeira está limpando e sem guardar a
+        conexão duas vezes (o que a entregaria a dois donos). Enquanto é limpa,
+        a conexão continua contando no teto: ela ainda está aberta no banco.
+
+        O pool não distingue uma devolução atrasada de um dono ANTIGO depois de
+        a conexão ter sido reentregue (mesmo objeto); essa garantia é do
+        ``PostgresConnectionWrapper``, que só devolve uma vez por aquisição.
+        """
         key = id(conn)
         with self._cond:
-            owned = key in self._in_use
-        if not owned:
-            # Devolução dupla ou conexão alheia: nunca guardar, nunca derrubar a
+            if self._in_use.get(key) is conn and key not in self._returning:
+                self._returning.add(key)
+                outcome = 'owned'
+            elif key in self._returning or any(idle is conn for idle, _ in self._idle):
+                outcome = 'duplicate'
+            else:
+                outcome = 'foreign'
+        if outcome == 'duplicate':
+            # Já devolvida (ou sendo devolvida) por outra chamada: não tocar.
+            self._on_event('duplicate_return')
+            return
+        if outcome == 'foreign':
+            # Conexão que o pool não conhece: nunca guardar, nunca derrubar a
             # requisição (o close() roda no __exit__ de closing()).
             self._on_event('foreign_connection_returned')
             _close_quietly(conn)
             return
-        keep = (not discard) and self._reset(conn)
-        with self._cond:
-            self._in_use.pop(key, None)
-            if keep and not self.closed and len(self._idle) < self.max_idle:
-                self._idle.append((conn, self._clock()))
-                conn = None
-            elif not keep:
-                self._stats['discarded_total'] += 1
-            self._cond.notify()
-        if conn is not None:
-            _close_quietly(conn)
+        keep = False
+        try:
+            keep = (not discard) and self._reset(conn)
+        finally:
+            with self._cond:
+                self._returning.discard(key)
+                self._in_use.pop(key, None)
+                stored = keep and not self.closed and len(self._idle) < self.max_idle
+                if stored:
+                    self._idle.append((conn, self._clock()))
+                elif not keep:
+                    self._stats['discarded_total'] += 1
+                self._cond.notify()
+            if not stored:
+                _close_quietly(conn)
 
     @staticmethod
     def _reset(conn):
@@ -268,6 +325,7 @@ class BoundedConnectionPool:
                 'acquire_timeout_seconds': self.acquire_timeout,
                 'available': len(self._idle),
                 'in_use': len(self._in_use),
+                'returning': len(self._returning),
                 'opening': self._opening,
                 'waiting': self._waiting,
             })
@@ -276,6 +334,13 @@ class BoundedConnectionPool:
         return data
 
     def closeall(self):
+        """Encerra o pool: fecha as ociosas e recusa novas aquisições.
+
+        Conexões em uso não são arrancadas de quem as usa: são fechadas quando
+        devolvidas. Uma abertura ou um ping em curso fora da trava percebe o
+        encerramento ao terminar, fecha a conexão e levanta ``PoolError``.
+        Idempotente.
+        """
         with self._cond:
             self.closed = True
             idle = [conn for conn, _ in self._idle]

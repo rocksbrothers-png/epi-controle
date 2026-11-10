@@ -357,3 +357,68 @@ def test_concorrencia_progressiva_sem_vazamento_nem_5xx(server, tenants):
         print(f"{r['concurrency']:3d} {r['requests']:5d} {r['p50']:6.0f} {r['p95']:6.0f} {r['p99']:6.0f} "
               f"{five:4d} {r['leaks']:4d} {p['peak_in_use']:9d} {p['waited_total']:8d} {p['max_wait_ms']:13.0f} "
               f"{r['db_sessions_peak']:13d}")
+
+
+# ── P0.1: advisory lock de sessão no banco real ──────────────────────────────
+
+def _advisory_holders(key):
+    with admin_connection() as conn, conn.cursor() as cur:
+        cur.execute("SELECT count(*) FROM pg_locks WHERE locktype = 'advisory' AND objid = %s AND granted", (key,))
+        return cur.fetchone()[0]
+
+
+def _session_lock(conn, key):
+    from core.session_locks import SessionAdvisoryLock
+    return SessionAdvisoryLock(conn, acquire_sql='SELECT pg_try_advisory_lock(?) AS ok',
+                               release_sql='SELECT pg_advisory_unlock(?) AS released', params=(key,))
+
+
+def test_rollback_nao_solta_advisory_de_sessao_e_o_descarte_solta(server):
+    """A premissa da correção, medida: depois do ROLLBACK (o que o pool faz na
+    devolução) o lock continua preso; só fechar a sessão o libera."""
+    import core.database as cdb
+    key = 918273645
+    with custom_pool(maxconn=1, max_idle=1) as pool:
+        conn = cdb.get_connection()
+        lock = _session_lock(conn, key)
+        assert lock.try_acquire() is True
+        conn.rollback()
+        assert _advisory_holders(key) == 1          # rollback NÃO soltou
+        lock.finish()                               # saída sem unlock → descarta
+        assert wait_released(pool)['available'] == 0  # não voltou ao pool
+        assert _advisory_holders(key) == 0          # sessão fechada → lock solto
+        # a próxima requisição recebe OUTRA sessão, sem lock herdado
+        again = cdb.get_connection()
+        other = _session_lock(again, key)
+        assert other.try_acquire() is True          # livre para o próximo dono
+        assert other.release() is True
+        again.commit()
+        other.finish()
+        assert wait_released(pool)['available'] == 1  # liberado com certeza → reaproveitada
+        assert _advisory_holders(key) == 0
+
+
+def test_unlock_em_outra_sessao_nao_e_confirmado_e_descarta(server):
+    """Simula o efeito de um pooler em modo transação: o unlock chega a uma
+    sessão que não detém o lock. O servidor devolve false; a conexão é
+    descartada em vez de reaproveitada."""
+    import core.database as cdb
+    key = 918273646
+    with custom_pool(maxconn=2, max_idle=2) as pool:
+        holder = cdb.get_connection()
+        holder_lock = _session_lock(holder, key)
+        assert holder_lock.try_acquire() is True
+        other = cdb.get_connection()
+        other_lock = _session_lock(other, key)
+        other_lock.held = 1                         # acredita deter o lock
+        assert other_lock.release() is False        # o servidor nega
+        other.rollback()
+        assert other_lock.must_discard
+        other_lock.finish()
+        assert _advisory_holders(key) == 1          # o lock real segue na sessão de origem
+        assert holder_lock.release() is True
+        holder.commit()
+        holder_lock.finish()
+        status = wait_released(pool)
+        assert status['available'] == 1 and status['discarded_total'] == 1
+        assert _advisory_holders(key) == 0

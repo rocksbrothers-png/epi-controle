@@ -157,7 +157,7 @@ def _open_raw_connection():
 
 def _pool_event(event, **fields):
     # Só números e motivos fixos: nenhum dado de requisição, usuário ou DSN.
-    level = 'warning' if event in ('saturated', 'foreign_connection_returned') else 'info'
+    level = 'warning' if event in ('saturated', 'foreign_connection_returned', 'duplicate_return') else 'info'
     structured_log(level, f'db.pool_{event}', **fields)
 
 

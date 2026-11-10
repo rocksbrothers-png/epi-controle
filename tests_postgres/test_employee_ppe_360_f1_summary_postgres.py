@@ -405,7 +405,13 @@ def test_dez_fichas_simultaneas_sem_esgotar_o_pool(server, world):
         stop.set()
         sampler.join(timeout=5)
     assert [r[0] for r in results] == [200] * 10, [(r[0], r[2]) for r in results if r[0] != 200]
+    # A resposta HTTP sai antes de o handler devolver a conexão: espera a devolução
+    # (com prazo) em vez de ler o pool no mesmo instante. Conexão retida ainda reprova.
+    settle = time.monotonic() + 5
     status_after = db_pool_status()
+    while int(status_after.get('in_use') or 0) and time.monotonic() < settle:
+        time.sleep(0.02)
+        status_after = db_pool_status()
     assert status_after['maxconn'] >= 10
     assert peak['in_use'] <= status_after['maxconn']
     assert int(status_after.get('in_use') or 0) == 0, status_after   # nada retido

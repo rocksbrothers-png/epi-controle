@@ -156,6 +156,23 @@ def summary(server, actor, employee_id):
     return get(server, actor, f'/api/employees/{employee_id}/ppe-360/summary')
 
 
+def wait_released(pool, timeout=5.0):
+    """Espera o pool ficar sem conexão em uso e devolve o status final.
+
+    O servidor envia a resposta HTTP ANTES de o handler sair do
+    ``closing(get_connection())``: a conexão volta ao pool logo depois de o
+    cliente ler a resposta. Ler ``in_use`` no mesmo instante é corrida do teste.
+    Conexão retida de verdade continua reprovando: o prazo esgota e o assert
+    de quem chama falha.
+    """
+    deadline = time.monotonic() + timeout
+    status = pool.status()
+    while (status['in_use'] or status['opening']) and time.monotonic() < deadline:
+        time.sleep(0.02)
+        status = pool.status()
+    return status
+
+
 def _handler_falha():
     raise RuntimeError('falha no handler')
 
@@ -216,8 +233,9 @@ def test_conexao_derrubada_pelo_servidor_recupera_sem_500(server, tenants):
                 assert statuses == [200, 200, 200]
             else:
                 assert statuses[1:] == [200, 200] and statuses[0] in (200, 500)
-            assert pool.status()['in_use'] == 0
-            assert pool.status()['discarded_total'] >= 1
+            status = wait_released(pool)
+            assert status['in_use'] == 0, status
+            assert status['discarded_total'] >= 1, status
 
 
 # ── Saturação ────────────────────────────────────────────────────────────────
@@ -237,7 +255,7 @@ def test_saturacao_responde_503_com_retry_after_e_se_recupera(server, tenants):
         for conn in held:
             pool.putconn(conn)
         assert summary(server, actor, emp)[0] == 200
-        assert pool.status()['timeouts_total'] == 1
+        assert wait_released(pool)['timeouts_total'] == 1
 
 
 def test_cliente_que_desiste_nao_prende_conexao(server, tenants):
@@ -250,10 +268,7 @@ def test_cliente_que_desiste_nao_prende_conexao(server, tenants):
             sock.sendall((f'GET /api/employees/{emp}/ppe-360/summary HTTP/1.1\r\nHost: x\r\n'
                           f'Authorization: Bearer {create_jwt_token(actor)}\r\n\r\n').encode())
             sock.close()  # desiste antes da resposta
-        deadline = time.monotonic() + 5
-        while time.monotonic() < deadline and (pool.status()['in_use'] or pool.status()['opening']):
-            time.sleep(0.05)
-        assert pool.status()['in_use'] == 0
+        assert wait_released(pool)['in_use'] == 0
         assert summary(server, actor, emp)[0] == 200
 
 
@@ -326,10 +341,7 @@ def test_concorrencia_progressiva_sem_vazamento_nem_5xx(server, tenants):
         for level in LEVELS:
             result = run_level(server, tenants, level)
             rows.append(result)
-            settle = time.monotonic() + 5
-            while time.monotonic() < settle and pool.status()['in_use']:
-                time.sleep(0.05)
-            status = pool.status()
+            status = wait_released(pool)
             assert result['leaks'] == 0, result                       # nenhuma resposta de outra empresa
             assert result['statuses'] == {200: result['requests']}, result
             assert status['in_use'] == 0 and status['opening'] == 0, status   # nada retido

@@ -89,7 +89,9 @@
       denied: ['status', 'inactive', 'negado'],
       snapshot_view: ['status', 'active', 'snapshot'],
       snapshot_print: ['status', 'warning', 'snapshot print'],
-      snapshot_export: ['status', 'active', 'snapshot export']
+      snapshot_export: ['status', 'active', 'snapshot export'],
+      // Ficha 360° (F1, DF-7): abertura concedida. Negativas vão para a trilha da empresa.
+      view_360: ['status', 'active', tr('employee360.audit.view', 'Ficha 360° aberta')]
     };
     const [kind, tone, label] = map[action] || ['status', 'inactive', action || '-'];
     return renderBadge(kind, tone, label);

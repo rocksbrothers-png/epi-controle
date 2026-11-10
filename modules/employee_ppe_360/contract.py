@@ -36,6 +36,8 @@ PAGE_DEFAULT = 20
 PAGE_MAX = 100
 CURSOR_MAX_LENGTH = 200
 _CURSOR_RE = re.compile(r'^[A-Za-z0-9_-]+$')
+# Papéis que nunca abrem a Ficha, mesmo com ``employees:view`` (DF-3).
+BLOCKED_ROLES = frozenset({'master_admin'})
 _DATE_RE = re.compile(r'^\d{4}-\d{2}-\d{2}(?:[T ][0-9:.+\-Z]*)?$')
 
 # Código → (status HTTP, mensagem genérica). As mensagens são neutras de
@@ -139,12 +141,18 @@ def parse_page_params(query) -> dict:
 def resolve_authorized_employee(connection, actor, employee_id, *, get_employee_fn=None, visibility_scope_fn=None):
     """Colaborador que o ator pode CONSULTAR, ou ``ContractError``.
 
-    Ordem: permissão funcional → existência → tenant/escopo. Inexistente e
+    Ordem: papel bloqueado (DF-3) → permissão funcional → existência →
+    tenant/escopo. Inexistente e
     fora de escopo produzem o mesmo erro 404. As funções de leitura e de
     escopo são as oficiais de ``modules.employees.service`` (injetáveis só
     para teste).
     """
     if not actor or not actor.get('role'):
+        raise ContractError('FORBIDDEN')
+    # DF-3 (F1): o Admin Master não abre a Ficha 360°, mesmo tendo
+    # ``employees:view`` para suporte. A Ficha é visão operacional do tenant;
+    # o bloqueio é por papel e acontece antes de qualquer leitura.
+    if actor.get('role') in BLOCKED_ROLES:
         raise ContractError('FORBIDDEN')
     try:
         ensure_permission(actor, PERM_EMPLOYEES_VIEW)
@@ -181,6 +189,7 @@ def error_envelope(error: ContractError) -> tuple[int, dict]:
 
 
 __all__ = [
+    'BLOCKED_ROLES',
     'CURSOR_MAX_LENGTH',
     'ERRORS',
     'PAGE_DEFAULT',

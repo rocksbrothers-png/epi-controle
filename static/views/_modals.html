@@ -186,3 +186,22 @@
       <div id="onboarding-feedback" class="form-feedback" aria-live="polite"></div>
     </div>
   </div>
+
+  <!-- Ficha 360° de EPI (F1) — aberta pela linha do colaborador; conteúdo desenhado por
+       static/js/modules/employee-ppe-360/ui/employee-ppe-360-view.js. Nada no app.js. -->
+  <div id="employee-ppe-360-modal" class="modal-overlay ppe360-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="employee-ppe-360-title">
+    <div class="card modal-card ppe360-dialog">
+      <header class="ppe360-header">
+        <div class="ppe360-header__titles">
+          <p class="ppe360-breadcrumb" data-i18n="employee360.breadcrumb">Controle de EPI / Colaboradores</p>
+          <h2 id="employee-ppe-360-title" class="ppe360-title"><span data-i18n="employee360.title">Ficha 360° de EPI</span> <span class="ppe360-title__icon" aria-hidden="true">⛑</span></h2>
+          <p class="hint ppe360-subtitle" data-i18n="employee360.subtitle">Visão consolidada individual</p>
+        </div>
+        <div class="ppe360-header__actions">
+          <button type="button" class="ghost" data-ppe360-action="refresh" data-i18n="employee360.refresh">Atualizar</button>
+          <button type="button" class="ghost" data-ppe360-action="close" aria-label="Fechar" data-i18n-aria-label="employee360.close" data-i18n="employee360.close">Fechar</button>
+        </div>
+      </header>
+      <div id="employee-ppe-360-root" class="ppe360-body" aria-live="polite" aria-busy="false"></div>
+    </div>
+  </div>

@@ -393,3 +393,10 @@ Detalhes em [`FICHA_360_F0_CONTRATOS.md`](FICHA_360_F0_CONTRATOS.md). Funcionali
   `modules/employee_ppe_360/contract.py` (autorização, escopo, paginação e envelope; somente leitura, sem rota).
 - Guarda de domínio `static/js/test/employee-ppe-360-boundary.js`, com sabotagens em
   `tests/test_employee_ppe_360_boundary.py`. `app.js`: 0 linhas alteradas; 654 declarações e 93 endpoints (sem mudança, base pós-Shell/Topbar).
+
+## Ficha 360° — F1 (2026-11-09): identificação e indicadores
+
+Detalhes em [`FICHA_360_F1_IDENTIFICACAO.md`](FICHA_360_F1_IDENTIFICACAO.md). Primeira interface da Ficha, toda modular:
+`static/js/modules/employee-ppe-360/{business,integrations,ui}` (regras, HTTP, painel) e o endpoint único
+`GET /api/employees/{id}/ppe-360/summary`. A entrada é pedida ao módulo pela linha do colaborador
+(`modules/employees/ui`). `app.js`: 0 linhas alteradas; 654 declarações e 93 endpoints (sem mudança).

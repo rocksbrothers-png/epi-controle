@@ -4729,5 +4729,102 @@
   },
   "mutation": {
     "refreshFailed": "The operation was saved, but the screen could not be refreshed. Reload the page to see the latest data."
+  },
+  "employee360": {
+    "open": "360° Record",
+    "openFor": "Open the 360° PPE record of {name}",
+    "breadcrumb": "PPE control / Employees",
+    "title": "360° PPE Record",
+    "subtitle": "Individual consolidated view",
+    "refresh": "Refresh",
+    "close": "Close",
+    "loading": "Loading the 360° record…",
+    "error": "The 360° record could not be loaded.",
+    "retry": "Try again",
+    "forbidden": "You do not have access to this employee’s 360° record.",
+    "notInformed": "Not provided",
+    "registration": "Employee ID",
+    "jobTitle": "Job title",
+    "unit": "Site",
+    "company": "Company",
+    "employmentType": "Employment type",
+    "legalEntity": "Employer CNPJ",
+    "temporaryAllocation": "Temporary assignment (home site: {unit})",
+    "unavailable": "Unavailable",
+    "nextStage": "Available in a later release",
+    "lifecycle": {
+      "active": "Active",
+      "archived": "Archived"
+    },
+    "contracted": {
+      "title": "Contractor",
+      "company": "Contractor company",
+      "cnpj": "CNPJ",
+      "contract": "Contract",
+      "period": "{start} to {end}",
+      "noContract": "No linked contract"
+    },
+    "responsibles": {
+      "title": "People responsible",
+      "unit": "Site",
+      "company": "Company",
+      "none": "No one registered",
+      "note": "Responsible by role at the site and the company. No direct manager is linked to the employee."
+    },
+    "indicators": {
+      "title": "Indicators",
+      "pending": "Pending",
+      "pendingNone": "No pending requests",
+      "pendingBreakdown": "Pending items by status",
+      "nextReplacement": "Next replacement",
+      "nextNone": "No replacement date recorded",
+      "overdueOne": "1 overdue replacement",
+      "overdueMany": "{count} overdue replacements",
+      "inUse": "In use",
+      "inUseNone": "No PPE in use",
+      "inUseDetail": "{units} units · {products} products · {categories} categories",
+      "uncategorized": "{count} without category",
+      "forbidden": "Indicators are not available for your profile."
+    },
+    "finance": {
+      "total": "Total cost",
+      "monthly": "Monthly cost",
+      "forecast": "Forecast cost"
+    },
+    "blocks": {
+      "centralTitle": "Main panel",
+      "complementaryTitle": "Additional areas",
+      "bodyMap": "PPE body map",
+      "activeEpis": "PPE in use",
+      "activeEpisHint": "Product, CA, expiry, delivery and replacement",
+      "requests": "Requests",
+      "requestsHint": "Pending, approved and fulfilled",
+      "deliveries": "Deliveries",
+      "deliveriesHint": "History and receipts",
+      "evaluations": "PPE evaluations",
+      "suggestions": "PPE suggestions",
+      "manuals": "Manuals and views",
+      "signatures": "Signatures and evidence",
+      "returns": "Returns",
+      "consumption": "Consumption and costs"
+    },
+    "audit": {
+      "view": "360° record opened"
+    },
+    "requestStatus": {
+      "SUBMITTED": "Requested",
+      "UNDER_REVIEW": "Under review",
+      "APPROVED": "Approved",
+      "WAITING_STOCK": "Awaiting stock",
+      "RESERVED": "Reserved",
+      "PICKING": "Picking",
+      "READY_FOR_DELIVERY": "Ready for delivery",
+      "DELIVERY_COMPLETED": "Delivered",
+      "DELIVERY_REFUSED": "Delivery refused",
+      "REJECTED": "Rejected",
+      "POSTPONED": "Postponed",
+      "CANCELLED": "Cancelled",
+      "UNKNOWN": "Unrecognised status"
+    }
   }
 }

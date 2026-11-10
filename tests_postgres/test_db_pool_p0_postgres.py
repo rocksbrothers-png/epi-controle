@@ -151,6 +151,10 @@ def summary(server, actor, employee_id):
     return get(server, actor, f'/api/employees/{employee_id}/ppe-360/summary')
 
 
+def _handler_falha():
+    raise RuntimeError('falha no handler')
+
+
 # ── Integridade transacional ─────────────────────────────────────────────────
 
 def test_excecao_no_meio_da_transacao_nao_vaza_para_a_proxima(server, tenants):
@@ -164,7 +168,7 @@ def test_excecao_no_meio_da_transacao_nao_vaza_para_a_proxima(server, tenants):
             with closing(cdb.get_connection()) as conn:
                 conn.execute('UPDATE companies SET legal_name = ? WHERE id = ?', (marker, tenants['A']['company']))
                 first_pid = conn.execute('SELECT pg_backend_pid() AS pid').fetchone()['pid']
-                raise RuntimeError('falha no handler')
+                _handler_falha()
         with closing(cdb.get_connection()) as conn:
             assert conn.execute('SELECT pg_backend_pid() AS pid').fetchone()['pid'] == first_pid  # MESMA conexão
             from psycopg2.extensions import TRANSACTION_STATUS_INTRANS

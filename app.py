@@ -38,7 +38,8 @@ from epi_backend.config import (
     PASSWORD_RECOVERY_KEY,
     UTC,
 )
-from core.database import PoolSaturatedError, PostgresConnectionWrapper, db_pool_status, get_connection
+from core.database import PostgresConnectionWrapper, db_pool_status, get_connection
+from core.db_pool import PoolSaturatedError
 from core import csp as csp_policy
 from core.http_cache import is_no_store, resolve_cache_control
 from core.root_routing import is_flutter_root_redirect_enabled, resolve_root_request
@@ -971,7 +972,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
             structured_log('info', 'http.client_disconnected', method='GET', path=parsed.path)
             return
         except PoolSaturatedError:
-            return send_db_pool_saturated(self, 'GET', parsed.path)
+            send_db_pool_saturated(self, 'GET', parsed.path)
+            return
         except Exception as exc:
             structured_log('error', 'http.unhandled_error', method='GET', path=parsed.path, error=str(exc))
             try:
@@ -1054,7 +1056,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
             structured_log('info', 'http.client_disconnected', method='POST', path=parsed.path)
             return
         except PoolSaturatedError:
-            return send_db_pool_saturated(self, 'POST', parsed.path)
+            send_db_pool_saturated(self, 'POST', parsed.path)
+            return
         except Exception as exc:
             structured_log('error', 'http.unhandled_error', method='POST', path=parsed.path, error=str(exc))
             try:
@@ -1107,7 +1110,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
             structured_log('info', 'http.client_disconnected', method='PUT', path=parsed.path)
             return
         except PoolSaturatedError:
-            return send_db_pool_saturated(self, 'PUT', parsed.path)
+            send_db_pool_saturated(self, 'PUT', parsed.path)
+            return
         except Exception as exc:
             structured_log('error', 'http.unhandled_error', method='PUT', path=parsed.path, error=str(exc))
             try:
@@ -1154,7 +1158,8 @@ class EpiHandler(SimpleHTTPRequestHandler):
             structured_log('info', 'http.client_disconnected', method='DELETE', path=parsed.path)
             return
         except PoolSaturatedError:
-            return send_db_pool_saturated(self, 'DELETE', parsed.path)
+            send_db_pool_saturated(self, 'DELETE', parsed.path)
+            return
         except Exception as exc:
             structured_log('error', 'http.unhandled_error', method='DELETE', path=parsed.path, error=str(exc))
             try:

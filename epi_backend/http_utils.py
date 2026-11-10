@@ -241,14 +241,14 @@ def send_db_pool_saturated(handler, method, path):
     """
     structured_log("warning", "http.db_pool_saturated", method=method, path=str(path).split("?", 1)[0])
     try:
-        return send_json(
+        send_json(
             handler,
             503,
             {"ok": False, "error": {"code": DB_POOL_SATURATED_CODE, "message": DB_POOL_SATURATED_MESSAGE}},
             headers={"Retry-After": "1"},
         )
     except (BrokenPipeError, ConnectionResetError):
-        return None
+        structured_log("info", "http.client_disconnected", method=method, path=str(path).split("?", 1)[0])
 
 
 def send_api_response(handler, status, *, data=None, message="", error=None, extra=None):

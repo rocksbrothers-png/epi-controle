@@ -114,7 +114,7 @@ def test_simple_connection_pool_ultrapassa_maxconn_sob_threads(monkeypatch):
         try:
             got.append(pool.getconn())
         except pg_pool.PoolError:
-            pass
+            return  # esgotamento também é um resultado possível do pool antigo
     threads = [threading.Thread(target=worker) for _ in range(30)]
     for t in threads:
         t.start()
@@ -479,6 +479,10 @@ def test_smtp_com_timeout(monkeypatch):
     assert seen['timeout'] == mailer.SMTP_TIMEOUT_SECONDS and seen['timeout'] > 0
 
 
+def _falhar(mensagem):
+    raise RuntimeError(mensagem)
+
+
 class _SessionConn:
     def __init__(self, unlock_fails=False):
         self.closed_called = 0
@@ -498,7 +502,7 @@ def test_bootstrap_descarta_conexao_com_advisory_lock_preso(pendente, descarta):
     conn = _SessionConn()
     with pytest.raises(RuntimeError):
         with _conexao_do_bootstrap(conn, {'advisory_lock_pendente': pendente}):
-            raise RuntimeError('falha no meio do bootstrap')
+            _falhar('falha no meio do bootstrap')
     assert (conn.discarded, conn.closed_called) == ((1, 0) if descarta else (0, 1))
 
 

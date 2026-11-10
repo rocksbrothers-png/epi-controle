@@ -1,10 +1,7 @@
 import os
 import threading
 
-from core.db_pool import (  # noqa: F401 — reexportado para app.py
-    BoundedConnectionPool,
-    PoolSaturatedError,
-)
+from core.db_pool import BoundedConnectionPool
 from epi_backend.config import DATABASE_URL, DB_CONNECTOR_AVAILABLE
 from epi_backend.http_utils import structured_log
 
@@ -20,7 +17,7 @@ except ModuleNotFoundError:
 DB_POOL_MINCONN = int(os.environ.get('DB_POOL_MINCONN', '1'))
 DB_POOL_MAXCONN = int(os.environ.get('DB_POOL_MAXCONN', '10'))
 # P0 (docs/POSTGRES_POOL_P0.md): espera limitada quando o pool está no teto.
-# Antes: 0 (falha imediata). Esgotado o prazo → PoolSaturatedError → HTTP 503.
+# Antes: 0 (falha imediata). Esgotado o prazo → core.db_pool.PoolSaturatedError → HTTP 503.
 DB_POOL_ACQUIRE_TIMEOUT_SECONDS = float(os.environ.get('DB_POOL_ACQUIRE_TIMEOUT_SECONDS', '5'))
 # Quantas conexões ociosas ficam abertas. Padrão = DB_POOL_MINCONN, o mesmo
 # comportamento do SimpleConnectionPool (que fechava toda devolução acima de minconn).

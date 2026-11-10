@@ -73,6 +73,7 @@ Sem dependência nova. Sem aumento do pool: `DB_POOL_MAXCONN` continua 10.
 | `DB_POOL_MAX_IDLE` | = `MINCONN` | Ociosas mantidas abertas (igual ao pool antigo) |
 | `DB_POOL_PING_IDLE_SECONDS` | 30 | Ociosa mais velha que isso recebe `SELECT 1` antes da entrega |
 | `DB_CONNECT_TIMEOUT_SECONDS` | 10 | Só se a `DATABASE_URL` não declarar `connect_timeout` |
+| `DB_APPLICATION_NAME` | `epi-controle-pool` | Nome das sessões do pool em `pg_stat_activity` (diagnóstico) |
 | `HTTP_REQUEST_QUEUE_SIZE` | 128 | Backlog do `listen` |
 | `SMTP_TIMEOUT_SECONDS` | 30 | Prazo do SMTP |
 

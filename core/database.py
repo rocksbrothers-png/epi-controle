@@ -26,6 +26,8 @@ DB_POOL_MAX_IDLE = int(os.environ.get('DB_POOL_MAX_IDLE', str(DB_POOL_MINCONN)))
 DB_POOL_PING_IDLE_SECONDS = float(os.environ.get('DB_POOL_PING_IDLE_SECONDS', '30'))
 # Prazo do connect TCP/TLS. Só é aplicado se a DATABASE_URL não declarar o seu.
 DB_CONNECT_TIMEOUT_SECONDS = int(os.environ.get('DB_CONNECT_TIMEOUT_SECONDS', '10'))
+# Identifica as sessões do pool em pg_stat_activity (diagnóstico; vazio desliga).
+DB_APPLICATION_NAME = os.environ.get('DB_APPLICATION_NAME', 'epi-controle-pool').strip()
 
 _CONNECTION_POOL = None
 _CONNECTION_POOL_LOCK = threading.Lock()
@@ -148,6 +150,8 @@ def _open_raw_connection():
     kwargs = {}
     if DB_CONNECT_TIMEOUT_SECONDS > 0 and 'connect_timeout' not in str(DATABASE_URL):
         kwargs['connect_timeout'] = DB_CONNECT_TIMEOUT_SECONDS
+    if DB_APPLICATION_NAME and 'application_name' not in str(DATABASE_URL):
+        kwargs['application_name'] = DB_APPLICATION_NAME
     return psycopg2.connect(DATABASE_URL, **kwargs)
 
 

@@ -93,11 +93,16 @@ def admin_connection():
 
 
 def backend_sessions():
-    """Sessões deste banco, exceto a do próprio observador, por estado."""
+    """Sessões abertas PELO POOL neste banco, por estado.
+
+    Filtra pelo ``application_name`` do pool: na suíte completa há sessões de
+    outros testes (conexões diretas, pool anterior) que não são deste teste.
+    """
+    import core.database as cdb
     with admin_connection() as conn, conn.cursor() as cur:
         cur.execute("SELECT state, count(*) FROM pg_stat_activity "
-                    "WHERE datname = current_database() AND pid <> pg_backend_pid() "
-                    "AND backend_type = 'client backend' GROUP BY state")
+                    "WHERE datname = current_database() AND application_name = %s GROUP BY state",
+                    (cdb.DB_APPLICATION_NAME,))
         return {state or 'null': n for state, n in cur.fetchall()}
 
 
@@ -135,7 +140,7 @@ def seed_tenants():
     return world
 
 
-def get(server, actor, path, timeout=20):
+def get(server, actor, path, timeout=90):
     from core.security import create_jwt_token
     request = Request(server + path, headers={'Authorization': 'Bearer ' + create_jwt_token(actor)})
     try:
@@ -313,7 +318,11 @@ def run_level(server, tenants, concurrency, rounds=ROUNDS):
 def test_concorrencia_progressiva_sem_vazamento_nem_5xx(server, tenants):
     maxconn = 10
     rows = []
-    with custom_pool(maxconn=maxconn, max_idle=maxconn, acquire_timeout=5) as pool:
+    # Prazo de aquisição folgado: aqui se prova teto, isolamento e ausência de
+    # vazamento. Num runner lento, 200 requisições sobre 10 conexões podem
+    # esperar mais que os 5 s de produção — a saturação (503) tem teste próprio.
+    with custom_pool(maxconn=maxconn, max_idle=maxconn, acquire_timeout=60) as pool:
+        baseline = sum(backend_sessions().values())  # ociosas do pool anterior, fora deste teste
         for level in LEVELS:
             result = run_level(server, tenants, level)
             rows.append(result)
@@ -325,10 +334,10 @@ def test_concorrencia_progressiva_sem_vazamento_nem_5xx(server, tenants):
             assert result['statuses'] == {200: result['requests']}, result
             assert status['in_use'] == 0 and status['opening'] == 0, status   # nada retido
             assert status['peak_in_use'] <= maxconn, status
-            assert result['db_sessions_peak'] <= maxconn + 1, result  # +1: a sessão do bootstrap/fixture
+            assert result['db_sessions_peak'] - baseline <= maxconn, (result, baseline)  # teto também no banco
             assert backend_sessions().get('idle in transaction', 0) == 0
             assert backend_sessions().get('idle in transaction (aborted)', 0) == 0
-    print('\nP0 concorrência (summary da Ficha 360°, empresas A/B intercaladas, maxconn=10, timeout=5 s)')
+    print('\nP0 concorrência (summary da Ficha 360°, empresas A/B intercaladas, maxconn=10)')
     print(' N   req  p50ms  p95ms  p99ms  5xx  vaz  pico_pool  esperas  espera_max_ms  sessões_banco')
     for r in rows:
         p = r['pool']

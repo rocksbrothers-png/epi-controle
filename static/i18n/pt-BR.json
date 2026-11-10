@@ -4729,5 +4729,102 @@
   },
   "mutation": {
     "refreshFailed": "A operação foi registrada, mas não foi possível atualizar a tela. Recarregue a página para ver os dados atualizados."
+  },
+  "employee360": {
+    "open": "Ficha 360°",
+    "openFor": "Abrir Ficha 360° de {name}",
+    "breadcrumb": "Controle de EPI / Colaboradores",
+    "title": "Ficha 360° de EPI",
+    "subtitle": "Visão consolidada individual",
+    "refresh": "Atualizar",
+    "close": "Fechar",
+    "loading": "Carregando a Ficha 360°…",
+    "error": "Não foi possível carregar a Ficha 360°.",
+    "retry": "Tentar novamente",
+    "forbidden": "Você não tem acesso à Ficha 360° deste colaborador.",
+    "notInformed": "Não informado",
+    "registration": "Matrícula",
+    "jobTitle": "Cargo",
+    "unit": "Unidade",
+    "company": "Empresa",
+    "employmentType": "Vínculo",
+    "legalEntity": "CNPJ empregador",
+    "temporaryAllocation": "Alocação temporária (unidade base: {unit})",
+    "unavailable": "Indisponível",
+    "nextStage": "Disponível em uma próxima etapa",
+    "lifecycle": {
+      "active": "Ativo",
+      "archived": "Arquivado"
+    },
+    "contracted": {
+      "title": "Terceirizado",
+      "company": "Empresa terceirizada",
+      "cnpj": "CNPJ",
+      "contract": "Contrato",
+      "period": "{start} a {end}",
+      "noContract": "Sem contrato vinculado"
+    },
+    "responsibles": {
+      "title": "Responsáveis",
+      "unit": "Unidade",
+      "company": "Empresa",
+      "none": "Nenhum responsável cadastrado",
+      "note": "Responsáveis pelo papel na unidade e na empresa. Não há gestor direto vinculado ao colaborador."
+    },
+    "indicators": {
+      "title": "Indicadores",
+      "pending": "Pendentes",
+      "pendingNone": "Nenhuma solicitação pendente",
+      "pendingBreakdown": "Pendências por situação",
+      "nextReplacement": "Próxima troca",
+      "nextNone": "Sem data de troca registrada",
+      "overdueOne": "1 troca vencida",
+      "overdueMany": "{count} trocas vencidas",
+      "inUse": "Em uso",
+      "inUseNone": "Nenhum EPI em uso",
+      "inUseDetail": "{units} un. · {products} produtos · {categories} categorias",
+      "uncategorized": "{count} sem categoria",
+      "forbidden": "Indicadores indisponíveis para o seu perfil."
+    },
+    "finance": {
+      "total": "Custo total",
+      "monthly": "Custo mensal",
+      "forecast": "Custo previsto"
+    },
+    "blocks": {
+      "centralTitle": "Painel central",
+      "complementaryTitle": "Áreas complementares",
+      "bodyMap": "Mapa corporal de EPIs",
+      "activeEpis": "EPIs em uso",
+      "activeEpisHint": "Produto, CA, validade, entrega e troca",
+      "requests": "Solicitações",
+      "requestsHint": "Pendentes, aprovadas e atendidas",
+      "deliveries": "Entregas",
+      "deliveriesHint": "Histórico e comprovantes",
+      "evaluations": "Avaliações de EPI",
+      "suggestions": "Sugestões de EPI",
+      "manuals": "Manuais e visualizações",
+      "signatures": "Assinaturas e evidências",
+      "returns": "Devoluções",
+      "consumption": "Consumo e custos"
+    },
+    "audit": {
+      "view": "Ficha 360° aberta"
+    },
+    "requestStatus": {
+      "SUBMITTED": "Solicitado",
+      "UNDER_REVIEW": "Em análise",
+      "APPROVED": "Aprovado",
+      "WAITING_STOCK": "Aguardando estoque",
+      "RESERVED": "Reservado",
+      "PICKING": "Separando",
+      "READY_FOR_DELIVERY": "Separado",
+      "DELIVERY_COMPLETED": "Entregue",
+      "DELIVERY_REFUSED": "Entrega recusada",
+      "REJECTED": "Rejeitado",
+      "POSTPONED": "Prorrogado",
+      "CANCELLED": "Cancelado",
+      "UNKNOWN": "Situação não reconhecida"
+    }
   }
 }

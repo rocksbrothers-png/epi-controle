@@ -4729,5 +4729,102 @@
   },
   "mutation": {
     "refreshFailed": "L’opération a été enregistrée, mais l’écran n’a pas pu être actualisé. Rechargez la page pour voir les données à jour."
+  },
+  "employee360": {
+    "open": "Fiche 360°",
+    "openFor": "Ouvrir la fiche 360° de {name}",
+    "breadcrumb": "Contrôle des EPI / Collaborateurs",
+    "title": "Fiche 360° des EPI",
+    "subtitle": "Vue consolidée individuelle",
+    "refresh": "Actualiser",
+    "close": "Fermer",
+    "loading": "Chargement de la fiche 360°…",
+    "error": "Impossible de charger la fiche 360°.",
+    "retry": "Réessayer",
+    "forbidden": "Vous n’avez pas accès à la fiche 360° de ce collaborateur.",
+    "notInformed": "Non renseigné",
+    "registration": "Matricule",
+    "jobTitle": "Poste",
+    "unit": "Site",
+    "company": "Entreprise",
+    "employmentType": "Type de contrat",
+    "legalEntity": "CNPJ employeur",
+    "temporaryAllocation": "Affectation temporaire (site d’origine : {unit})",
+    "unavailable": "Indisponible",
+    "nextStage": "Disponible dans une prochaine étape",
+    "lifecycle": {
+      "active": "Actif",
+      "archived": "Archivé"
+    },
+    "contracted": {
+      "title": "Sous-traitant",
+      "company": "Entreprise sous-traitante",
+      "cnpj": "CNPJ",
+      "contract": "Contrat",
+      "period": "du {start} au {end}",
+      "noContract": "Aucun contrat associé"
+    },
+    "responsibles": {
+      "title": "Responsables",
+      "unit": "Site",
+      "company": "Entreprise",
+      "none": "Aucun responsable enregistré",
+      "note": "Responsables selon leur rôle sur le site et dans l’entreprise. Aucun manager direct n’est associé au collaborateur."
+    },
+    "indicators": {
+      "title": "Indicateurs",
+      "pending": "En attente",
+      "pendingNone": "Aucune demande en attente",
+      "pendingBreakdown": "Demandes en attente par statut",
+      "nextReplacement": "Prochain remplacement",
+      "nextNone": "Aucune date de remplacement enregistrée",
+      "overdueOne": "1 remplacement en retard",
+      "overdueMany": "{count} remplacements en retard",
+      "inUse": "En service",
+      "inUseNone": "Aucun EPI en service",
+      "inUseDetail": "{units} unités · {products} produits · {categories} catégories",
+      "uncategorized": "{count} sans catégorie",
+      "forbidden": "Indicateurs indisponibles pour votre profil."
+    },
+    "finance": {
+      "total": "Coût total",
+      "monthly": "Coût mensuel",
+      "forecast": "Coût prévisionnel"
+    },
+    "blocks": {
+      "centralTitle": "Panneau principal",
+      "complementaryTitle": "Zones complémentaires",
+      "bodyMap": "Carte corporelle des EPI",
+      "activeEpis": "EPI en service",
+      "activeEpisHint": "Produit, CA, validité, remise et remplacement",
+      "requests": "Demandes",
+      "requestsHint": "En attente, approuvées et traitées",
+      "deliveries": "Remises",
+      "deliveriesHint": "Historique et justificatifs",
+      "evaluations": "Évaluations des EPI",
+      "suggestions": "Suggestions d’EPI",
+      "manuals": "Manuels et consultations",
+      "signatures": "Signatures et preuves",
+      "returns": "Retours",
+      "consumption": "Consommation et coûts"
+    },
+    "audit": {
+      "view": "Fiche 360° ouverte"
+    },
+    "requestStatus": {
+      "SUBMITTED": "Demandé",
+      "UNDER_REVIEW": "En analyse",
+      "APPROVED": "Approuvé",
+      "WAITING_STOCK": "En attente de stock",
+      "RESERVED": "Réservé",
+      "PICKING": "En préparation",
+      "READY_FOR_DELIVERY": "Prêt à remettre",
+      "DELIVERY_COMPLETED": "Remis",
+      "DELIVERY_REFUSED": "Remise refusée",
+      "REJECTED": "Rejeté",
+      "POSTPONED": "Reporté",
+      "CANCELLED": "Annulé",
+      "UNKNOWN": "Statut non reconnu"
+    }
   }
 }

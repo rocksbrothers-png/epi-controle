@@ -4729,5 +4729,102 @@
   },
   "mutation": {
     "refreshFailed": "Handlingen ble lagret, men skjermen kunne ikke oppdateres. Last inn siden på nytt for å se oppdaterte data."
+  },
+  "employee360": {
+    "open": "360°-kort",
+    "openFor": "Åpne 360°-verneutstyrskortet til {name}",
+    "breadcrumb": "Verneutstyrskontroll / Ansatte",
+    "title": "360°-kort for verneutstyr",
+    "subtitle": "Samlet individuell oversikt",
+    "refresh": "Oppdater",
+    "close": "Lukk",
+    "loading": "Laster 360°-kortet …",
+    "error": "Kunne ikke laste 360°-kortet.",
+    "retry": "Prøv igjen",
+    "forbidden": "Du har ikke tilgang til 360°-kortet for denne ansatte.",
+    "notInformed": "Ikke oppgitt",
+    "registration": "Ansattnummer",
+    "jobTitle": "Stilling",
+    "unit": "Enhet",
+    "company": "Selskap",
+    "employmentType": "Ansettelsesform",
+    "legalEntity": "Arbeidsgivers CNPJ",
+    "temporaryAllocation": "Midlertidig plassering (hjemmeenhet: {unit})",
+    "unavailable": "Ikke tilgjengelig",
+    "nextStage": "Tilgjengelig i en senere versjon",
+    "lifecycle": {
+      "active": "Aktiv",
+      "archived": "Arkivert"
+    },
+    "contracted": {
+      "title": "Innleid",
+      "company": "Innleid selskap",
+      "cnpj": "CNPJ",
+      "contract": "Kontrakt",
+      "period": "{start} til {end}",
+      "noContract": "Ingen tilknyttet kontrakt"
+    },
+    "responsibles": {
+      "title": "Ansvarlige",
+      "unit": "Enhet",
+      "company": "Selskap",
+      "none": "Ingen ansvarlige registrert",
+      "note": "Ansvarlige etter rolle i enheten og selskapet. Ingen direkte leder er knyttet til den ansatte."
+    },
+    "indicators": {
+      "title": "Indikatorer",
+      "pending": "Ventende",
+      "pendingNone": "Ingen ventende forespørsler",
+      "pendingBreakdown": "Ventende etter status",
+      "nextReplacement": "Neste utskifting",
+      "nextNone": "Ingen utskiftingsdato registrert",
+      "overdueOne": "1 forfalt utskifting",
+      "overdueMany": "{count} forfalte utskiftinger",
+      "inUse": "I bruk",
+      "inUseNone": "Ikke noe verneutstyr i bruk",
+      "inUseDetail": "{units} stk. · {products} produkter · {categories} kategorier",
+      "uncategorized": "{count} uten kategori",
+      "forbidden": "Indikatorene er ikke tilgjengelige for profilen din."
+    },
+    "finance": {
+      "total": "Total kostnad",
+      "monthly": "Månedlig kostnad",
+      "forecast": "Forventet kostnad"
+    },
+    "blocks": {
+      "centralTitle": "Hovedpanel",
+      "complementaryTitle": "Tilleggsområder",
+      "bodyMap": "Kroppskart for verneutstyr",
+      "activeEpis": "Verneutstyr i bruk",
+      "activeEpisHint": "Produkt, CA, gyldighet, utlevering og utskifting",
+      "requests": "Forespørsler",
+      "requestsHint": "Ventende, godkjente og utførte",
+      "deliveries": "Utleveringer",
+      "deliveriesHint": "Historikk og kvitteringer",
+      "evaluations": "Vurderinger av verneutstyr",
+      "suggestions": "Forslag til verneutstyr",
+      "manuals": "Manualer og visninger",
+      "signatures": "Signaturer og dokumentasjon",
+      "returns": "Returer",
+      "consumption": "Forbruk og kostnader"
+    },
+    "audit": {
+      "view": "360°-kort åpnet"
+    },
+    "requestStatus": {
+      "SUBMITTED": "Forespurt",
+      "UNDER_REVIEW": "Under vurdering",
+      "APPROVED": "Godkjent",
+      "WAITING_STOCK": "Venter på lager",
+      "RESERVED": "Reservert",
+      "PICKING": "Plukkes",
+      "READY_FOR_DELIVERY": "Klar for utlevering",
+      "DELIVERY_COMPLETED": "Utlevert",
+      "DELIVERY_REFUSED": "Utlevering avvist",
+      "REJECTED": "Avvist",
+      "POSTPONED": "Utsatt",
+      "CANCELLED": "Kansellert",
+      "UNKNOWN": "Ukjent status"
+    }
   }
 }

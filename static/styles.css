@@ -3902,3 +3902,67 @@ body.ux-density-compact th { padding: 6px 10px; font-size: 12.5px; }
   .migracao-card-grid { grid-template-columns: 1fr; }
   .migracao-steps li { flex: 1 1 100%; }
 }
+
+/* ── Ficha 360° de EPI (F1) ──────────────────────────────────────────────────
+   Painel aberto pela linha do colaborador (modules/employee-ppe-360/ui).
+   Só tokens do tema: vale para claro e escuro. Grade: 3 colunas ≥ 1024 px,
+   2 colunas entre 640 e 1023 px, 2×3 em telas pequenas (mapa vira bloco). */
+.ppe360-overlay { align-items: flex-start; overflow-y: auto; }
+.ppe360-open { white-space: nowrap; }
+.ppe360-dialog { width: min(1180px, 100%); max-height: none; display: grid; gap: 14px; padding: 18px 20px; background: var(--panel-strong); }
+.ppe360-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.ppe360-breadcrumb { margin: 0; font-size: .74rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.ppe360-title { margin: 2px 0 0; font-size: 1.35rem; display: flex; align-items: center; gap: 8px; }
+.ppe360-subtitle { margin: 2px 0 0; }
+.ppe360-header__actions { display: flex; gap: 8px; }
+.ppe360-body { display: grid; gap: 14px; min-height: 160px; }
+.ppe360-layout { display: grid; gap: 14px; }
+.ppe360-state { border: 1px dashed var(--line); border-radius: 12px; padding: 24px; text-align: center; display: grid; gap: 10px; justify-items: center; }
+.ppe360-state--error { border-color: var(--danger); color: var(--danger); }
+.ppe360-identity { display: flex; gap: 14px; align-items: flex-start; border: 1px solid var(--line); border-radius: 14px; padding: 14px; background: var(--panel); }
+.ppe360-avatar { flex: 0 0 52px; width: 52px; height: 52px; align-self: flex-start; border-radius: 50%; display: grid; place-items: center; font-size: 1.5rem; background: var(--color-bg-alt); }
+.ppe360-identity__body { display: grid; gap: 6px; min-width: 0; }
+.ppe360-identity__name { margin: 0; font-size: 1.15rem; overflow-wrap: anywhere; }
+.ppe360-meta-row { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: .88rem; color: var(--text); }
+.ppe360-meta__label { color: var(--muted); }
+.ppe360-note { margin: 0; }
+.ppe360-status--active { background: rgba(34,107,76,.12); color: var(--success); }
+.ppe360-status--archived { background: var(--color-bg-alt); color: var(--muted); }
+.ppe360-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.ppe360-card { border: 1px solid var(--line); border-radius: 12px; padding: 12px; background: var(--panel); display: grid; gap: 4px; align-content: start; min-width: 0; }
+.ppe360-card__title { margin: 0; font-size: .82rem; font-weight: 600; color: var(--muted); }
+.ppe360-card__value { font-size: 1.45rem; font-weight: 700; color: var(--text); }
+.ppe360-card .hint { margin: 0; }
+.ppe360-card--alert { border-color: var(--warning); }
+.ppe360-card--unavailable .ppe360-card__value { font-size: 1rem; font-weight: 600; color: var(--muted); }
+.ppe360-alert { margin: 0; font-size: .82rem; font-weight: 600; color: var(--danger); }
+.ppe360-breakdown { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: .82rem; }
+.ppe360-cards__forbidden { grid-column: 1 / -1; margin: 0; }
+.ppe360-responsibles { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--panel); }
+.ppe360-responsibles h4, .ppe360-responsibles h5 { margin: 0 0 6px; }
+.ppe360-responsibles h5 { font-size: .8rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.ppe360-resp-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 8px; }
+.ppe360-people { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: .88rem; }
+.ppe360-central { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+.ppe360-central__list { display: grid; gap: 10px; }
+.ppe360-complementary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.ppe360-block { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--panel); display: grid; gap: 4px; align-content: start; }
+.ppe360-block h4 { margin: 0; font-size: .95rem; }
+.ppe360-block .hint { margin: 0; }
+.ppe360-block--unavailable { background: var(--color-bg-alt); color: var(--muted); }
+.ppe360-bodymap { justify-items: center; text-align: center; align-content: center; min-height: 180px; }
+.ppe360-bodymap__icon { font-size: 2.6rem; }
+.ppe360-soon { justify-self: start; background: var(--color-bg-alt); color: var(--muted); border: 1px solid var(--line); }
+.ppe360-bodymap .ppe360-soon { justify-self: center; }
+@media (max-width: 1023px) {
+  .ppe360-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 639px) {
+  .ppe360-overlay { padding: 0; }
+  .ppe360-dialog { min-height: 100vh; border-radius: 0; padding: 14px 16px; }
+  /* o seletor de idioma global (fixo, topo direito) fica acima de todo modal */
+  .ppe360-header__titles { padding-right: 96px; }
+  .ppe360-identity { flex-direction: column; }
+  .ppe360-central, .ppe360-complementary, .ppe360-resp-grid { grid-template-columns: 1fr; }
+  .ppe360-bodymap { min-height: 120px; }
+}

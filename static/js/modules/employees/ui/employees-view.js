@@ -97,7 +97,12 @@
   }
 
   function buildEmployeeRow(item, canManageRecords) {
-    const actions = canManageRecords ? `<div class="action-group"><button class="ghost" data-employee-edit="${item.id}">${tr('edit', 'Editar')}</button><button class="ghost" data-employee-archive="${item.id}">${tr('employee.archive', 'Arquivar')}</button></div>` : '-';
+    // Ficha 360° (F1): o botão vem do próprio módulo da Ficha, que decide se o
+    // perfil pode abrir (o backend autoriza de novo a cada abertura).
+    const ppe360 = globalThis.__EPI_EMPLOYEE_PPE_360_VIEW__?.openButtonHtml?.(item.id, item.name) || '';
+    const actions = canManageRecords
+      ? `<div class="action-group">${ppe360}<button class="ghost" data-employee-edit="${item.id}">${tr('edit', 'Editar')}</button><button class="ghost" data-employee-archive="${item.id}">${tr('employee.archive', 'Arquivar')}</button></div>`
+      : (ppe360 ? `<div class="action-group">${ppe360}</div>` : '-');
     const allocation = allocationTypeLabel(item.unit_allocation_type);
     const preferredLabel = String(item.preferred_contact_channel || '').toLowerCase() === 'email' ? 'E-mail' : 'WhatsApp';
     const contact = [item.whatsapp ? `WhatsApp: ${escapeText(item.whatsapp)}` : '', item.email ? `E-mail: ${escapeText(item.email)}` : '', `${tr('employee.preferredContactLabel', 'Preferido')}: ${preferredLabel}`].filter(Boolean).join('<br>') || '-';
@@ -109,11 +114,15 @@
   }
 
   function buildEmployeeOpsRow(item) {
+    // Ficha 360° (F1): mesma entrada da linha de Colaboradores, para o
+    // Administrador Local (cuja lista é esta). Sem o módulo, a célula é a original.
+    const ppe360 = globalThis.__EPI_EMPLOYEE_PPE_360_VIEW__?.openButtonHtml?.(item.id, item.name) || '';
+    const select = `<button class="ghost" style="font-size:12px;padding:4px 10px;" data-ops-select-employee="${item.id}">${tr('employee.select', 'Selecionar')}</button>`;
     const allocation = allocationTypeLabel(item.unit_allocation_type);
     const tipoVinculoRaw = item.tipo_vinculo || 'CLT';
     const tipoVinculo = employmentTypeLabel(tipoVinculoRaw);
     const empresaOrigem = isContractedVinculoJs(tipoVinculoRaw) && item.empresa_origem ? `<br><small>${escapeText(item.empresa_origem)}</small>` : '';
-    return `<tr><td>${escapeText(`${item.company_name}`)}</td><td>${escapeText(`${item.employee_id_code}`)}</td><td>${escapeText(`${item.name}`)}</td><td>${escapeText(`${item.sector}`)}</td><td>${escapeText(`${item.role_name}`)}</td><td>${tipoVinculo}${empresaOrigem}</td><td>${escapeText(`${item.current_unit_name || item.unit_name}`)}</td><td>${allocation}</td><td><button class="ghost" style="font-size:12px;padding:4px 10px;" data-ops-select-employee="${item.id}">${tr('employee.select', 'Selecionar')}</button></td></tr>`;
+    return `<tr><td>${escapeText(`${item.company_name}`)}</td><td>${escapeText(`${item.employee_id_code}`)}</td><td>${escapeText(`${item.name}`)}</td><td>${escapeText(`${item.sector}`)}</td><td>${escapeText(`${item.role_name}`)}</td><td>${tipoVinculo}${empresaOrigem}</td><td>${escapeText(`${item.current_unit_name || item.unit_name}`)}</td><td>${allocation}</td><td>${ppe360 ? `<div class="action-group">${ppe360}${select}</div>` : select}</td></tr>`;
   }
 
   function currentEmployeesBulkScope() {

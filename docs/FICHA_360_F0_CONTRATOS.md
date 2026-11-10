@@ -85,6 +85,8 @@ operacional). Nenhum token ou permissão é copiado para dentro da Ficha, e nada
 
 ## 6. Decisões que permanecem abertas (não resolvidas pela F0)
 
-- Acesso de `master_admin` à Ficha (D-10): a F0 mantém a regra atual de `employees:view` + escopo e não cria
-  bloqueio novo.
+- ~~Acesso de `master_admin` à Ficha (D-10)~~ — **decidido na F1 (DF-3):** bloqueado no contrato
+  (`BLOCKED_ROLES`), antes de qualquer leitura. Ver [`FICHA_360_F1_IDENTIFICACAO.md`](FICHA_360_F1_IDENTIFICACAO.md).
+- A F1 abriu a primeira rota e a única escrita do pacote (auditoria de abertura, DF-7); as guardas desta
+  F0 foram atualizadas para fixar exatamente isso.
 - Classificação de região corporal (mapa), rateio por utilização e demais decisões da especificação consolidada.

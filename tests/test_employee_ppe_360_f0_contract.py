@@ -156,6 +156,34 @@ def test_perfis_sem_employees_view_sao_recusados_antes_de_qualquer_leitura(conn,
     assert calls == [], 'o banco não pode ser consultado sem a permissão funcional'
 
 
+def test_admin_master_e_bloqueado_antes_de_qualquer_leitura(conn, monkeypatch):
+    """DF-3 (F1): o Admin Master tem ``employees:view`` para suporte, mas não abre
+    a Ficha 360°. O bloqueio é por papel e vem antes de qualquer leitura."""
+    _unit(monkeypatch, None)
+    assert PERM_EMPLOYEES_VIEW in PERMISSIONS['master_admin'], 'premissa: o bloqueio não depende da permissão'
+    calls = []
+
+    def spy_get(connection, employee_id):
+        calls.append(employee_id)
+        return {'id': employee_id, 'company_id': 1}
+
+    for company_id in (None, 1):
+        actor = {'id': 1, 'role': 'master_admin', 'company_id': company_id}
+        with pytest.raises(ContractError) as exc:
+            resolve_authorized_employee(conn, actor, 100, get_employee_fn=spy_get,
+                                        visibility_scope_fn=lambda *a: None)
+        assert exc.value.code == 'FORBIDDEN' and exc.value.status == 403
+    assert calls == []
+    assert contract.BLOCKED_ROLES == frozenset({'master_admin'})
+
+
+@pytest.mark.parametrize('role', ['general_admin', 'registry_admin', 'admin', 'user'])
+def test_demais_perfis_com_employees_view_continuam_abrindo(conn, monkeypatch, role):
+    _unit(monkeypatch, 10)
+    actor = {'id': 7, 'role': role, 'company_id': 1, 'linked_employee_id': 100}
+    assert resolve_authorized_employee(conn, actor, 100)['id'] == 100
+
+
 def test_ator_ausente_ou_sem_papel_e_recusado(conn):
     for actor in (None, {}, {'id': 1}):
         with pytest.raises(ContractError) as exc:
@@ -244,11 +272,30 @@ def _package_sources():
     return sorted(PACKAGE.rglob('*.py'))
 
 
+# Única exceção ao somente-leitura (DF-7, F1): a auditoria de abertura, e só
+# pelos registradores oficiais — nenhum SQL de escrita no pacote.
+AUDIT_FILE = 'audit.py'
+AUDIT_WRITERS = {'register_ficha_epi_audit', 'register_company_audit'}
+
+
 def test_pacote_e_somente_leitura():
     for path in _package_sources():
         text = path.read_text(encoding='utf-8')
         assert not _SQL_WRITE.search(text), f'{path.name} escreve no banco'
-        assert '.commit(' not in text, f'{path.name} faz commit'
+        if path.name != AUDIT_FILE:
+            assert '.commit(' not in text, f'{path.name} faz commit'
+
+
+def test_unica_escrita_e_a_auditoria_pelos_registradores_oficiais():
+    tree = ast.parse((PACKAGE / AUDIT_FILE).read_text(encoding='utf-8'))
+    calls = {node.func.id if isinstance(node.func, ast.Name) else node.func.attr
+             for node in ast.walk(tree) if isinstance(node, ast.Call)
+             and isinstance(node.func, (ast.Name, ast.Attribute))}
+    assert AUDIT_WRITERS <= calls
+    assert 'execute' not in calls and 'executemany' not in calls, 'auditoria sem SQL próprio'
+    others = [p.name for p in _package_sources() if p.name != AUDIT_FILE
+              and any(w in p.read_text(encoding='utf-8') for w in AUDIT_WRITERS)]
+    assert others == [], f'escrita fora de {AUDIT_FILE}: {others}'
 
 
 def test_pacote_nao_depende_de_compras():
@@ -266,11 +313,22 @@ def test_pacote_nao_depende_de_compras():
                 assert not name.startswith('modules.purchases'), f'{path.name} importa {name}'
 
 
-def test_f0_nao_expoe_rota():
-    assert not (PACKAGE / 'routes.py').exists(), 'rotas da Ficha entram a partir da F1'
+def test_f1_expoe_somente_a_rota_de_resumo():
+    """Até a F1 não havia rota; a F1 expõe exatamente UMA, de leitura. Cada fatia
+    seguinte atualiza esta lista conscientemente."""
+    from modules.employee_ppe_360 import routes
+
+    registered = []
+
+    class _Router:
+        def register(self, method, path, handler, regex=False):
+            registered.append((method, path, regex))
+
+    routes.register_routes(_Router())
+    assert registered == [('GET', r'^/api/employees/(\d+)/ppe-360/summary$', True)]
     app_source = (ROOT / 'app.py').read_text(encoding='utf-8')
-    assert 'employee_ppe_360' not in app_source
-    assert 'ppe-360' not in app_source
+    assert app_source.count('_reg_employee_ppe_360(router)') == 1
+    assert 'ppe-360' not in app_source, 'caminhos da Ficha vivem no módulo, não no app.py'
 
 
 def test_contrato_documentado():

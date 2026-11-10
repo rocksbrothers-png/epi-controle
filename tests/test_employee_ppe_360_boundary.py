@@ -99,7 +99,7 @@ def test_sabotagem_dominio_removido(sandbox: Path):
 def test_integrations_pode_fazer_http(sandbox: Path):
     """A regra é de camada, não de nome: HTTP é permitido em integrations/."""
     integ = sandbox / DOMAIN / 'integrations'
-    integ.mkdir()
+    integ.mkdir(exist_ok=True)  # existe desde a F1
     (integ / 'employee-ppe-360-api.js').write_text(
         "'use strict';\n(function () {\n  globalThis.__EPI_EMPLOYEE_PPE_360_API__ = Object.freeze({\n"
         "    summary: (id) => globalThis.api(`/api/employees/${id}/ppe-360/summary`)\n  });\n})();\n",

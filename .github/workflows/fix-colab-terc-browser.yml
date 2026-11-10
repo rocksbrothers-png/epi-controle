@@ -25,6 +25,8 @@ on:
       - 'scripts/browser/ubx_platform_brand.py'
       - 'scripts/browser/ubx_print_popup.py'
       - 'scripts/browser/ubx_shell_topbar.py'
+      - 'scripts/browser/ubx_employee_ppe_360.py'
+      - 'modules/employee_ppe_360/**'
       - 'modules/ficha/**'
       - '.github/workflows/fix-colab-terc-browser.yml'
   workflow_dispatch:
@@ -113,6 +115,11 @@ jobs:
           mkdir -p /tmp/ubx-shell-main
           git archive FETCH_HEAD static | tar -x -C /tmp/ubx-shell-main
           python scripts/browser/ubx_shell_topbar.py --baseline-static /tmp/ubx-shell-main/static --output browser-evidence/ubx-shell-topbar
+      # Ficha 360° de EPI (F1): entrada pela linha, uma requisição, estados, descarte de resposta obsoleta,
+      # perfis (DF-3), finanças indisponíveis e layout mobile.
+      - if: ${{ !cancelled() }}
+        name: Ficha 360 F1 identification and indicators (five locales, desktop/mobile)
+        run: python scripts/browser/ubx_employee_ppe_360.py --output browser-evidence/employee-ppe-360
       # SECURITY-OUTPUT-XSS-V2: texto de colaborador, unidade e EPI contaminado em todas as telas não executa.
       - if: ${{ !cancelled() }}
         run: python scripts/browser/security_output_xss_v2.py --output browser-evidence/security-output-xss-v2

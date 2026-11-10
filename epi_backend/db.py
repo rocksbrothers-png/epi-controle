@@ -1,17 +1,7 @@
 import threading
 import re
 
-from epi_backend.config import (
-    DATABASE_URL,
-    DB_CONNECTOR_AVAILABLE,
-    DB_POOL_MAXCONN,
-    DB_POOL_MINCONN,
-    DictCursor,
-    psycopg2_pool,
-)
-
-_CONNECTION_POOL = None
-_CONNECTION_POOL_LOCK = threading.Lock()
+from epi_backend.config import DictCursor
 
 # Tables known to lack an `id` column. INSERTs into these must not append
 # `RETURNING id` (Postgres rejects it with `column "id" does not exist`, which
@@ -174,56 +164,28 @@ class PostgresConnectionWrapper:
         return getattr(self._connection, name)
 
 
+# P0 (docs/POSTGRES_POOL_P0.md): havia aqui um SEGUNDO SimpleConnectionPool
+# (não thread-safe), sem nenhum chamador em runtime. Para que nenhum caminho
+# volte a abrir um pool paralelo — que somaria conexões ao teto do primeiro —,
+# estas funções delegam ao pool único de ``core.database``.
 def get_connection_pool():
-    global _CONNECTION_POOL
-    if _CONNECTION_POOL:
-        return _CONNECTION_POOL
-    with _CONNECTION_POOL_LOCK:
-        if _CONNECTION_POOL:
-            return _CONNECTION_POOL
-        if not DB_CONNECTOR_AVAILABLE:
-            raise RuntimeError("Instale psycopg2-binary para usar o servidor Postgres/Supabase.")
-        if not DATABASE_URL:
-            raise RuntimeError("DATABASE_URL nao configurada.")
-        _CONNECTION_POOL = psycopg2_pool.SimpleConnectionPool(DB_POOL_MINCONN, DB_POOL_MAXCONN, DATABASE_URL)
-        return _CONNECTION_POOL
+    from core.database import get_connection_pool as _get_connection_pool
+    return _get_connection_pool()
 
 
-def release_connection(raw_connection):
-    pool = get_connection_pool()
-    if not getattr(raw_connection, "closed", False):
-        raw_connection.rollback()
-    pool.putconn(raw_connection)
+def release_connection(raw_connection, discard=False):
+    from core.database import release_connection as _release_connection
+    return _release_connection(raw_connection, discard=discard)
 
 
 def db_pool_status():
-    pool = _CONNECTION_POOL
-    if not pool:
-        return {
-            "enabled": DB_CONNECTOR_AVAILABLE and bool(DATABASE_URL),
-            "initialized": False,
-            "minconn": DB_POOL_MINCONN,
-            "maxconn": DB_POOL_MAXCONN,
-            "available": 0,
-            "in_use": 0,
-        }
-    return {
-        "enabled": True,
-        "initialized": True,
-        "minconn": DB_POOL_MINCONN,
-        "maxconn": DB_POOL_MAXCONN,
-        "available": int(len(getattr(pool, "_pool", []) or [])),
-        "in_use": int(len(getattr(pool, "_used", {}) or {})),
-    }
+    from core.database import db_pool_status as _db_pool_status
+    return _db_pool_status()
 
 
 def get_connection():
-    if not DB_CONNECTOR_AVAILABLE:
-        raise RuntimeError("Instale psycopg2-binary para usar o servidor Postgres/Supabase.")
-    if not DATABASE_URL:
-        raise RuntimeError("DATABASE_URL nao configurada.")
-    raw_connection = get_connection_pool().getconn()
-    return PostgresConnectionWrapper(raw_connection, release_hook=release_connection)
+    from core.database import get_connection as _get_connection
+    return _get_connection()
 
 
 def row_to_dict(row):

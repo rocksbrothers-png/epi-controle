@@ -19,6 +19,8 @@ import json
 import os
 from datetime import datetime, timezone
 
+from core.session_locks import SessionAdvisoryLock
+
 # Namespace fixo (int4) para os advisory locks por job desta fila.
 _ADVISORY_NS = 790317
 
@@ -307,12 +309,19 @@ def execute_claim(job_id, owner, attempt, *, connection_factory):
         raise PermissionError('Migração assíncrona desabilitada (MIGRATION_ASYNC_ENABLED).')
     connection = connection_factory()
     locked = False
+    # Acompanha o advisory de SESSÃO: se houver qualquer dúvida de que ele foi
+    # solto (aquisição que levantou exceção, unlock não confirmado), a conexão
+    # é descartada em vez de voltar ao pool (core/session_locks.py).
+    session_lock = SessionAdvisoryLock(
+        connection,
+        acquire_sql='SELECT pg_try_advisory_lock(%s, %s) AS ok',
+        release_sql='SELECT pg_advisory_unlock(%s, %s) AS released',
+        params=(_ADVISORY_NS, int(job_id)),
+    )
     try:
         # Advisory de SESSÃO: sobrevive ao commit interno de run_migration e
         # serializa a execução deste job entre workers. Liberado no finally.
-        got = connection.execute('SELECT pg_try_advisory_lock(%s, %s) AS ok',
-                                 (_ADVISORY_NS, int(job_id))).fetchone()
-        if not _as_dict(got)['ok']:
+        if not session_lock.try_acquire():
             connection.rollback()
             raise PermissionError('Outro worker já executa este job.')
         locked = True
@@ -408,20 +417,14 @@ def execute_claim(job_id, owner, attempt, *, connection_factory):
         if locked:
             try:
                 connection.rollback()
-                connection.execute('SELECT pg_advisory_unlock(%s, %s)', (_ADVISORY_NS, int(job_id)))
+                session_lock.release()
                 connection.commit()
             except Exception:
-                # Resíduo P2-B (fail-closed, só liveness): se o unlock falhar numa
-                # conexão ainda VIVA, o close() abaixo a devolve ao pool (putconn)
-                # sem derrubar o advisory de sessão, e o job pode ficar preso em
-                # 'running' — nunca escrita indevida. A correção completa (descartar
-                # o backend do pool) fica na fatia de hardening de recuperação; um
-                # backend morto já é descartado pelo pool, liberando o lock.
-                try:
-                    connection.rollback()
-                except Exception:
-                    pass
-        connection.close()
+                # Resíduo P2-B, fechado no P0 do pool: o advisory é de SESSÃO e o
+                # rollback não o solta. Se o unlock (ou o commit que o segue)
+                # falhar, a conexão é DESCARTADA; fechar a sessão libera o lock.
+                session_lock.uncertain = True
+        session_lock.finish()
 
 
 def _decrypt_payload(job, company_id, actor_user_id):

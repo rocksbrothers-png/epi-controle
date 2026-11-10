@@ -1,6 +1,7 @@
 import os
 import threading
 
+from core.db_pool import BoundedConnectionPool
 from epi_backend.config import DATABASE_URL, DB_CONNECTOR_AVAILABLE
 from epi_backend.http_utils import structured_log
 
@@ -15,6 +16,18 @@ except ModuleNotFoundError:
 
 DB_POOL_MINCONN = int(os.environ.get('DB_POOL_MINCONN', '1'))
 DB_POOL_MAXCONN = int(os.environ.get('DB_POOL_MAXCONN', '10'))
+# P0 (docs/POSTGRES_POOL_P0.md): espera limitada quando o pool está no teto.
+# Antes: 0 (falha imediata). Esgotado o prazo → core.db_pool.PoolSaturatedError → HTTP 503.
+DB_POOL_ACQUIRE_TIMEOUT_SECONDS = float(os.environ.get('DB_POOL_ACQUIRE_TIMEOUT_SECONDS', '5'))
+# Quantas conexões ociosas ficam abertas. Padrão = DB_POOL_MINCONN, o mesmo
+# comportamento do SimpleConnectionPool (que fechava toda devolução acima de minconn).
+DB_POOL_MAX_IDLE = int(os.environ.get('DB_POOL_MAX_IDLE', str(DB_POOL_MINCONN)))
+# Conexão ociosa há mais que isso recebe um SELECT 1 antes de ser entregue (<0 desliga).
+DB_POOL_PING_IDLE_SECONDS = float(os.environ.get('DB_POOL_PING_IDLE_SECONDS', '30'))
+# Prazo do connect TCP/TLS. Só é aplicado se a DATABASE_URL não declarar o seu.
+DB_CONNECT_TIMEOUT_SECONDS = int(os.environ.get('DB_CONNECT_TIMEOUT_SECONDS', '10'))
+# Identifica as sessões do pool em pg_stat_activity (diagnóstico; vazio desliga).
+DB_APPLICATION_NAME = os.environ.get('DB_APPLICATION_NAME', 'epi-controle-pool').strip()
 
 _CONNECTION_POOL = None
 _CONNECTION_POOL_LOCK = threading.Lock()
@@ -116,11 +129,36 @@ class PostgresConnectionWrapper:
             return
         self._connection.close()
 
+    def discard(self):
+        """Fecha a conexão sem devolvê-la para reuso (estado de sessão sujo)."""
+        if self._released:
+            return
+        self._released = True
+        if self._release_hook:
+            self._release_hook(self._connection, discard=True)
+            return
+        self._connection.close()
+
     def __getattr__(self, name):
         return getattr(self._connection, name)
 
 
 LegacyPostgresConnectionWrapper = PostgresConnectionWrapper
+
+
+def _open_raw_connection():
+    kwargs = {}
+    if DB_CONNECT_TIMEOUT_SECONDS > 0 and 'connect_timeout' not in str(DATABASE_URL):
+        kwargs['connect_timeout'] = DB_CONNECT_TIMEOUT_SECONDS
+    if DB_APPLICATION_NAME and 'application_name' not in str(DATABASE_URL):
+        kwargs['application_name'] = DB_APPLICATION_NAME
+    return psycopg2.connect(DATABASE_URL, **kwargs)
+
+
+def _pool_event(event, **fields):
+    # Só números e motivos fixos: nenhum dado de requisição, usuário ou DSN.
+    level = 'warning' if event in ('saturated', 'foreign_connection_returned', 'duplicate_return') else 'info'
+    structured_log(level, f'db.pool_{event}', **fields)
 
 
 def get_connection_pool():
@@ -134,14 +172,30 @@ def get_connection_pool():
             raise RuntimeError('Instale psycopg2-binary para usar o servidor Postgres/Supabase.')
         if not DATABASE_URL:
             raise RuntimeError('DATABASE_URL nao configurada.')
-        _CONNECTION_POOL = psycopg2_pool.SimpleConnectionPool(DB_POOL_MINCONN, DB_POOL_MAXCONN, DATABASE_URL)
-        structured_log('info', 'db.pool_initialized', minconn=DB_POOL_MINCONN, maxconn=DB_POOL_MAXCONN)
+        _CONNECTION_POOL = BoundedConnectionPool(
+            _open_raw_connection,
+            minconn=DB_POOL_MINCONN,
+            maxconn=DB_POOL_MAXCONN,
+            max_idle=DB_POOL_MAX_IDLE,
+            acquire_timeout=DB_POOL_ACQUIRE_TIMEOUT_SECONDS,
+            ping_idle_seconds=DB_POOL_PING_IDLE_SECONDS,
+            on_event=_pool_event,
+        )
+        structured_log(
+            'info', 'db.pool_initialized',
+            minconn=_CONNECTION_POOL.minconn, maxconn=_CONNECTION_POOL.maxconn,
+            max_idle=_CONNECTION_POOL.max_idle,
+            acquire_timeout_seconds=_CONNECTION_POOL.acquire_timeout,
+        )
         return _CONNECTION_POOL
 
 
-def release_connection(raw_connection):
+def release_connection(raw_connection, discard=False):
+    """Devolve a conexão ao pool. O pool desfaz transação aberta/abortada
+    (rollback) e descarta conexão quebrada; ``discard=True`` fecha a conexão
+    em vez de reaproveitá-la (estado de sessão que rollback não desfaz)."""
     pool = get_connection_pool()
-    pool.putconn(raw_connection)
+    pool.putconn(raw_connection, discard=discard)
 
 
 def db_pool_status():
@@ -155,16 +209,9 @@ def db_pool_status():
             'available': 0,
             'in_use': 0
         }
-    available = len(getattr(pool, '_pool', []) or [])
-    in_use = len(getattr(pool, '_used', {}) or {})
-    return {
-        'enabled': True,
-        'initialized': True,
-        'minconn': DB_POOL_MINCONN,
-        'maxconn': DB_POOL_MAXCONN,
-        'available': int(available),
-        'in_use': int(in_use)
-    }
+    data = pool.status()
+    data.update({'enabled': True, 'initialized': True})
+    return data
 
 
 def get_connection():

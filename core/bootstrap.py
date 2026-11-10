@@ -22,6 +22,7 @@ from contextlib import contextmanager as _contextmanager
 from modules.safety_library.schema import ensure_safety_library
 from core import schema
 from core.database import get_connection as _get_connection
+from core.session_locks import SessionAdvisoryLock as _SessionAdvisoryLock
 from core.security import hash_password as _hash_password
 from epi_backend.config import DB_CONNECTOR_AVAILABLE as _DB_CONNECTOR, DATABASE_URL as _DATABASE_URL
 from epi_backend.http_utils import structured_log
@@ -70,10 +71,35 @@ def _memo_catalogo_do_bootstrap(connection):
         fechar_memo_catalogo(connection)
 
 
+@_contextmanager
+def _conexao_do_bootstrap(connection, sessao):
+    """Devolve a conexão do bootstrap ao pool — ou a DESCARTA (P0).
+
+    ``pg_try_advisory_lock`` é de SESSÃO: o ``rollback`` que o pool faz na
+    devolução não o solta. Se o bootstrap terminar (por exceção ou por falha do
+    ``pg_advisory_unlock``) com o lock ainda preso, a conexão é fechada em vez
+    de reaproveitada; fechar a sessão no servidor libera o lock. Sem isso, uma
+    requisição HTTP herdaria a conexão segurando o lock de inicialização e os
+    próximos bootstraps (outra instância, reinício) não o obteriam.
+
+    O estado do lock é acompanhado por ``SessionAdvisoryLock`` (em
+    ``sessao['lock']``): tentativa que levantou exceção e liberação não
+    confirmada pelo servidor também contam como "pode estar preso".
+    """
+    try:
+        yield connection
+    finally:
+        lock = sessao.get('lock')
+        pendente = sessao.get('advisory_lock_pendente') or (lock is not None and lock.must_discard)
+        if pendente and hasattr(connection, 'discard'):
+            connection.discard()
+        else:
+            connection.close()
+
+
 def init_db():
     import os as _os
     import time as _time
-    from contextlib import closing as _closing
     from datetime import datetime as _datetime, timezone as _timezone
     from epi_backend.unit_jv_lifecycle import (
         ensure_unit_joint_venture_periods_table as _ensure_jv_table,
@@ -100,17 +126,22 @@ def init_db():
     if not connection:
         raise RuntimeError(f'Falha ao conectar no banco após {retries} tentativas: {last_error}')
 
-    with _closing(connection) as connection, _memo_catalogo_do_bootstrap(connection):
+    sessao_bootstrap = {'advisory_lock_pendente': False}
+    with _conexao_do_bootstrap(connection, sessao_bootstrap) as connection, _memo_catalogo_do_bootstrap(connection):
         schema.run_schema_precheck(connection)
         advisory_lock_acquired = False
+        bootstrap_lock = None
         if _DB_CONNECTOR and _DATABASE_URL:
+            bootstrap_lock = _SessionAdvisoryLock(
+                connection,
+                acquire_sql='SELECT pg_try_advisory_lock(?) AS acquired',
+                release_sql='SELECT pg_advisory_unlock(?) AS released',
+                params=(advisory_lock_key,),
+            )
+            sessao_bootstrap['lock'] = bootstrap_lock
             for lock_attempt in range(1, lock_retries + 1):
                 try:
-                    lock_row = connection.execute(
-                        'SELECT pg_try_advisory_lock(?) AS acquired',
-                        (advisory_lock_key,)
-                    ).fetchone()
-                    lock_acquired = bool((lock_row or {}).get('acquired'))
+                    lock_acquired = bootstrap_lock.try_acquire()
                 except Exception as exc:
                     lock_acquired = False
                     structured_log(
@@ -551,9 +582,12 @@ def init_db():
             )
         except Exception as _mig_e:
             structured_log('warning', 'db.retroactive_epi_request_status_fix', error=str(_mig_e))
-        if advisory_lock_acquired:
+        if advisory_lock_acquired and bootstrap_lock is not None:
             try:
-                connection.execute('SELECT pg_advisory_unlock(?)', (advisory_lock_key,))
+                if not bootstrap_lock.release():
+                    # O servidor diz que ESTA sessão não detinha o lock: a conexão
+                    # será descartada (ver docs/POSTGRES_POOL_P0.md, pooler em modo transação).
+                    structured_log('warning', 'db.init_lock_release_unconfirmed', lock_key=advisory_lock_key)
             except Exception as exc:
                 structured_log('warning', 'db.init_lock_release_failed', lock_key=advisory_lock_key, error=str(exc))
         connection.commit()

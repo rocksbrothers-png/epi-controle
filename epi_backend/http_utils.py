@@ -208,11 +208,13 @@ def structured_log(level, event, **fields):
     print(json.dumps(payload, ensure_ascii=False), flush=True)
 
 
-def send_json(handler, status, payload):
+def send_json(handler, status, payload, headers=None):
     body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
     handler.send_response(status)
     handler.send_header("Content-Type", "application/json; charset=utf-8")
     handler.send_header("Content-Length", str(len(body)))
+    for name, value in (headers or {}).items():
+        handler.send_header(name, value)
     handler.end_headers()
     handler.wfile.write(body)
     if str(handler.path).startswith("/api/") or str(handler.path).startswith("/health"):
@@ -223,6 +225,30 @@ def send_json(handler, status, payload):
             path=redact_sensitive_query(getattr(handler, "path", "")),
             status=status,
         )
+
+
+DB_POOL_SATURATED_CODE = "DB_POOL_SATURATED"
+DB_POOL_SATURATED_MESSAGE = "Servidor ocupado no momento. Tente novamente em instantes."
+
+
+def send_db_pool_saturated(handler, method, path):
+    """503 controlado quando o pool de conexões não liberou vaga no prazo (P0).
+
+    Mesmo envelope do 503 de bootstrap (``ok``/``error.code``/``error.message``),
+    que o cliente web já trata como indisponibilidade temporária e não fatal.
+    ``Retry-After`` orienta o novo envio. Nada da requisição vai para o log além
+    de método e caminho sem query string.
+    """
+    structured_log("warning", "http.db_pool_saturated", method=method, path=str(path).split("?", 1)[0])
+    try:
+        send_json(
+            handler,
+            503,
+            {"ok": False, "error": {"code": DB_POOL_SATURATED_CODE, "message": DB_POOL_SATURATED_MESSAGE}},
+            headers={"Retry-After": "1"},
+        )
+    except (BrokenPipeError, ConnectionResetError):
+        structured_log("info", "http.client_disconnected", method=method, path=str(path).split("?", 1)[0])
 
 
 def send_api_response(handler, status, *, data=None, message="", error=None, extra=None):

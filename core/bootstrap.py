@@ -130,6 +130,7 @@ def init_db():
     with _conexao_do_bootstrap(connection, sessao_bootstrap) as connection, _memo_catalogo_do_bootstrap(connection):
         schema.run_schema_precheck(connection)
         advisory_lock_acquired = False
+        bootstrap_lock = None
         if _DB_CONNECTOR and _DATABASE_URL:
             bootstrap_lock = _SessionAdvisoryLock(
                 connection,
@@ -581,7 +582,7 @@ def init_db():
             )
         except Exception as _mig_e:
             structured_log('warning', 'db.retroactive_epi_request_status_fix', error=str(_mig_e))
-        if advisory_lock_acquired:
+        if advisory_lock_acquired and bootstrap_lock is not None:
             try:
                 if not bootstrap_lock.release():
                     # O servidor diz que ESTA sessão não detinha o lock: a conexão

@@ -107,7 +107,7 @@ def run(target):
     def wrapper():
         try:
             box['value'] = target()
-        except BaseException as exc:  # noqa: BLE001 — o teste inspeciona a exceção
+        except Exception as exc:  # noqa: BLE001 — o teste inspeciona a exceção
             box['error'] = exc
     thread = threading.Thread(target=wrapper, daemon=True)
     thread.start()

@@ -280,12 +280,13 @@ def test_os_portoes_de_autorizacao_continuam_permission_error(funcao):
     )
 
 
-def test_authentication_error_so_existe_nos_tres_arquivos_do_contrato():
-    """Se aparecer num quarto arquivo, alguém está convertendo por atacado."""
+def test_authentication_error_so_existe_nas_fronteiras_aprovadas():
+    """F2.1 adds one local envelope adapter, never a new authentication source."""
     permitidos = {
         'core/security.py',
         'app.py',
         'modules/auth/routes.py',
+        'modules/employee_ppe_360/in_use_routes.py',
     }
     achados = set()
     for caminho in RAIZ.rglob('*.py'):

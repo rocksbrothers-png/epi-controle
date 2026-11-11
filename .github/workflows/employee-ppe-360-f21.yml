@@ -1,0 +1,68 @@
+name: Employee PPE 360 F2.1
+on:
+  pull_request:
+    paths:
+      - 'modules/employee_ppe_360/**'
+      - 'modules/employees/**'
+      - 'modules/deliveries/**'
+      - 'core/**'
+      - 'tests/test_employee_ppe_360*'
+      - 'tests_postgres/test_employee_ppe_360*'
+      - '.github/workflows/employee-ppe-360-f21.yml'
+  workflow_dispatch:
+jobs:
+  postgres-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: epi
+          POSTGRES_PASSWORD: epi
+          POSTGRES_DB: f21_validation
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      APP_ENV: test
+      DATABASE_URL: postgresql://epi:epi@127.0.0.1:5432/f21_validation
+      JWT_ENFORCEMENT_MODE: enforce
+      PYTHONPATH: .:tests_postgres
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - run: pip install -r requirements.txt pytest
+      - name: Generate ephemeral test signing key
+        shell: bash
+        run: |
+          python - <<'PYKEY'
+          import os
+          import secrets
+
+          key = secrets.token_hex(32)
+          print(f"::add-mask::{key}")
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as target:
+              target.write(f"JWT_SECRET={key}\n")
+          PYKEY
+      - name: Contract, F1 regression, F2-T01 through T18 and pool regression
+        run: >-
+          python -m pytest -q
+          tests/test_337_contrato_401_403.py
+          tests/test_employee_ppe_360_f0_contract.py
+          tests/test_employee_ppe_360_f21_contract.py
+          tests/test_employee_ppe_360_boundary.py
+          tests_postgres/test_employee_ppe_360_f1_summary_postgres.py
+          tests_postgres/test_employee_ppe_360_f21_in_use_postgres.py
+          tests_postgres/test_db_pool_p0_postgres.py
+          --junitxml=f21-junit.xml
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: f21-postgres-evidence
+          path: f21-junit.xml

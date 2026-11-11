@@ -75,3 +75,28 @@ def record_denied(connection, handler, actor, *, requested_employee_id, code):
 
 
 __all__ = ['ACTION_DENIED', 'ACTION_GRANTED', 'LOG_EVENT', 'record_denied', 'record_granted']
+
+
+def record_in_use(connection, actor, requested_employee_id, *, code, page=None, scope=None, count=0):
+    """F2 section audit: metadata only, never cursor, row contents or target name."""
+    from core.audit import register_company_audit
+
+    granted = code == 'OK'
+    details = {'requested_employee_id': requested_employee_id, 'code': code}
+    if actor:
+        details['actor_role'] = actor['role']
+    if page:
+        details.update(limit=page['limit'], has_cursor=page['cursor'] is not None)
+    if scope:
+        details.update(mode=scope['mode'], authorized_unit_ids=scope['authorized_unit_ids'])
+    if granted:
+        details['returned_count'] = count
+    if actor and actor.get('company_id'):
+        register_company_audit(connection, int(actor['company_id']), actor,
+                               'ppe360_in_use_view' if granted else 'ppe360_in_use_denied',
+                               'Consulta de EPIs em uso.', [details])
+        connection.commit()
+    structured_log('info' if granted else 'warning', 'employee_ppe_360.in_use',
+                   result='granted' if granted else 'denied',
+                   actor_user_id=actor.get('id') if actor else None,
+                   company_id=actor.get('company_id') if actor else None, **details)

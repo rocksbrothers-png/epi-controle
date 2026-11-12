@@ -55,4 +55,7 @@ def handle_get_summary(handler, parsed, payload, match):
 
 
 def register_routes(router):
+    from modules.employee_ppe_360.in_use_routes import IN_USE_PATH, handle_get_in_use
+
     router.register('GET', SUMMARY_PATH, handle_get_summary, regex=True)
+    router.register('GET', IN_USE_PATH, handle_get_in_use, regex=True)

@@ -325,7 +325,8 @@ def test_f1_expoe_somente_a_rota_de_resumo():
             registered.append((method, path, regex))
 
     routes.register_routes(_Router())
-    assert registered == [('GET', r'^/api/employees/(\d+)/ppe-360/summary$', True)]
+    assert registered == [('GET', r'^/api/employees/(\d+)/ppe-360/summary$', True),
+                          ('GET', r'^/api/employees/([^/]+)/ppe-360/in-use$', True)]
     app_source = (ROOT / 'app.py').read_text(encoding='utf-8')
     assert app_source.count('_reg_employee_ppe_360(router)') == 1
     assert 'ppe-360' not in app_source, 'caminhos da Ficha vivem no módulo, não no app.py'

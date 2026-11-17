@@ -25,6 +25,7 @@ on:
       - 'scripts/browser/ubx_platform_brand.py'
       - 'scripts/browser/ubx_print_popup.py'
       - 'scripts/browser/ubx_shell_topbar.py'
+      - 'scripts/browser/ubx_purchase_status.py'
       - 'scripts/browser/ubx_employee_ppe_360.py'
       - 'modules/employee_ppe_360/**'
       - 'modules/ficha/**'
@@ -35,7 +36,9 @@ permissions:
 jobs:
   browser:
     name: Chromium functional regression (five locales)
-    runs-on: ubuntu-latest
+    # ubuntu-latest passou a ser 26.04, que o Playwright 1.58.0 fixado abaixo não suporta
+    # ("Playwright does not support chromium on ubuntu26.04-x64"). Fixa a imagem em que as referências rodam.
+    runs-on: ubuntu-24.04
     # 45: as provas de navegador somam ~20 min e a instalação do Chromium (apt) já levou 10 min num runner lento.
     timeout-minutes: 45
     steps:
@@ -108,6 +111,9 @@ jobs:
       - if: ${{ !cancelled() }}
         name: UBX shared print popup equivalence (five locales)
         run: python scripts/browser/ubx_print_popup.py --output browser-evidence/ubx-print-popup
+      - if: ${{ !cancelled() }}
+        name: UBX Compras P1 purchase status equivalence (five locales)
+        run: python scripts/browser/ubx_purchase_status.py --output browser-evidence/ubx-purchase-status
       - if: ${{ !cancelled() }}
         name: UBX application shell and topbar equivalence (five locales, desktop/mobile)
         run: |

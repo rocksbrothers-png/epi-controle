@@ -21,8 +21,8 @@ def _tracked_files():
     try:
         out = subprocess.run(['git', 'ls-files', '-z'], cwd=ROOT, check=True,
                              capture_output=True).stdout
-    except (FileNotFoundError, subprocess.CalledProcessError):
-        pytest.skip('repositório git indisponível neste ambiente')
+    except (FileNotFoundError, subprocess.CalledProcessError) as exc:
+        raise pytest.skip.Exception('repositório git indisponível neste ambiente') from exc
     return [name for name in out.decode('utf-8', 'replace').split('\0') if name]
 
 

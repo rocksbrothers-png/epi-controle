@@ -62,7 +62,8 @@ function buildContext(lang, impl, mutation) {
   ctx.globalThis = ctx;
   vm.createContext(ctx);
   if (lang !== null) {
-    ctx.__CATALOGS__ = CATALOGS;
+    // 'vazio': catálogos sem chaves — o motor devolve o texto de fallback do código.
+    ctx.__CATALOGS__ = lang === 'vazio' ? Object.fromEntries(LOCALES.map((l) => [l, {}])) : CATALOGS;
     const i18n = read('i18n.js');
     vm.runInContext([
       "const FALLBACK = 'pt-BR'; const _pluralCount = Symbol('numeric plural count');",
@@ -174,7 +175,7 @@ function observe(lang, impl, mutation) {
   return out;
 }
 
-const VARIANTS = [...LOCALES, 'xx-XX', null];
+const VARIANTS = [...LOCALES, 'xx-XX', 'vazio', null];
 
 // Compara "antes" × "atual" em todas as variantes; devolve [observações, resultados].
 // Uma observação de status agrupa 15 resultados (2 rótulos, stepper, regra e 11 badges).
@@ -194,7 +195,8 @@ function compareAll(mutation) {
   return [comparisons, results];
 }
 
-function contracts(assert) {
+function contracts() {
+  const assert = require('assert');
   const app = read('app.js');
   if (!exists(VIEW)) { return; }
   for (const name of FUNCS) {
@@ -226,6 +228,6 @@ module.exports = function register({ test, assert }) {
     assert(observations > 800 && results > 10000, `cobertura insuficiente: ${observations}/${results}`);
     console.log(`    Compras P1: ${observations} observações, ${results} resultados comparados, zero divergências`);
   });
-  test('UBX Compras P1: contratos do módulo, globais legadas e ordem de carga', () => contracts(assert));
+  test('UBX Compras P1: contratos do módulo, globais legadas e ordem de carga', () => contracts());
 };
 module.exports.compareAll = compareAll;

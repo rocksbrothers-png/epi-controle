@@ -297,11 +297,19 @@ def photo(connection, context, epi_id):
     if epi_id not in {e['id'] for e in approved_epis(connection,context)}:
         raise PermissionError('EPI indisponível neste escopo.')
     row = connection.execute('SELECT epi_photo_data FROM epis WHERE id=? AND company_id=?', (epi_id,context['company_id'])).fetchone()
-    raw = str(row['epi_photo_data'] or '')
-    if not re.match(r'^data:image/(png|jpeg|jpg);base64,',raw) or len(raw)>8*1024**2:
+    return render_epi_photo(str(row['epi_photo_data'] or ''))
+
+
+def render_epi_photo(raw):
+    """PNG sanitizado da foto gravada. Só PNG/JPEG com assinatura real."""
+    from epi_backend.image_signatures import open_verified, pillow_format_for
+
+    match = re.match(r'^data:image/(png|jpeg|jpg);base64,',raw)
+    if not match or len(raw)>8*1024**2:
         raise ValueError('Foto indisponível em formato seguro.')
     from PIL import Image, ImageOps
-    with Image.open(io.BytesIO(base64.b64decode(raw.split(',',1)[1],validate=True))) as image:
+    content = base64.b64decode(raw.split(',',1)[1],validate=True)
+    with open_verified(content, pillow_format_for(match.group(1)), 'Foto indisponível em formato seguro.') as image:
         if image.width*image.height>8_000_000:
             raise ValueError('Foto excede limite de pixels.')
         image.load()

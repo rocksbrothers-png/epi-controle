@@ -48,11 +48,15 @@ def detect_lot_label_dates(image_data):
     if not runtime.get('ready'):
         return {**extract_lot_dates(''), 'error': 'OCR indisponível; informe as datas manualmente.'}
     import base64
-    import io
 
-    from PIL import Image
+    from epi_backend.image_signatures import open_verified, pillow_format_for
 
-    with Image.open(io.BytesIO(base64.b64decode(image_data.split(',', 1)[1]))) as header:
+    unsupported = 'Para ler datas, fotografe a etiqueta em PNG ou JPEG.'
+    match = re.match(r'^data:image/(png|jpeg|jpg);base64,', str(image_data or ''))
+    if not match:
+        raise ValueError(unsupported)
+    content = base64.b64decode(image_data.split(',', 1)[1])
+    with open_verified(content, pillow_format_for(match.group(1)), unsupported) as header:
         if header.width * header.height > 32_000_000:
             raise ValueError('Imagem excede 32 megapixels; envie uma foto aproximada da etiqueta.')
     image = engine._decode_data_uri(image_data)

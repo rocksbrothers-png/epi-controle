@@ -60,7 +60,14 @@ platform :ios do
     end
     ruby_require = File.join(__dir__, "wire_xcode.rb")
     sh("ruby #{ruby_require.shellescape}")
-    Dir.chdir(IOS_DIR) { sh("pod install") }
+    # Sem Podfile = nenhum plugin depende de CocoaPods (integração 100%
+    # SwiftPM); `pod install` não se aplica e o `flutter build` resolve os
+    # pacotes SwiftPM sozinho.
+    if File.exist?(File.join(IOS_DIR, "Podfile"))
+      Dir.chdir(IOS_DIR) { sh("pod install") }
+    else
+      UI.message("Sem Podfile: integração de plugins 100% SwiftPM — pod install ignorado.")
+    end
   end
 
   desc "Build assinado + upload para o TestFlight"

@@ -1,4 +1,4 @@
-name: "[DIAGNÓSTICO TEMPORÁRIO] Android AAB release (E2b)"
+name: "[DIAGNÓSTICO TEMPORÁRIO] Android AAB release (E2b/E3)"
 
 # Workflow TEMPORÁRIO do branch de trabalho claude/ci-android-agp9. Será
 # removido antes de qualquer PR. Existe porque o job oficial `Build Android
@@ -27,7 +27,7 @@ jobs:
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
 
       - uses: gradle/actions/setup-gradle@v6.4.1
         with:

@@ -15,6 +15,13 @@
 // Cada entrada roda nas duas e o resultado (valor ou exceção) tem de ser
 // idêntico nos cinco idiomas, sem o motor de idioma, com idioma não suportado
 // e depois de trocar o idioma sem recriar os mapas (os rótulos são getters).
+//
+// SEC-COMPRAS-1: a única mudança intencional desde a cópia literal é o escape HTML
+// do rótulo do badge (rótulo + extra, que pode trazer postponed_until do servidor).
+// A expectativa "antes" é a saída da cópia literal com o conteúdo do <span> passado
+// pelo escapeHtml oficial (views/view-helpers.js); estrutura, classes e estilo
+// continuam idênticos. Para rótulos sem & < > " ' o escape é identidade, então os
+// textos legítimos têm de sair byte a byte iguais nos cinco idiomas.
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
@@ -75,6 +82,7 @@ function buildContext(lang, impl, mutation) {
     ].join('\n'), ctx);
   }
   vm.runInContext(read('js/views/ui-helpers.js'), ctx);
+  vm.runInContext(read('js/views/view-helpers.js'), ctx);
   let api;
   if (impl === 'before') {
     vm.runInContext(`globalThis.__API__ = (function () {\n${read(FIXTURE)}\nreturn { ${[...CONSTS, ...FUNCS].join(', ')} };\n})();`, ctx);
@@ -146,8 +154,21 @@ function describe(map) {
   });
 }
 
+const BADGE = /^(<span class="status-chip" style="[^"]*">)([\s\S]*)(<\/span>)$/;
+const escapeHtml = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+// Saída esperada depois da SEC-COMPRAS-1, derivada da cópia literal: só o conteúdo do <span> muda.
+function escapedBadge(html) {
+  const m = BADGE.exec(html);
+  if (!m) { throw new Error('badge fora do formato esperado: ' + String(html).slice(0, 120)); }
+  return m[1] + escapeHtml(m[2]) + m[3];
+}
+let changedByEscape = 0;
+
 function observe(lang, impl, mutation) {
-  const { ctx, api } = buildContext(lang, impl, mutation);
+  const { ctx, api: raw } = buildContext(lang, impl, mutation);
+  const api = impl === 'before'
+    ? { ...raw, purchaseStatusBadge: (...a) => { const html = raw.purchaseStatusBadge(...a); const out = escapedBadge(html); if (out !== html) { changedByEscape += 1; } return out; } }
+    : raw;
   const out = [];
   const snapshot = (label) => {
     out.push([label, 'shape', CONSTS.map((c) => [c, Array.isArray(api[c]), settle(() => describe(api[c]))])]);
@@ -222,12 +243,61 @@ function contracts() {
   assert(pos('/js/modules/purchases/ui/purchase-status-view.js') < pos('/app.js?'));
 }
 
+const PAYLOADS = [
+  '<img src=x onerror=alert(1)>', '"><script>alert(1)</script>', "' onmouseover='alert(1)", '<svg onload=alert(1)>',
+  '</span><b>x</b>', '&amp; já escapado', '&lt;b&gt;', 'javascript:alert(1)', '2026-11-20', 'Até <i>2026</i>'
+];
+const unescapeHtml = (v) => v.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+
+// Neutralização no badge real (módulo servido), nos cinco idiomas, como o app.js chama:
+// postponed_until vindo do servidor dentro do tr('Até: {p0}').
+function securityChecks(mutation) {
+  const assert = require('assert');
+  let checks = 0;
+  for (const lang of LOCALES) {
+    const { ctx, api } = buildContext(lang, 'current', mutation);
+    for (const payload of PAYLOADS) {
+      for (const status of ['postponed', 'approved', payload]) {
+        const extra = ctx.tr('ui.app.ate_p0_ce0eec', 'Até: {p0}', { p0: payload });
+        for (const html of [api.purchaseStatusBadge(status, extra), api.purchaseStatusBadge(status, payload)]) {
+          const m = BADGE.exec(html);
+          assert(m, `${lang}: estrutura do badge preservada`);
+          assert(!/[<>"]/.test(m[2]), `${lang}: marcação viva no rótulo: ${m[2]}`);
+          assert(!/'/.test(m[2]), `${lang}: aspas simples vivas no rótulo`);
+          assert(/^background:var\(--color-[a-z-]+\);color:var\(--color-[a-z-]+\)$/.test(/style="([^"]*)"/.exec(m[1])[1]), `${lang}: estilo preservado`);
+          const label = (api.PURCHASE_STATUS_LABELS[status] || status);
+          assert(unescapeHtml(m[2]).startsWith(String(label)), `${lang}: texto do rótulo preservado`);
+          assert(unescapeHtml(m[2]).includes(payload), `${lang}: o conteúdo aparece como texto`);
+          checks += 1;
+        }
+      }
+    }
+    // Sem escape duplo: um valor já escapado aparece literalmente como texto.
+    assert(api.purchaseStatusBadge('postponed', '&amp;').includes('&amp;amp;'), `${lang}: & tratado como texto`);
+    // Rótulos legítimos: idênticos ao texto puro (escape é identidade).
+    for (const status of Object.keys(api.PURCHASE_STATUS_LABELS)) {
+      const m = BADGE.exec(api.purchaseStatusBadge(status));
+      assert.strictEqual(m[2], api.PURCHASE_STATUS_LABELS[status], `${lang}: rótulo legítimo ${status} inalterado`);
+      checks += 1;
+    }
+  }
+  return checks;
+}
+
 module.exports = function register({ test, assert }) {
+  test('SEC-COMPRAS-1: badge de Compras trata rótulo e postponed_until como texto nos 5 idiomas', () => {
+    const checks = securityChecks();
+    console.log(`    SEC-COMPRAS-1: ${checks} verificações de neutralização`);
+  });
   test('UBX Compras P1: status, stepper e badge idênticos à cópia literal nos 5 idiomas', () => {
+    changedByEscape = 0;
     const [observations, results] = compareAll();
     assert(observations > 800 && results > 10000, `cobertura insuficiente: ${observations}/${results}`);
-    console.log(`    Compras P1: ${observations} observações, ${results} resultados comparados, zero divergências`);
+    // Só as entradas com & < > " ' mudam com o escape; o resto sai idêntico à cópia literal.
+    assert(changedByEscape > 0, 'o modelo de expectativa da SEC-COMPRAS-1 não foi exercitado');
+    console.log(`    Compras P1: ${observations} observações, ${results} resultados comparados, zero divergências (${changedByEscape} badges com marcação escapada)`);
   });
   test('UBX Compras P1: contratos do módulo, globais legadas e ordem de carga', () => contracts());
 };
 module.exports.compareAll = compareAll;
+module.exports.securityChecks = securityChecks;

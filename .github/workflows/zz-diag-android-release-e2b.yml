@@ -1,0 +1,85 @@
+name: "[DIAGNÓSTICO TEMPORÁRIO] Android AAB release (E2b/E3)"
+
+# Workflow TEMPORÁRIO do branch de trabalho claude/ci-android-agp9. Será
+# removido antes de qualquer PR. Existe porque o job oficial `Build Android
+# (AAB)` só roda na main com os secrets de assinatura; aqui o mesmo build
+# release (R8/minify incluídos) roda assinado com um keystore DESCARTÁVEL
+# gerado no próprio runner. Nenhum secret do repositório é lido.
+
+on:
+  push:
+    branches: [claude/ci-android-agp9]
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: flutter
+
+jobs:
+  aab-release-diag:
+    name: "[E2b] Build Android AAB release (keystore descartável)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v6.4.1
+        with:
+          gradle-version: wrapper
+          cache-read-only: true
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Toolchain
+        run: |
+          flutter --version
+          java -version
+
+      - name: Install Melos
+        run: |
+          dart pub get
+          dart pub global activate melos
+          echo "$PUB_CACHE/bin" >> $GITHUB_PATH
+
+      - name: Bootstrap
+        run: melos bootstrap
+
+      - name: Generate l10n
+        run: melos run gen:l10n
+
+      - name: Code generation (retrofit, json_serializable)
+        run: melos run gen
+
+      - name: Keystore descartável (não é credencial do produto)
+        run: |
+          PW="$(openssl rand -hex 16)"
+          echo "::add-mask::$PW"
+          keytool -genkeypair -v -keystore apps/epi_admin/android/upload-keystore.jks \
+            -alias diag -keyalg RSA -keysize 2048 -validity 1 \
+            -storepass "$PW" -keypass "$PW" -dname "CN=CI diagnostic, O=throwaway" -noprompt
+          printf 'storePassword=%s\nkeyPassword=%s\nkeyAlias=diag\nstoreFile=../upload-keystore.jks\n' "$PW" "$PW" \
+            > apps/epi_admin/android/key.properties
+
+      - name: Resolve & validate backend (fail-closed)
+        run: |
+          RESOLVED="$(python3 "$GITHUB_WORKSPACE/ci/api_backend_guard.py" resolve-ci "")"
+          echo "API_BASE_URL=$RESOLVED" >> "$GITHUB_ENV"
+
+      - name: Build AAB release
+        run: melos run build:android
+
+      - name: Inspecionar AAB
+        working-directory: flutter/apps/epi_admin/build/app/outputs/bundle/release
+        run: |
+          ls -la app-release.aab
+          unzip -l app-release.aab | grep -E "base/manifest/AndroidManifest.xml|base/dex/classes.dex|lib/arm64-v8a/libapp.so|lib/arm64-v8a/libflutter.so"
+          rm -f "$GITHUB_WORKSPACE/flutter/apps/epi_admin/android/upload-keystore.jks" "$GITHUB_WORKSPACE/flutter/apps/epi_admin/android/key.properties"

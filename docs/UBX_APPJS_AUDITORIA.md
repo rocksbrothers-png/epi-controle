@@ -1790,3 +1790,84 @@ autorização. Pagamentos fora da UBX. Sem percentual global: inexiste denominad
 Rollback após integração: reverter exclusivamente o commit desta fatia e regenerar index/digestos
 pelos mecanismos oficiais; nenhuma migração de dados. Publicação autorizada apenas em PR rascunho;
 merge/deploy e qualquer implementação da próxima fatia exigem autorização expressa.
+
+## 25. UBX Compras P1 (2026-11-17): apresentação de status de Compras
+
+Base: Corporate `main` `aee4cac3`, SaaS `main` `bed9d31` (Shell/Topbar, Compras CO-1 e Ficha 360° F0/F1 já
+integrados; `static/app.js` idêntico nos dois produtos). Primeira fatia da Fase 2 de Compras prevista no plano:
+apresentação e seletores sem efeitos. Somente JavaScript do frontend: nenhum arquivo de backend, banco, migrações,
+endpoints, contrato HTTP, permissões, `modules/payments`, `pagamento.js`, checkout, webhook ou assinatura de EPI.
+
+### 25.1 Inventário e decisão
+
+| Declaração | Natureza | Chamadores | Destino | Extrair na P1? |
+|---|---|---|---|---|
+| `PURCHASE_STATUS_LABELS`, `ITEM_STATUS_LABELS` | rótulos (getters com `tr`) | listas, detalhe, eventos e toasts do `app.js` | `modules/purchases/ui/purchase-status-view.js` (alias no `app.js`) | **Sim** |
+| `PO_STEPPER_STEPS`, `PO_STEP_INDEX`, `buildPoStepper` | apresentação pura (usa `dsStepper`) | detalhe da PO | `purchase-status-view.js` | **Sim** |
+| `purchaseStatusBadge` | apresentação pura | listas de requisições/POs e detalhe | `purchase-status-view.js` | **Sim** |
+| `PURCHASE_BUYER_QUOTE_STATUSES`, `isBuyerQuotationStatus` | regra pura | importação de cotação (combinada com `hasPermission`) | `modules/purchases/business/purchase-status-rules.js` | **Sim** — a permissão continua no app e no backend |
+| `PURCHASE_APPROVAL_REJECTION_REASONS` | lista de motivos | `views/purchases.js` (com fallback idêntico) | permanece | **Não** — sem ganho nesta fatia |
+| `buildSupplierInclusionMailto`, `checkSupplierAuthorized`, `_parseSuppliersRows` | fornecedores (lê sessão/DOM/arquivo) | cadastro de fornecedores | permanecem | **Não** — fatia própria de Fornecedores |
+| cargas, ações de fluxo, aprovação, recebimento, funções de compra | HTTP / permissões / estoque | — | permanecem | **Não** — fatias separadas |
+
+### 25.2 O que mudou
+
+- Corpos movidos sem alteração (só a indentação do IIFE). `buildPoStepper`, `purchaseStatusBadge` e
+  `isBuyerQuotationStatus` continuam globais com o mesmo nome (eram globais pelo Annex B) e entram nos namespaces
+  congelados `__EPI_PURCHASE_STATUS_UI__` e `__EPI_PURCHASE_STATUS_RULES__`.
+- Os mapas eram `const` de bloco: ficam só no namespace, e o `app.js` mantém aliases por referência
+  (`PURCHASE_STATUS_LABELS`, `ITEM_STATUS_LABELS`). `PO_STEPPER_STEPS`, `PO_STEP_INDEX` e
+  `PURCHASE_BUYER_QUOTE_STATUSES` não têm outro uso e saíram do `app.js`.
+- Os mapas **não** são publicados no `globalThis`: `views/purchases.js` lê `globalThis.ITEM_STATUS_LABELS` e hoje cai
+  no fallback `{}`; publicá-los mudaria aquela tela (ver 25.6). O teste de contrato trava isso.
+- `_scripts.html`: os dois módulos carregam depois de `ui-helpers.js` e antes de `views/purchases.js` e do `app.js`.
+- Testes existentes ajustados pela mudança de lugar, sem mudar a intenção: dois testes de texto de
+  `tests/test_static_assets.py` passam a ler a lista de status no módulo de regras; o uso de
+  `isBuyerQuotationStatus(pr.status)` combinado com as permissões continua conferido no `app.js`.
+
+### 25.3 Métricas
+
+| Métrica | Antes | Depois |
+|---|---|---|
+| Linhas do `app.js` | 16.126 | 16.079 |
+| Declarações de nível superior (guarda) | 654 | 648 |
+| Endpoints no `app.js` | 93 | 93 |
+| Ciclos entre scripts | 0 | 0 |
+
+### 25.4 Equivalência
+
+- Caracterização antes de mover (commit próprio, verde contra o `app.js` original): fixture literal
+  `fixtures/app-before-ubx-purchases-p1.js.txt` e `purchase-status-runtime.js`, com o motor de tradução real e os
+  cinco catálogos, `dsStepper` real, idioma não suportado, catálogos vazios (texto de fallback do código), sem motor
+  de idioma e troca de idioma sem recriar os mapas. Todos os status conhecidos e bordas (`undefined`, `null`, `0`,
+  `false`, `NaN`, maiúsculas, espaços, `__proto__`, `constructor`, `toString`, arrays, objeto com `toString`, marcação)
+  × 10 extras do badge: 990 observações, 14.100 resultados, 0 divergências.
+- Mutação (`purchase-status-mutations.js`): 21/21 sabotagens detectadas. Mutante equivalente conhecido e não listado:
+  `String(status ?? '')` no lugar de `String(status || '')` só difere para `0`/`false`/`NaN`, que não são status de
+  cotação.
+- Chromium (`scripts/browser/ubx_purchase_status.py`, no workflow de navegador): as três globais com todos os status,
+  extras e chamadas sem argumento, e a visibilidade no `globalThis`, antes e depois de trocar o idioma, reproduzem a
+  referência gravada da `main` (`static/js/test/fixtures/ubx-purchases-p1-browser.json`) nos cinco idiomas; uma
+  sabotagem na cor do badge reprova.
+
+### 25.5 Segurança e isolamento
+
+Autorização, escopo de empresa/unidade e isolamento por tenant seguem no backend, sem mudança. `isBuyerQuotationStatus`
+continua sendo só uma condição de exibição combinada com `hasPermission` no app; nenhuma decisão foi transferida.
+Nenhum listener, HTTP ou armazenamento no navegador foi movido.
+
+### 25.6 Achados preexistentes (preservados; propostas separadas)
+
+- **SEC — badge sem escape:** `purchaseStatusBadge` interpola o rótulo (com fallback para o próprio `status`) e `extra`
+  (que inclui `postponed_until` vindo do servidor) sem `escapeHtml`. Hoje os valores são enums e datas do backend, mas
+  falta defesa em profundidade. Proposta: escapar `label` no módulo, com teste de marcação, numa fatia de segurança.
+- **FIX — rótulos de item no modal do requisitante:** `views/purchases.js` (`openRequesterReviewModal`) lê
+  `globalThis.ITEM_STATUS_LABELS`, que nunca existiu (o mapa era de bloco), e mostra o código cru do status. Proposta:
+  ler `globalThis.__EPI_PURCHASE_STATUS_UI__.ITEM_STATUS_LABELS`, com teste e Chromium, numa correção própria.
+
+### 25.7 Próximas fatias de Compras (cada uma com autorização própria)
+
+1. Fornecedores: `buildSupplierInclusionMailto`, `_parseSuppliersRows`, `checkSupplierAuthorized` (ui/business).
+2. Itens da PO: `buildPoItemRow`, `collectPoItems`, `updatePoTotal` e seletores (ui), sem HTTP.
+3. Funções de compra: renderizações e filtros de `renderPurchaseFunction*` (ui), HTTP em `integrations`.
+4. Cargas e ações (`load*`, `submitPo*`, `executePurchaseWorkflowAction`): por último, com auditoria de permissão.

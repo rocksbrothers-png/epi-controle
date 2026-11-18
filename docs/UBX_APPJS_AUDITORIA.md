@@ -1871,3 +1871,60 @@ Nenhum listener, HTTP ou armazenamento no navegador foi movido.
 2. Itens da PO: `buildPoItemRow`, `collectPoItems`, `updatePoTotal` e seletores (ui), sem HTTP.
 3. Funções de compra: renderizações e filtros de `renderPurchaseFunction*` (ui), HTTP em `integrations`.
 4. Cargas e ações (`load*`, `submitPo*`, `executePurchaseWorkflowAction`): por último, com auditoria de permissão.
+
+## 26. SEC-COMPRAS-1 (2026-11-18): XSS armazenado no badge de status de Compras
+
+Base: Corporate `main` `4a1b3ff7`, SaaS `main` `e168a0d` (Compras P1 integrada nos dois: #1104/#478; `app.js`
+idêntico). Correção de saída somente no frontend; nenhum endpoint, contrato, regra de negócio, permissão, banco,
+migração ou infraestrutura alterado.
+
+### 26.1 Causa
+
+1. O backend aceita `postponed_until` como texto livre: `modules/purchases/service.py` (aprovação da PO e
+   mudança de status da requisição) só faz `strip` e exige valor não vazio.
+2. A interpolação do `tr` não escapa valores (`static/i18n.js`, `_interpolate`).
+3. `static/app.js` monta `tr('Até: {p0}', {p0: pr.postponed_until})` (lista de requisições) e
+   `tr('Até {p0}', {p0: po.postponed_until})` (detalhe da PO) e passa o resultado como `extra` de
+   `purchaseStatusBadge`.
+4. `purchaseStatusBadge` (`static/js/modules/purchases/ui/purchase-status-view.js`) inseria
+   `status + extra` no `<span>` sem escape, e o HTML vai para `innerHTML`.
+
+Efeito: um usuário autenticado que pode prorrogar grava marcação que executa para os outros usuários autorizados do
+mesmo tenant que abrem a lista de requisições ou o detalhe da PO. O status sem rótulo conhecido também caía cru no
+badge. A CSP não substitui a correção de saída (o SPA segue Report-Only em produção salvo `CSP_MODE=enforce`).
+
+### 26.2 Correção
+
+- Uma linha: o conteúdo do `<span>` passa a ser `escapeHtml(label)`, o escape oficial de
+  `static/js/views/view-helpers.js` (já carregado antes do módulo em `_scripts.html`). A marcação do `<span>`,
+  as classes e o estilo continuam do componente. Sem dependência nova e sem escape duplo: os chamadores passam texto
+  cru (saída do `tr`), e o escape acontece uma única vez, na montagem do HTML.
+- Textos legítimos inalterados: as 195 traduções do componente (39 chaves × 5 idiomas: `pt-BR`, `en-GB`, `es-ES`,
+  `fr-FR`, `nb-NO`) não têm `& < > " '`, então o escape é identidade para elas.
+
+### 26.3 Testes
+
+- `purchase-status-runtime.js`: a referência continua a cópia literal da `main` anterior à P1; a expectativa passa a
+  ser essa saída com o conteúdo do `<span>` escapado (estrutura e estilo byte a byte iguais). 990 observações /
+  14.100 resultados nos 5 idiomas, catálogos vazios, idioma inválido, sem motor e troca de idioma: zero divergências;
+  1.939 badges com marcação ficam escapados, todos os demais idênticos.
+- Teste novo de neutralização: 410 verificações com 10 cargas (marcação, `"><script>`, aspas simples, `</span>`,
+  texto já escapado, datas legítimas) em `postponed_until` via `tr` real e como status forjado: estrutura e estilo
+  preservados, nenhum `< > " '` vivo no rótulo, o conteúdo aparece como texto, `&amp;` vira `&amp;amp;` (sem escape
+  duplo) e todos os rótulos legítimos saem iguais ao texto puro. Escrito antes da correção e reprovando na `main`.
+- Mutação (`purchase-status-mutations.js`): 25/25. Novas: escape removido, escape só do status, escape duplo e escape
+  incompleto (sem aspas) — todas reprovam.
+- Chromium (`scripts/browser/ubx_purchase_status.py`): equivalência nos 5 idiomas contra a referência gravada da
+  `main` com o mesmo modelo de escape (referência não regravada; 14 badges por idioma diferem só pelo escape), e
+  cenário de ponta a ponta que renderiza a lista real de requisições e o detalhe real da PO com a API simulada
+  devolvendo `postponed_until` e status maliciosos: 0 elementos injetados, 0 execuções, 3 badges sem filhos com o
+  conteúdo como texto. Contraprova: o mesmo roteiro contra o `static/` da `main` reprova com o `<img>` injetado.
+
+### 26.4 Riscos residuais e fora do escopo
+
+- O backend continua aceitando `postponed_until` como texto livre (validação ISO é mudança de contrato; decisão
+  separada). O outro ponto que exibe `postponed_until` (solicitações de EPI, `app.js`) já é seguro:
+  passa por `formatDate` (não-data vira `-`) dentro de `EpiI18n.bindText`, que escapa a saída.
+- Pendências independentes mantidas: rótulos do modal do requisitante (§25.6), nove funções sem uso comprovado,
+  fatia de Fornecedores.
+- Rollback: reverter o commit da correção (os testes novos reprovam de propósito sem ela).

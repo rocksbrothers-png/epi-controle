@@ -1,5 +1,5 @@
 'use strict';
-/* global tr */
+/* global tr, escapeHtml */
 
 // UBX Compras P1 — apresentação de status de Compras extraída do app.js, corpos idênticos.
 // Os rótulos continuam getters (a troca de idioma vale sem recriar os mapas).
@@ -7,6 +7,9 @@
 // pelo Annex B no app.js). Os mapas eram de bloco: ficam só no namespace, e o app.js
 // guarda um alias por referência. views/purchases.js lê globalThis.ITEM_STATUS_LABELS
 // e hoje cai no fallback {}; publicar o mapa no globalThis mudaria aquela tela.
+// SEC-COMPRAS-1: o rótulo do badge (status + extra, que pode trazer postponed_until
+// do servidor via tr sem escape) é texto: passa pelo escapeHtml oficial de
+// views/view-helpers.js, carregado antes deste módulo. A marcação do <span> é do componente.
 (function () {
   if (globalThis.__EPI_MODULE_PURCHASE_STATUS_UI_LOADED__) { return; }
   globalThis.__EPI_MODULE_PURCHASE_STATUS_UI_LOADED__ = true;
@@ -53,7 +56,7 @@
     const colors = { approved: 'green', closed: 'green', received: 'green', received_partial: 'orange', checked: 'green', rejected: 'red', cancelled: 'red', pending_approval: 'orange', partially_approved: 'orange', postponed: 'orange', waiting_buyer_correction: 'orange', waiting_requester_correction: 'orange', buyer_resubmitted: 'orange', requester_resubmitted: 'orange' };
     const c = colors[status] || 'gray';
     const label = (PURCHASE_STATUS_LABELS[status] || status) + (extra ? ` — ${extra}` : '');
-    return `<span class="status-chip" style="background:var(--color-${c === 'gray' ? 'bg-alt' : c === 'green' ? 'success-bg' : c === 'red' ? 'danger-bg' : 'warning-bg'});color:var(--color-${c === 'gray' ? 'text-muted' : c === 'green' ? 'success' : c === 'red' ? 'danger' : 'warning'})">${label}</span>`;
+    return `<span class="status-chip" style="background:var(--color-${c === 'gray' ? 'bg-alt' : c === 'green' ? 'success-bg' : c === 'red' ? 'danger-bg' : 'warning-bg'});color:var(--color-${c === 'gray' ? 'text-muted' : c === 'green' ? 'success' : c === 'red' ? 'danger' : 'warning'})">${escapeHtml(label)}</span>`;
   }
 
   globalThis.buildPoStepper = buildPoStepper;

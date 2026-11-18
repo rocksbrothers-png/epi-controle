@@ -26,12 +26,18 @@ const mutations = [
   ['rules', 'status removido', "'buyer_resubmitted', ", ''],
   ['rules', 'prorrogada incluída/removida', ", 'postponed']", ']'],
   ['rules', 'coerção para string', "String(status || '')", 'status'],
+  // SEC-COMPRAS-1: o rótulo do badge é texto.
+  ['view', 'SEC-COMPRAS-1: escape removido', '${escapeHtml(label)}</span>', '${label}</span>'],
+  ['view', 'SEC-COMPRAS-1: escape só do status', "const label = (PURCHASE_STATUS_LABELS[status] || status) + (extra ? ` — ${extra}` : '');",
+    "const label = escapeHtml(PURCHASE_STATUS_LABELS[status] || status) + (extra ? ` — ${extra}` : '');"],
+  ['view', 'SEC-COMPRAS-1: escape duplo', '${escapeHtml(label)}</span>', '${escapeHtml(escapeHtml(label))}</span>'],
+  ['view', 'SEC-COMPRAS-1: escape incompleto (sem aspas)', '${escapeHtml(label)}</span>', "${String(label).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>"]
 ];
 
 let detected = 0;
 for (const [file, label, from, to] of mutations) {
   let divergence = false;
-  try { runtime.compareAll([file, from, to]); } catch (error) {
+  try { runtime.compareAll([file, from, to]); runtime.securityChecks([file, from, to]); } catch (error) {
     if (error.message.startsWith('mutação sem alvo:')) { throw error; }
     assert(error instanceof assert.AssertionError, label + ': erro do harness: ' + error.message);
     divergence = true;

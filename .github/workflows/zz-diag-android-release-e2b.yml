@@ -8,7 +8,7 @@ name: "[DIAGNÓSTICO TEMPORÁRIO] Android AAB release (E2b/E3)"
 
 on:
   push:
-    branches: [claude/ci-android-agp9]
+    branches: [claude/ci-android-agp9, claude/ci-combo-mlkit-spm-android]
 
 permissions:
   contents: read

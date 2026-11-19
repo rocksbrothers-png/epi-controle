@@ -373,7 +373,8 @@ Detalhes e riscos em `UBX_APPJS_AUDITORIA.md` §24; inventário em `UBX_SHELL_TO
 ## Próximo passo
 
 Compras P1 (apresentação de status) integrada em 2026-11-17 (#1104/#478; seção abaixo). SEC-COMPRAS-1
-(XSS armazenado no badge de status) publicada em rascunho em 2026-11-18 (seção abaixo). Próximas fatias de Compras,
+(XSS armazenado no badge de status) integrada em 2026-11-18 (#1107/#481). Rótulos do modal do requisitante
+publicados em rascunho em 2026-11-19 (seção abaixo). Próximas fatias de Compras,
 cada uma com autorização própria: Fornecedores, itens da PO, funções de compra e, por último, cargas e ações
 (`UBX_APPJS_AUDITORIA.md` §25.7). HTTP, permissões e recebimento/estoque separados.
 O plano completo mantém pendentes Entregas, Estoque e resíduos dos demais domínios;
@@ -425,3 +426,12 @@ Detalhes em [`UBX_APPJS_AUDITORIA.md` §26](UBX_APPJS_AUDITORIA.md#26-sec-compra
 - Teste de neutralização (410 verificações), equivalência da P1 com o modelo de escape (990 observações, 1.939 badges
   com marcação escapados, demais idênticos), 25/25 mutações e Chromium nos 5 idiomas com cenário de ponta a ponta;
   contraprova na `main` reprova com o elemento injetado.
+
+## FIX — rótulos de status no modal do requisitante (2026-11-19) — publicação em rascunho
+
+Detalhes em [`UBX_APPJS_AUDITORIA.md` §27](UBX_APPJS_AUDITORIA.md#27-fix--rótulos-de-status-no-modal-do-requisitante-2026-11-19).
+
+- `views/purchases.js` passa a ler `ITEM_STATUS_LABELS` do namespace oficial `__EPI_PURCHASE_STATUS_UI__` (antes lia
+  uma global inexistente e mostrava o código interno). Sem mapa ou global novos; `app.js` inalterado.
+- Teste funcional do modal real (35 verificações nos 5 idiomas) e cenário Chromium; contraprova na `main` reprova.
+- 7 traduções em inglês nos catálogos `es-ES`/`fr-FR`/`nb-NO` registradas para uma fatia de I18N (§27.4).

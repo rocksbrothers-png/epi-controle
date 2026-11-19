@@ -72,7 +72,10 @@ jobs:
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
-          java-version: '17'
+          # JDK 21 roda o Gradle/AGP 9: o Android Lint do AGP 9.3 chama
+          # java.util.List.removeLast() (JDK 21+) no lintVitalAnalyzeRelease.
+          # O bytecode do app continua Java 17 (compileOptions/jvmTarget).
+          java-version: '21'
 
       - uses: gradle/actions/setup-gradle@v6.4.1
         with:
@@ -189,7 +192,10 @@ jobs:
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
-          java-version: '17'
+          # JDK 21 roda o Gradle/AGP 9: o Android Lint do AGP 9.3 chama
+          # java.util.List.removeLast() (JDK 21+) no lintVitalAnalyzeRelease.
+          # O bytecode do app continua Java 17 (compileOptions/jvmTarget).
+          java-version: '21'
 
       - uses: gradle/actions/setup-gradle@v6.4.1
         with:
@@ -323,7 +329,10 @@ jobs:
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
-          java-version: '17'
+          # JDK 21 roda o Gradle/AGP 9: o Android Lint do AGP 9.3 chama
+          # java.util.List.removeLast() (JDK 21+) no lintVitalAnalyzeRelease.
+          # O bytecode do app continua Java 17 (compileOptions/jvmTarget).
+          java-version: '21'
 
       - uses: gradle/actions/setup-gradle@v6.4.1
         with:

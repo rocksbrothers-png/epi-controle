@@ -211,7 +211,9 @@
 
   function openRequesterReviewModal(pr, items) {
     const state = getState();
-    const ITEM_STATUS_LABELS = globalThis.ITEM_STATUS_LABELS || {};
+    // Rótulos oficiais dos itens (getters com tr) no namespace da UBX Compras P1; o
+    // globalThis.ITEM_STATUS_LABELS lido antes nunca existiu e o modal mostrava o código cru.
+    const ITEM_STATUS_LABELS = globalThis.__EPI_PURCHASE_STATUS_UI__?.ITEM_STATUS_LABELS || {};
 
     return new Promise((resolve) => {
       const existing = document.getElementById('requester-review-modal');

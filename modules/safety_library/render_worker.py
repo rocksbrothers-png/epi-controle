@@ -163,7 +163,7 @@ def validate_pdf_content(pdf):
 
 def render(root):
     import pymupdf as fitz
-    from PIL import Image, ImageOps
+    from PIL import Image, ImageOps, UnidentifiedImageError
     source = next(root.glob('source.*'))
     suffix = source.suffix
     parts = []
@@ -188,8 +188,19 @@ def render(root):
         parts = [{'name': 'Documento', 'name_i18n_key': 'safetyLibrary.preview.document', 'file': source.name}]
     else:
         Image.MAX_IMAGE_PIXELS = 32_000_000
-        with Image.open(source) as image:
-            if image.format != ('PNG' if suffix == '.png' else 'JPEG'):
+        expected = 'PNG' if suffix == '.png' else 'JPEG'
+        # Worker roda isolado (sys.path do script): assinatura conferida aqui
+        # mesmo, e o Pillow só tenta o decodificador do tipo declarado.
+        signature = b'\x89PNG\r\n\x1a\n' if expected == 'PNG' else b'\xff\xd8\xff'
+        with source.open('rb') as handle:
+            if not handle.read(len(signature)) == signature:
+                raise ValueError('Conteúdo não corresponde à imagem declarada.')
+        try:
+            opened = Image.open(source, formats=[expected])
+        except (UnidentifiedImageError, Image.DecompressionBombError):
+            raise ValueError('Conteúdo não corresponde à imagem declarada.') from None
+        with opened as image:
+            if image.format != expected:
                 raise ValueError('Conteúdo não corresponde à imagem declarada.')
             image.load()
             image = ImageOps.exif_transpose(image)

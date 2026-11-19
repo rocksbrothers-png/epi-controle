@@ -1790,3 +1790,141 @@ autorização. Pagamentos fora da UBX. Sem percentual global: inexiste denominad
 Rollback após integração: reverter exclusivamente o commit desta fatia e regenerar index/digestos
 pelos mecanismos oficiais; nenhuma migração de dados. Publicação autorizada apenas em PR rascunho;
 merge/deploy e qualquer implementação da próxima fatia exigem autorização expressa.
+
+## 25. UBX Compras P1 (2026-11-17): apresentação de status de Compras
+
+Base: Corporate `main` `aee4cac3`, SaaS `main` `bed9d31` (Shell/Topbar, Compras CO-1 e Ficha 360° F0/F1 já
+integrados; `static/app.js` idêntico nos dois produtos). Primeira fatia da Fase 2 de Compras prevista no plano:
+apresentação e seletores sem efeitos. Somente JavaScript do frontend: nenhum arquivo de backend, banco, migrações,
+endpoints, contrato HTTP, permissões, `modules/payments`, `pagamento.js`, checkout, webhook ou assinatura de EPI.
+
+### 25.1 Inventário e decisão
+
+| Declaração | Natureza | Chamadores | Destino | Extrair na P1? |
+|---|---|---|---|---|
+| `PURCHASE_STATUS_LABELS`, `ITEM_STATUS_LABELS` | rótulos (getters com `tr`) | listas, detalhe, eventos e toasts do `app.js` | `modules/purchases/ui/purchase-status-view.js` (alias no `app.js`) | **Sim** |
+| `PO_STEPPER_STEPS`, `PO_STEP_INDEX`, `buildPoStepper` | apresentação pura (usa `dsStepper`) | detalhe da PO | `purchase-status-view.js` | **Sim** |
+| `purchaseStatusBadge` | apresentação pura | listas de requisições/POs e detalhe | `purchase-status-view.js` | **Sim** |
+| `PURCHASE_BUYER_QUOTE_STATUSES`, `isBuyerQuotationStatus` | regra pura | importação de cotação (combinada com `hasPermission`) | `modules/purchases/business/purchase-status-rules.js` | **Sim** — a permissão continua no app e no backend |
+| `PURCHASE_APPROVAL_REJECTION_REASONS` | lista de motivos | `views/purchases.js` (com fallback idêntico) | permanece | **Não** — sem ganho nesta fatia |
+| `buildSupplierInclusionMailto`, `checkSupplierAuthorized`, `_parseSuppliersRows` | fornecedores (lê sessão/DOM/arquivo) | cadastro de fornecedores | permanecem | **Não** — fatia própria de Fornecedores |
+| cargas, ações de fluxo, aprovação, recebimento, funções de compra | HTTP / permissões / estoque | — | permanecem | **Não** — fatias separadas |
+
+### 25.2 O que mudou
+
+- Corpos movidos sem alteração (só a indentação do IIFE). `buildPoStepper`, `purchaseStatusBadge` e
+  `isBuyerQuotationStatus` continuam globais com o mesmo nome (eram globais pelo Annex B) e entram nos namespaces
+  congelados `__EPI_PURCHASE_STATUS_UI__` e `__EPI_PURCHASE_STATUS_RULES__`.
+- Os mapas eram `const` de bloco: ficam só no namespace, e o `app.js` mantém aliases por referência
+  (`PURCHASE_STATUS_LABELS`, `ITEM_STATUS_LABELS`). `PO_STEPPER_STEPS`, `PO_STEP_INDEX` e
+  `PURCHASE_BUYER_QUOTE_STATUSES` não têm outro uso e saíram do `app.js`.
+- Os mapas **não** são publicados no `globalThis`: `views/purchases.js` lê `globalThis.ITEM_STATUS_LABELS` e hoje cai
+  no fallback `{}`; publicá-los mudaria aquela tela (ver 25.6). O teste de contrato trava isso.
+- `_scripts.html`: os dois módulos carregam depois de `ui-helpers.js` e antes de `views/purchases.js` e do `app.js`.
+- Testes existentes ajustados pela mudança de lugar, sem mudar a intenção: dois testes de texto de
+  `tests/test_static_assets.py` passam a ler a lista de status no módulo de regras; o uso de
+  `isBuyerQuotationStatus(pr.status)` combinado com as permissões continua conferido no `app.js`.
+
+### 25.3 Métricas
+
+| Métrica | Antes | Depois |
+|---|---|---|
+| Linhas do `app.js` | 16.126 | 16.079 |
+| Declarações de nível superior (guarda) | 654 | 648 |
+| Endpoints no `app.js` | 93 | 93 |
+| Ciclos entre scripts | 0 | 0 |
+
+### 25.4 Equivalência
+
+- Caracterização antes de mover (commit próprio, verde contra o `app.js` original): fixture literal
+  `fixtures/app-before-ubx-purchases-p1.js.txt` e `purchase-status-runtime.js`, com o motor de tradução real e os
+  cinco catálogos, `dsStepper` real, idioma não suportado, catálogos vazios (texto de fallback do código), sem motor
+  de idioma e troca de idioma sem recriar os mapas. Todos os status conhecidos e bordas (`undefined`, `null`, `0`,
+  `false`, `NaN`, maiúsculas, espaços, `__proto__`, `constructor`, `toString`, arrays, objeto com `toString`, marcação)
+  × 10 extras do badge: 990 observações, 14.100 resultados, 0 divergências.
+- Mutação (`purchase-status-mutations.js`): 21/21 sabotagens detectadas. Mutante equivalente conhecido e não listado:
+  `String(status ?? '')` no lugar de `String(status || '')` só difere para `0`/`false`/`NaN`, que não são status de
+  cotação.
+- Chromium (`scripts/browser/ubx_purchase_status.py`, no workflow de navegador): as três globais com todos os status,
+  extras e chamadas sem argumento, e a visibilidade no `globalThis`, antes e depois de trocar o idioma, reproduzem a
+  referência gravada da `main` (`static/js/test/fixtures/ubx-purchases-p1-browser.json`) nos cinco idiomas; uma
+  sabotagem na cor do badge reprova.
+
+### 25.5 Segurança e isolamento
+
+Autorização, escopo de empresa/unidade e isolamento por tenant seguem no backend, sem mudança. `isBuyerQuotationStatus`
+continua sendo só uma condição de exibição combinada com `hasPermission` no app; nenhuma decisão foi transferida.
+Nenhum listener, HTTP ou armazenamento no navegador foi movido.
+
+### 25.6 Achados preexistentes (preservados; propostas separadas)
+
+- **SEC — badge sem escape:** `purchaseStatusBadge` interpola o rótulo (com fallback para o próprio `status`) e `extra`
+  (que inclui `postponed_until` vindo do servidor) sem `escapeHtml`. Hoje os valores são enums e datas do backend, mas
+  falta defesa em profundidade. Proposta: escapar `label` no módulo, com teste de marcação, numa fatia de segurança.
+- **FIX — rótulos de item no modal do requisitante:** `views/purchases.js` (`openRequesterReviewModal`) lê
+  `globalThis.ITEM_STATUS_LABELS`, que nunca existiu (o mapa era de bloco), e mostra o código cru do status. Proposta:
+  ler `globalThis.__EPI_PURCHASE_STATUS_UI__.ITEM_STATUS_LABELS`, com teste e Chromium, numa correção própria.
+
+### 25.7 Próximas fatias de Compras (cada uma com autorização própria)
+
+1. Fornecedores: `buildSupplierInclusionMailto`, `_parseSuppliersRows`, `checkSupplierAuthorized` (ui/business).
+2. Itens da PO: `buildPoItemRow`, `collectPoItems`, `updatePoTotal` e seletores (ui), sem HTTP.
+3. Funções de compra: renderizações e filtros de `renderPurchaseFunction*` (ui), HTTP em `integrations`.
+4. Cargas e ações (`load*`, `submitPo*`, `executePurchaseWorkflowAction`): por último, com auditoria de permissão.
+
+## 26. SEC-COMPRAS-1 (2026-11-18): XSS armazenado no badge de status de Compras
+
+Base: Corporate `main` `4a1b3ff7`, SaaS `main` `e168a0d` (Compras P1 integrada nos dois: #1104/#478; `app.js`
+idêntico). Correção de saída somente no frontend; nenhum endpoint, contrato, regra de negócio, permissão, banco,
+migração ou infraestrutura alterado.
+
+### 26.1 Causa
+
+1. O backend aceita `postponed_until` como texto livre: `modules/purchases/service.py` (aprovação da PO e
+   mudança de status da requisição) só faz `strip` e exige valor não vazio.
+2. A interpolação do `tr` não escapa valores (`static/i18n.js`, `_interpolate`).
+3. `static/app.js` monta `tr('Até: {p0}', {p0: pr.postponed_until})` (lista de requisições) e
+   `tr('Até {p0}', {p0: po.postponed_until})` (detalhe da PO) e passa o resultado como `extra` de
+   `purchaseStatusBadge`.
+4. `purchaseStatusBadge` (`static/js/modules/purchases/ui/purchase-status-view.js`) inseria
+   `status + extra` no `<span>` sem escape, e o HTML vai para `innerHTML`.
+
+Efeito: um usuário autenticado que pode prorrogar grava marcação que executa para os outros usuários autorizados do
+mesmo tenant que abrem a lista de requisições ou o detalhe da PO. O status sem rótulo conhecido também caía cru no
+badge. A CSP não substitui a correção de saída (o SPA segue Report-Only em produção salvo `CSP_MODE=enforce`).
+
+### 26.2 Correção
+
+- Uma linha: o conteúdo do `<span>` passa a ser `escapeHtml(label)`, o escape oficial de
+  `static/js/views/view-helpers.js` (já carregado antes do módulo em `_scripts.html`). A marcação do `<span>`,
+  as classes e o estilo continuam do componente. Sem dependência nova e sem escape duplo: os chamadores passam texto
+  cru (saída do `tr`), e o escape acontece uma única vez, na montagem do HTML.
+- Textos legítimos inalterados: as 195 traduções do componente (39 chaves × 5 idiomas: `pt-BR`, `en-GB`, `es-ES`,
+  `fr-FR`, `nb-NO`) não têm `& < > " '`, então o escape é identidade para elas.
+
+### 26.3 Testes
+
+- `purchase-status-runtime.js`: a referência continua a cópia literal da `main` anterior à P1; a expectativa passa a
+  ser essa saída com o conteúdo do `<span>` escapado (estrutura e estilo byte a byte iguais). 990 observações /
+  14.100 resultados nos 5 idiomas, catálogos vazios, idioma inválido, sem motor e troca de idioma: zero divergências;
+  1.939 badges com marcação ficam escapados, todos os demais idênticos.
+- Teste novo de neutralização: 410 verificações com 10 cargas (marcação, `"><script>`, aspas simples, `</span>`,
+  texto já escapado, datas legítimas) em `postponed_until` via `tr` real e como status forjado: estrutura e estilo
+  preservados, nenhum `< > " '` vivo no rótulo, o conteúdo aparece como texto, `&amp;` vira `&amp;amp;` (sem escape
+  duplo) e todos os rótulos legítimos saem iguais ao texto puro. Escrito antes da correção e reprovando na `main`.
+- Mutação (`purchase-status-mutations.js`): 25/25. Novas: escape removido, escape só do status, escape duplo e escape
+  incompleto (sem aspas) — todas reprovam.
+- Chromium (`scripts/browser/ubx_purchase_status.py`): equivalência nos 5 idiomas contra a referência gravada da
+  `main` com o mesmo modelo de escape (referência não regravada; 14 badges por idioma diferem só pelo escape), e
+  cenário de ponta a ponta que renderiza a lista real de requisições e o detalhe real da PO com a API simulada
+  devolvendo `postponed_until` e status maliciosos: 0 elementos injetados, 0 execuções, 3 badges sem filhos com o
+  conteúdo como texto. Contraprova: o mesmo roteiro contra o `static/` da `main` reprova com o `<img>` injetado.
+
+### 26.4 Riscos residuais e fora do escopo
+
+- O backend continua aceitando `postponed_until` como texto livre (validação ISO é mudança de contrato; decisão
+  separada). O outro ponto que exibe `postponed_until` (solicitações de EPI, `app.js`) já é seguro:
+  passa por `formatDate` (não-data vira `-`) dentro de `EpiI18n.bindText`, que escapa a saída.
+- Pendências independentes mantidas: rótulos do modal do requisitante (§25.6), nove funções sem uso comprovado,
+  fatia de Fornecedores.
+- Rollback: reverter o commit da correção (os testes novos reprovam de propósito sem ela).

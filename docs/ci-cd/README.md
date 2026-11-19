@@ -75,7 +75,7 @@ evitar duplicidade, conforme a diretriz de auditoria.
 | Flutter SDK | canal `stable` (deploy fixa `3.24.x`) | `subosito/flutter-action@v2` |
 | Dart SDK | acompanha o Flutter (`>=3.3.0 <4.0.0`) | idem |
 | Melos | `^6.3.2` | `dart pub global activate melos` |
-| Java | Temurin 17 | `actions/setup-java@v4` |
+| Java | Temurin 21 para executar o Gradle/AGP 9 (o app compila para Java 17) | `actions/setup-java` |
 | Android SDK | API 34 (emulador integração) | `android-emulator-runner@v2` |
 | Python | 3.11 (paridade com Dockerfile/Render) | `actions/setup-python@v5` |
 | PostgreSQL | 16 (service container) | `backend-ci.yml` job `postgres-schema` |

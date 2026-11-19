@@ -372,9 +372,10 @@ Detalhes e riscos em `UBX_APPJS_AUDITORIA.md` §24; inventário em `UBX_SHELL_TO
 
 ## Próximo passo
 
-Aguardar autorização de integração de Shell/Topbar. Depois, propor Compras (Fase 2), começando
-por apresentação/seletores sem efeitos; inventariar antes de ampliar a fatia. Candidatos iniciais:
-isBuyerQuotationStatus e purchaseStatusBadge. HTTP, permissões e recebimento/estoque separados.
+Compras P1 (apresentação de status) integrada em 2026-11-17 (#1104/#478; seção abaixo). SEC-COMPRAS-1
+(XSS armazenado no badge de status) publicada em rascunho em 2026-11-18 (seção abaixo). Próximas fatias de Compras,
+cada uma com autorização própria: Fornecedores, itens da PO, funções de compra e, por último, cargas e ações
+(`UBX_APPJS_AUDITORIA.md` §25.7). HTTP, permissões e recebimento/estoque separados.
 O plano completo mantém pendentes Entregas, Estoque e resíduos dos demais domínios;
 Migração fica por último entre domínios. Navegação/bootstrap (Etapa 3) e limpeza dos shims
 ficam no final, com auditoria de autorização e estado. Pagamentos ficam fora da UBX.
@@ -400,3 +401,27 @@ Detalhes em [`FICHA_360_F1_IDENTIFICACAO.md`](FICHA_360_F1_IDENTIFICACAO.md). Pr
 `static/js/modules/employee-ppe-360/{business,integrations,ui}` (regras, HTTP, painel) e o endpoint único
 `GET /api/employees/{id}/ppe-360/summary`. A entrada é pedida ao módulo pela linha do colaborador
 (`modules/employees/ui`). `app.js`: 0 linhas alteradas; 654 declarações e 93 endpoints (sem mudança).
+
+## UBX Compras P1 (2026-11-17): apresentação de status — publicação em rascunho
+
+Detalhes em [`UBX_APPJS_AUDITORIA.md` §25](UBX_APPJS_AUDITORIA.md#25-ubx-compras-p1-2026-11-17-apresentação-de-status-de-compras).
+
+- `PURCHASE_STATUS_LABELS`, `ITEM_STATUS_LABELS`, `PO_STEPPER_STEPS`, `PO_STEP_INDEX`, `buildPoStepper` e
+  `purchaseStatusBadge` → `modules/purchases/ui/purchase-status-view.js`; `PURCHASE_BUYER_QUOTE_STATUSES` e
+  `isBuyerQuotationStatus` → `modules/purchases/business/purchase-status-rules.js`. Corpos idênticos, globais legadas
+  preservadas, mapas só no namespace com alias no `app.js`.
+- `app.js` 16.126 → 16.079 linhas; 654 → 648 declarações; 93 endpoints (sem mudança); zero ciclos entre scripts.
+- 990 observações / 14.100 resultados × variantes de idioma sem divergências, 21/21 mutações detectadas e Chromium nos
+  cinco idiomas contra a referência gravada da `main`. Dois achados preexistentes preservados com proposta separada
+  (§25.6).
+
+## SEC-COMPRAS-1 (2026-11-18): XSS armazenado no badge de status — publicação em rascunho
+
+Detalhes em [`UBX_APPJS_AUDITORIA.md` §26](UBX_APPJS_AUDITORIA.md#26-sec-compras-1-2026-11-18-xss-armazenado-no-badge-de-status-de-compras).
+
+- Causa: `postponed_until` livre no backend, `tr` sem escape e `purchaseStatusBadge` inserindo o rótulo sem escape.
+- Correção: `escapeHtml(label)` (escape oficial de `views/view-helpers.js`) no conteúdo do badge. Sem mudança de
+  endpoint, contrato, regra, permissão ou `app.js` (648 declarações, 93 endpoints, zero ciclos entre scripts).
+- Teste de neutralização (410 verificações), equivalência da P1 com o modelo de escape (990 observações, 1.939 badges
+  com marcação escapados, demais idênticos), 25/25 mutações e Chromium nos 5 idiomas com cenário de ponta a ponta;
+  contraprova na `main` reprova com o elemento injetado.

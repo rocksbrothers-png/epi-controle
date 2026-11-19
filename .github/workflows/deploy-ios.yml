@@ -150,7 +150,23 @@ jobs:
           # o Podfile no disco; o `pod install` de verdade acontece dentro do
           # `flutter build ipa` logo abaixo, já com o target corrigido.
           flutter build ios --config-only --release --no-codesign || true
-          test -f ios/Podfile || { echo "::error::Podfile ausente — verifique a geração do projeto iOS"; exit 1; }
+          # Modo de integração dos plugins iOS. Com Swift Package Manager
+          # habilitado, o Flutter só gera Podfile se ALGUM plugin ainda
+          # depender de CocoaPods; quando todos publicam pacote SwiftPM
+          # (ex.: google_mlkit_* >= 1.0.3), não há Podfile e não há o que
+          # `pod install`. Isso só é aceito se o Runner.xcodeproj comprovar a
+          # integração SwiftPM — sem Podfile E sem SwiftPM, falha (fail-closed).
+          PBXPROJ=ios/Runner.xcodeproj/project.pbxproj
+          if [ -f ios/Podfile ]; then
+            echo "::notice::Plugins iOS via CocoaPods + SwiftPM (Podfile gerado)."
+            PLUGIN_MODE=cocoapods
+          elif grep -q FlutterGeneratedPluginSwiftPackage "$PBXPROJ"; then
+            echo "::notice::Plugins iOS 100% via SwiftPM: nenhum plugin requer CocoaPods, Podfile não é gerado."
+            PLUGIN_MODE=spm
+          else
+            echo "::error::Podfile ausente e Runner.xcodeproj sem integração SwiftPM — verifique a geração do projeto iOS"
+            exit 1
+          fi
           ruby ios/fastlane/pin_ios_deployment_target.rb
 
       # Isolamento de backend (EST-V1.6-R1): resolve e VALIDA a API_BASE_URL

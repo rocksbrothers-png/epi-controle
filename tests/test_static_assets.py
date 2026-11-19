@@ -98,8 +98,10 @@ def test_buyer_correction_status_keeps_legacy_quotation_tools_visible():
     setup_section = source[source.index("function _setupPrDetailActions"):source.index("function exportPrCsv")]
     workflow_section = source[source.index("function renderPrStatusActions"):source.index("async function openPoDetail")]
 
-    assert "const PURCHASE_BUYER_QUOTE_STATUSES" in source
-    assert "'waiting_buyer_correction'" in source[source.index("const PURCHASE_BUYER_QUOTE_STATUSES"):source.index("function isBuyerQuotationStatus")]
+    # UBX Compras P1: a lista e a regra moraram para modules/purchases/business/purchase-status-rules.js.
+    rules = (_repo_root() / "static" / "js" / "modules" / "purchases" / "business" / "purchase-status-rules.js").read_text(encoding="utf-8")
+    assert "const PURCHASE_BUYER_QUOTE_STATUSES" in rules
+    assert "'waiting_buyer_correction'" in rules[rules.index("const PURCHASE_BUYER_QUOTE_STATUSES"):rules.index("function isBuyerQuotationStatus")]
     assert "isBuyerQuotationStatus(pr.status)" in setup_section
     assert "Marcar como Cotada" in workflow_section
     assert "Reenviar ao Aprovador" in workflow_section
@@ -126,7 +128,9 @@ def test_buyer_actions_are_permission_based_and_preserve_legacy_tools():
 
 def test_buyer_import_quote_tools_cover_returned_and_reopened_statuses():
     source = (_repo_root() / "static" / "app.js").read_text(encoding="utf-8")
-    status_section = source[source.index("const PURCHASE_BUYER_QUOTE_STATUSES"):source.index("function isBuyerQuotationStatus")]
+    # UBX Compras P1: a lista e a regra moraram para modules/purchases/business/purchase-status-rules.js.
+    rules = (_repo_root() / "static" / "js" / "modules" / "purchases" / "business" / "purchase-status-rules.js").read_text(encoding="utf-8")
+    status_section = rules[rules.index("const PURCHASE_BUYER_QUOTE_STATUSES"):rules.index("function isBuyerQuotationStatus")]
     setup_section = source[source.index("function _setupPrDetailActions"):source.index("function exportPrCsv")]
 
     for status in ["'sent_to_buyer'", "'returned_to_buyer'", "'quoted'", "'waiting_buyer_correction'", "'pending_approval'", "'postponed'"]:

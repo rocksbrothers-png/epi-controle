@@ -5,8 +5,8 @@
 // Os rótulos continuam getters (a troca de idioma vale sem recriar os mapas).
 // buildPoStepper e purchaseStatusBadge preservam as globais legadas (eram globais
 // pelo Annex B no app.js). Os mapas eram de bloco: ficam só no namespace, e o app.js
-// guarda um alias por referência. views/purchases.js lê globalThis.ITEM_STATUS_LABELS
-// e hoje cai no fallback {}; publicar o mapa no globalThis mudaria aquela tela.
+// guarda um alias por referência. views/purchases.js (modal do requisitante) também lê
+// ITEM_STATUS_LABELS pelo namespace; os mapas não são publicados no globalThis.
 // SEC-COMPRAS-1: o rótulo do badge (status + extra, que pode trazer postponed_until
 // do servidor via tr sem escape) é texto: passa pelo escapeHtml oficial de
 // views/view-helpers.js, carregado antes deste módulo. A marcação do <span> é do componente.

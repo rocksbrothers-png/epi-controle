@@ -8,6 +8,7 @@ o usuário do sistema. O `.gitignore` não protege arquivo já versionado; este
 teste protege. O perfil do Chrome tem guarda própria em
 `tests/test_no_versioned_browser_profile.py`.
 """
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -35,6 +36,11 @@ def _tracked_files():
         out = subprocess.run(['git', 'ls-files', '-z'], cwd=ROOT, check=True,
                              capture_output=True).stdout
     except (FileNotFoundError, subprocess.CalledProcessError) as exc:
+        # Fora da CI, um checkout sem git é legítimo e o teste é pulado. Na CI
+        # (GitHub Actions define CI=true), pular esconderia a guarda e deixaria
+        # o job verde sem verificar nada: ali a ausência do git é falha.
+        if os.environ.get('CI'):
+            raise AssertionError('git indisponível na CI: a guarda não pode ser pulada') from exc
         raise pytest.skip.Exception('repositório git indisponível neste ambiente') from exc
     return [name for name in out.decode('utf-8', 'replace').split('\0') if name]
 
@@ -69,3 +75,21 @@ def test_detector_flags_generated_files(name):
 ])
 def test_detector_keeps_source_files(name):
     assert not GENERATED.search(name)
+
+
+def _git_missing(*_args, **_kwargs):
+    raise FileNotFoundError('git')
+
+
+def test_missing_git_fails_in_ci(monkeypatch):
+    monkeypatch.setenv('CI', 'true')
+    monkeypatch.setattr(subprocess, 'run', _git_missing)
+    with pytest.raises(AssertionError, match='git indisponível na CI'):
+        _tracked_files()
+
+
+def test_missing_git_is_skipped_outside_ci(monkeypatch):
+    monkeypatch.delenv('CI', raising=False)
+    monkeypatch.setattr(subprocess, 'run', _git_missing)
+    with pytest.raises(pytest.skip.Exception):
+        _tracked_files()

@@ -56,11 +56,14 @@ logs/imports/
 # localmente sujava o `git status` com cache de build e caminhos absolutos da
 # maquina de quem rodou.
 #
-# `local.properties` fica de fora de proposito: ja e versionado e aponta para o
-# SDK de quem trabalha no projeto — ignora-lo agora nao o destrackearia, e
-# remove-lo apagaria o arquivo de quem o usa.
+# `android/local.properties` guarda caminhos absolutos da maquina de quem
+# compila (`sdk.dir`, `flutter.sdk`). O `flutter` o regenera a cada build a
+# partir do `ANDROID_HOME` e do SDK em uso — inclusive no CI — e o template do
+# Flutter o ignora. Foi destrackeado com `git rm --cached`, que preserva a
+# copia local de quem ja o tinha.
 flutter/**/.dart_tool/
 flutter/pubspec.lock
+flutter/**/android/local.properties
 
 # Android — material de assinatura (issue rocksbrothers-png/epi-controle-app#200).
 #

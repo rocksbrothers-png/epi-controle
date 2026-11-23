@@ -1,4 +1,8 @@
+import os
+import re
 from pathlib import Path
+
+import pytest
 
 from epi_backend.manufacture_date_ocr import choose_best_date, configure_tesseract, extract_date_candidates, get_ocr_runtime_status
 
@@ -73,3 +77,43 @@ def test_runtime_status_without_tesseract_is_controlled_warning(monkeypatch):
     assert status["status"] in {"ok", "warning", "error"}
     if not status.get("ready"):
         assert "message" in status
+
+
+def test_windows_fallback_has_no_hardcoded_user_profile_path():
+    source = OCR_MODULE_PATH.read_text(encoding="utf-8")
+    assert not re.search(r"[A-Za-z]:\\+Users\\+", source)
+
+
+def test_windows_paths_use_localappdata_first(monkeypatch):
+    from epi_backend import manufacture_date_ocr as engine
+
+    monkeypatch.setenv("LOCALAPPDATA", "/fake/localappdata")
+    paths = engine._windows_tesseract_paths()
+
+    assert paths[0] == os.path.join("/fake/localappdata", "Programs", "Tesseract-OCR", "tesseract.exe")
+    assert paths[1:] == engine.WINDOWS_TESSERACT_PATHS
+
+
+def test_windows_paths_without_localappdata_keep_program_files(monkeypatch):
+    from epi_backend import manufacture_date_ocr as engine
+
+    monkeypatch.delenv("LOCALAPPDATA", raising=False)
+    assert engine._windows_tesseract_paths() == engine.WINDOWS_TESSERACT_PATHS
+
+
+@pytest.mark.skipif(
+    any(Path(p).exists() for p in ("/usr/bin/tesseract", "/usr/local/bin/tesseract")),
+    reason="Tesseract do sistema tem precedência sobre o fallback do Windows",
+)
+def test_resolver_finds_per_user_install_via_localappdata(monkeypatch, tmp_path):
+    from epi_backend import manufacture_date_ocr as engine
+
+    exe = tmp_path.joinpath("Programs", "Tesseract-OCR", "tesseract.exe")
+    exe.parent.mkdir(parents=True)
+    exe.write_bytes(b"")
+    monkeypatch.delenv("TESSERACT_CMD", raising=False)
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    monkeypatch.setattr(engine.shutil, "which", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(engine, "_is_windows", lambda: True)
+
+    assert engine._resolve_tesseract_cmd() == str(exe)

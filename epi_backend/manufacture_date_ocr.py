@@ -20,8 +20,11 @@ except ModuleNotFoundError:
     OCR_RUNTIME_AVAILABLE = False
 
 
+# Instalação "só para mim" do Tesseract (instalador UB-Mannheim) cai em
+# %LOCALAPPDATA%\Programs\Tesseract-OCR. O caminho é montado a partir do
+# ambiente de quem roda (ver _windows_tesseract_paths), nunca de um usuário fixo.
+WINDOWS_USER_TESSERACT_SUBPATH = ('Programs', 'Tesseract-OCR', 'tesseract.exe')
 WINDOWS_TESSERACT_PATHS = [
-    r"C:\Users\paraty.safoff\AppData\Local\Programs\Tesseract-OCR\tesseract.exe",
     r"C:\Program Files\Tesseract-OCR\tesseract.exe",
     r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
 ]
@@ -42,6 +45,20 @@ def _env_truthy(name: str, default: bool = False) -> bool:
 
 def _is_render_environment() -> bool:
     return bool(os.environ.get('RENDER') or os.environ.get('RENDER_SERVICE_ID'))
+
+
+def _is_windows() -> bool:
+    return os.name == 'nt'
+
+
+def _windows_tesseract_paths() -> list[str]:
+    """Candidatos no Windows: instalação por usuário primeiro, depois Program Files."""
+    paths: list[str] = []
+    local_appdata = str(os.environ.get('LOCALAPPDATA') or '').strip()
+    if local_appdata:
+        paths.append(os.path.join(local_appdata, *WINDOWS_USER_TESSERACT_SUBPATH))
+    paths.extend(WINDOWS_TESSERACT_PATHS)
+    return paths
 
 
 def _resolve_tesseract_cmd() -> str:
@@ -65,8 +82,8 @@ def _resolve_tesseract_cmd() -> str:
     if Path('/usr/local/bin/tesseract').exists():
         return '/usr/local/bin/tesseract'
 
-    if os.name == 'nt':
-        possible_paths = WINDOWS_TESSERACT_PATHS
+    if _is_windows():
+        possible_paths = _windows_tesseract_paths()
     else:
         possible_paths = LINUX_TESSERACT_PATHS
 

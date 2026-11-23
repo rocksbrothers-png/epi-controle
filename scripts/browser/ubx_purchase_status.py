@@ -26,7 +26,10 @@ têm de bater byte a byte e os rótulos legítimos (sem & < > " ') saem idêntic
 Além disso, um cenário de segurança de ponta a ponta renderiza a lista real de
 requisições e o detalhe real da PO com a API simulada devolvendo postponed_until
 e status maliciosos, e exige nenhum elemento injetado, nenhuma execução e o
-conteúdo visível como texto. Esse cenário não roda em --record (na main ele
+conteúdo visível como texto. O modal real do requisitante é aberto com itens
+bloqueados (approved, ordered, received, closed) e tem de mostrar os rótulos
+oficiais do idioma ativo (não o código interno), sem executar marcação, e fechar
+ao cancelar. Esse cenário não roda em --record (na main ele
 reprova, que é a vulnerabilidade).
 
 python scripts/browser/ubx_purchase_status.py --output /tmp/ubx-purchases-p1
@@ -139,6 +142,43 @@ def security(f):
     return result
 
 
+LOCKED = ['approved', 'ordered', 'received', 'closed']
+MODAL = """async ([locked, payload]) => {
+  const items = [...locked.map((status, i) => ({ id: 100 + i, status, epi_name: 'EPI ' + status, quantity_requested: i + 1 })),
+    { id: 200, status: 'open', epi_name: payload, quantity_requested: 2 }];
+  const promise = openRequesterReviewModal({ id: 77, company_id: 901, notes: '' }, items);
+  const modal = document.getElementById('requester-review-modal');
+  const rows = [...modal.querySelectorAll('small')].map((s) => s.textContent);
+  const injected = modal.querySelectorAll('img, script').length;
+  modal.querySelector('#rr-cancel').click();
+  const result = await promise;
+  return { rows, injected, closed: !document.getElementById('requester-review-modal'), result,
+           itemsIntact: items.slice(0, locked.length).map((i) => i.status) };
+}"""
+
+
+def requester_modal(f):
+    """Modal real do requisitante: rótulos oficiais dos itens bloqueados no idioma ativo."""
+    page = f.page
+    cat, fallback = commercial.catalog(f.locale), commercial.catalog('pt-BR')
+    src = (ROOT / 'static/js/modules/purchases/ui/purchase-status-view.js').read_text(encoding='utf-8')
+    block = src[src.index('const ITEM_STATUS_LABELS = {'):]
+    block = block[:block.index('};')]
+    declared = {m.group(1): m.group(2) for m in _re.finditer(r"get (\w+)\(\) \{ return \(tr\('([^']+)'", block)}
+    expected = []
+    for status in LOCKED:
+        try:
+            expected.append('(' + commercial.leaf(cat, declared[status]) + ')')
+        except KeyError:
+            expected.append('(' + commercial.leaf(fallback, declared[status]) + ')')
+    result = page.evaluate(MODAL, [LOCKED, PAYLOAD])
+    assert result['rows'] == expected, f'rótulos do modal: {result["rows"]} esperados {expected}'
+    assert result['injected'] == 0 and page.evaluate('window.__xss || 0') == 0, f'marcação executada no modal: {result}'
+    assert result['closed'] and result['result'] is None, f'cancelar não fechou o modal: {result}'
+    assert result['itemsIntact'] == LOCKED, f'códigos internos alterados: {result}'
+    return {'rows': result['rows']}
+
+
 def actions(f):
     page = f.page
     steps = [{'label': 'funções', 'result': page.evaluate(EXERCISE, [STATUSES])}]
@@ -171,6 +211,7 @@ def run_locale(origin, browser, locale):
         steps = actions(f)
         if not RECORD:
             steps.append({'label': 'SEC-COMPRAS-1 (lista e detalhe reais)', 'security': security(f)})
+            steps.append({'label': 'modal do requisitante (rótulos oficiais)', 'security': requester_modal(f)})
         assert not f.errors, f'page errors: {f.errors}'
         xss = page.evaluate('window.__xss || 0')
         assert xss == 0, f'marcação executada {xss} vez(es)'

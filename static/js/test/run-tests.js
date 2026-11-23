@@ -7825,6 +7825,8 @@ require('./platform-brand-runtime')({ testAsync, test, assert, eq });
 require('./print-popup-runtime')({ testAsync, test, assert, eq });
 require('./shell-topbar-runtime')({ testAsync, test, assert, eq });
 require('./purchase-status-runtime')({ test, assert, eq });
+// UBX Fornecedores F1 — importação de fornecedores: regra pura e carga do SheetJS por injeção.
+require('./suppliers-import-runtime')({ test, testAsync, assert, eq });
 require('./requester-modal-labels-runtime')({ testAsync, test, assert, eq });
 require('./users-active-runtime')({ test, assert, eq });
 require('./employee-ppe-360-lifecycle-runtime')({ test, testAsync, assert, eq });

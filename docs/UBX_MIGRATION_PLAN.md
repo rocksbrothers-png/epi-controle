@@ -374,8 +374,9 @@ Detalhes e riscos em `UBX_APPJS_AUDITORIA.md` §24; inventário em `UBX_SHELL_TO
 
 Compras P1 (apresentação de status) integrada em 2026-11-17 (#1104/#478; seção abaixo). SEC-COMPRAS-1
 (XSS armazenado no badge de status) integrada em 2026-11-18 (#1107/#481). Rótulos do modal do requisitante
-publicados em rascunho em 2026-11-19 (seção abaixo). Próximas fatias de Compras,
-cada uma com autorização própria: Fornecedores, itens da PO, funções de compra e, por último, cargas e ações
+integrados em 2026-11-23 (#1109/#483). Fornecedores F1 (importação de planilha) publicada em
+rascunho em 2026-11-23 (seção abaixo). Próximas fatias de Compras,
+cada uma com autorização própria: restante de Fornecedores, itens da PO, funções de compra e, por último, cargas e ações
 (`UBX_APPJS_AUDITORIA.md` §25.7). HTTP, permissões e recebimento/estoque separados.
 O plano completo mantém pendentes Entregas, Estoque e resíduos dos demais domínios;
 Migração fica por último entre domínios. Navegação/bootstrap (Etapa 3) e limpeza dos shims
@@ -435,3 +436,15 @@ Detalhes em [`UBX_APPJS_AUDITORIA.md` §27](UBX_APPJS_AUDITORIA.md#27-fix--rótu
   uma global inexistente e mostrava o código interno). Sem mapa ou global novos; `app.js` inalterado.
 - Teste funcional do modal real (35 verificações nos 5 idiomas) e cenário Chromium; contraprova na `main` reprova.
 - 7 traduções em inglês nos catálogos `es-ES`/`fr-FR`/`nb-NO` registradas para uma fatia de I18N (§27.4).
+
+## UBX Fornecedores F1 (2026-11-23): importação de planilha — publicação em rascunho
+
+Detalhes em [`UBX_APPJS_AUDITORIA.md` §28](UBX_APPJS_AUDITORIA.md#28-ubx-fornecedores-f1-2026-11-23-importação-de-planilha-de-fornecedores).
+
+- `_parseSuppliersRows` → `modules/purchases/business/supplier-import-rules.js` (pura; rótulo "Nome" traduzido por
+  parâmetro) e `_loadSheetJS` → `modules/purchases/integrations/supplier-import-loader.js` (janela, documento e
+  mensagem de erro por parâmetro). `importSuppliersCSV` fica no `app.js` e injeta as dependências. Guarda inalterada.
+- `app.js` 16.079 → 16.057 linhas; 648 → 646 declarações; 93 endpoints; zero ciclos. Global implícita
+  `_parseSuppliersRows` removida (sem chamadores); só namespaces congelados publicados.
+- 288 observações / 360 resultados sem divergência contra a cópia literal, 32/32 mutações e Chromium nos 5 idiomas
+  contra a referência da `main`. CDN/SRI, CSP, traduções e deploy registrados como pendências (§28.3).

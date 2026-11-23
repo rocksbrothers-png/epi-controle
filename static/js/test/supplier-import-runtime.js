@@ -92,12 +92,20 @@ function buildContext(lang, impl, mutation) {
     }
     vm.runInContext(rules, ctx);
     vm.runInContext(loader, ctx);
-    api = {
-      // _parseSuppliersRows era global (Annex B): compara-se pela global legada.
-      _parseSuppliersRows: (...a) => ctx._parseSuppliersRows(...a),
-      // _loadSheetJS era async de bloco: só no namespace.
-      _loadSheetJS: (...a) => ctx.__EPI_SUPPLIER_IMPORT_LOADER__._loadSheetJS(...a)
-    };
+    // Mesmas dependências que importSuppliersCSV (app.js) injeta, avaliadas no mesmo contexto:
+    // o tradutor só é consultado onde o original o chamava (rótulo "Nome" por linha, mensagem
+    // de erro só no onerror), então inclusive a ausência do motor de idioma se comporta igual.
+    vm.runInContext([
+      'globalThis.__API__ = {',
+      "  _parseSuppliersRows: (rows) => globalThis.__EPI_SUPPLIER_IMPORT_RULES__._parseSuppliersRows(rows, () => tr('signature.name', 'Nome', {})),",
+      '  _loadSheetJS: () => globalThis.__EPI_SUPPLIER_IMPORT_LOADER__._loadSheetJS({',
+      '    win: window,',
+      '    doc: document,',
+      "    errorMessage: () => tr('ui.app.nao_foi_possivel_carregar_suporte_a_xls_verifique_sua_conexao_a34fe1', 'Não foi possível carregar suporte a XLS. Verifique sua conexão.', {}),",
+      '  })',
+      '};'
+    ].join('\n'), ctx);
+    api = ctx.__API__;
   }
   return { ctx, env, api };
 }
@@ -236,24 +244,64 @@ async function compareAll(mutation) {
   return [observations, results];
 }
 
-function contracts() {
+// appMutation = [de, para]: aplica a troca só em memória no app.js (usado pelas mutações).
+function contracts(appMutation) {
   const assert = require('assert');
   if (!exists(RULES)) { return; }
-  const app = read('app.js');
+  let app = read('app.js');
+  if (appMutation) {
+    if (!app.includes(appMutation[0])) { throw new Error('mutação sem alvo: ' + appMutation[0]); }
+    app = app.replace(appMutation[0], appMutation[1]);
+  }
   for (const name of ['_loadSheetJS', '_parseSuppliersRows']) {
     assert(!new RegExp(`^(async )?function ${name}\\(`, 'm').test(app), `${name} ainda declarada no app.js`);
   }
-  // importSuppliersCSV continua no app.js e usa o namespace oficial.
+  // importSuppliersCSV continua no app.js: injeta as dependências e coordena a importação.
+  // O adaptador do teste (acima) tem de ser exatamente o que o app.js faz.
   const body = extractFunction(app, 'importSuppliersCSV');
-  assert(body.includes('globalThis.__EPI_SUPPLIER_IMPORT_LOADER__._loadSheetJS()'), 'importSuppliersCSV sem o carregador do namespace');
-  assert.strictEqual((body.match(/globalThis\.__EPI_SUPPLIER_IMPORT_RULES__\._parseSuppliersRows\(/g) || []).length, 2,
-    'importSuppliersCSV deveria usar o parser do namespace nos caminhos XLS e CSV');
-  assert(body.includes("api('/api/authorized-suppliers/upload'"), 'contrato HTTP do upload preservado');
+  const flat = body.replace(/\s+/g, ' ');
+  const ERR = "tr('ui.app.nao_foi_possivel_carregar_suporte_a_xls_verifique_sua_conexao_a34fe1', 'Não foi possível carregar suporte a XLS. Verifique sua conexão.', {})";
+  assert(flat.includes(`await globalThis.__EPI_SUPPLIER_IMPORT_LOADER__._loadSheetJS({ win: window, doc: document, errorMessage: () => ${ERR}, })`),
+    'importSuppliersCSV deveria injetar win/doc/errorMessage no carregador');
+  for (const v of ['data', 'objRows']) {
+    assert(body.includes(`rows = globalThis.__EPI_SUPPLIER_IMPORT_RULES__._parseSuppliersRows(${v}, () => tr('signature.name', 'Nome', {}));`),
+      `importSuppliersCSV deveria injetar o rótulo "Nome" no parser (${v})`);
+  }
+  // (montado por partes para o varredor de contrato de API não tomar o teste por chamada real)
+  assert(body.includes(['api(', "'/api/authorized-suppliers/upload', { method: 'POST'"].join('')), 'contrato HTTP do upload preservado');
+  assert(body.includes('loadAuthorizedSuppliers();'), 'recarga da lista preservada');
+  // Módulos puros: sem tradutor, DOM, janela ou estado; dependências só por parâmetro.
+  for (const rel of [RULES, LOADER]) {
+    const code = read(rel).replace(/^\s*\/\/.*$/gm, '');
+    for (const [re, what] of [[/(?<![\w$.])tr\s*\(/, 'tradutor'], [/\bdocument\b/, 'document'], [/\bwindow\b/, 'window'],
+      [/\bstate\b|__EPI_APP_STATE__/, 'estado do app'], [/\bfetch\b|\bapi\s*\(/, 'HTTP'], [/localStorage|sessionStorage/, 'storage']]) {
+      assert(!re.test(code), `${rel}: acesso direto a ${what}`);
+    }
+    const reads = code.match(/globalThis\.(\w+)/g) || [];
+    for (const r of reads) { assert(/^globalThis\.__EPI_(MODULE_SUPPLIER_IMPORT_(RULES|LOADER)_LOADED|SUPPLIER_IMPORT_(RULES|LOADER))__$/.test(r), `${rel}: global inesperada ${r}`); }
+  }
+  // Sem globais novas: cada módulo publica só a flag de carga e o namespace congelado.
+  const fresh = { globalThis: null }; fresh.globalThis = fresh; vm.createContext(fresh);
+  vm.runInContext('globalThis.Object = Object;', fresh);
+  const base = new Set(Object.keys(fresh));
+  vm.runInContext(read(RULES), fresh); vm.runInContext(read(LOADER), fresh);
+  assert.deepStrictEqual(Object.keys(fresh).filter((k) => !base.has(k)).sort(), [
+    '__EPI_MODULE_SUPPLIER_IMPORT_LOADER_LOADED__', '__EPI_MODULE_SUPPLIER_IMPORT_RULES_LOADED__',
+    '__EPI_SUPPLIER_IMPORT_LOADER__', '__EPI_SUPPLIER_IMPORT_RULES__'
+  ], 'globais publicadas pelos módulos');
+  // Os módulos não dependem um do outro nem de nada carregado depois (sem ciclos).
+  assert(!/__EPI_SUPPLIER_IMPORT_LOADER__/.test(read(RULES)) && !/__EPI_SUPPLIER_IMPORT_RULES__/.test(read(LOADER)), 'dependência cruzada entre os módulos');
   const { ctx } = buildContext('pt-BR', 'current');
   for (const ns of ['__EPI_SUPPLIER_IMPORT_RULES__', '__EPI_SUPPLIER_IMPORT_LOADER__']) { assert(Object.isFrozen(ctx[ns]), `${ns} congelado`); }
-  assert.strictEqual(typeof ctx._parseSuppliersRows, 'function', 'global legada _parseSuppliersRows');
-  assert.strictEqual(ctx._parseSuppliersRows, ctx.__EPI_SUPPLIER_IMPORT_RULES__._parseSuppliersRows, 'global e namespace são a mesma função');
+  assert.deepStrictEqual(Object.keys(ctx.__EPI_SUPPLIER_IMPORT_RULES__), ['_parseSuppliersRows']);
+  assert.deepStrictEqual(Object.keys(ctx.__EPI_SUPPLIER_IMPORT_LOADER__), ['_loadSheetJS']);
+  // A global implícita _parseSuppliersRows (Annex B, sem chamadores fora do app.js) não é
+  // republicada com outra assinatura; _loadSheetJS já era de bloco.
+  assert.strictEqual(ctx._parseSuppliersRows, undefined, '_parseSuppliersRows não pode ser global com a nova assinatura');
   assert.strictEqual(ctx._loadSheetJS, undefined, '_loadSheetJS era de bloco: não pode virar global');
+  // Carga idempotente: rodar o módulo de novo não substitui o namespace.
+  const first = ctx.__EPI_SUPPLIER_IMPORT_RULES__; vm.runInContext(read(RULES), ctx);
+  assert.strictEqual(ctx.__EPI_SUPPLIER_IMPORT_RULES__, first, 'segunda carga não pode trocar o namespace');
   const scripts = read('views/_scripts.html');
   const pos = (s) => { const i = scripts.indexOf(s); assert(i >= 0, `${s} ausente em _scripts.html`); return i; };
   assert(pos('/js/modules/purchases/business/supplier-import-rules.js') < pos('/app.js?'));
@@ -269,3 +317,4 @@ module.exports = function register({ testAsync, test }) {
   test('UBX Fornecedores F1: contratos dos módulos, globais e ordem de carga', () => contracts());
 };
 module.exports.compareAll = compareAll;
+module.exports.contracts = contracts;

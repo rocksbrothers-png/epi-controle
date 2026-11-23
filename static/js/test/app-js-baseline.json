@@ -325,6 +325,12 @@
       "_settingsDrawerBodyHtml",
       "_settingsDrawerFooterHtml",
       "openSettingsDrawer"
+    ],
+    "js/modules/purchases/business/supplier-import-rules.js": [
+      "_parseSuppliersRows"
+    ],
+    "js/modules/purchases/integrations/supplier-import-loader.js": [
+      "_loadSheetJS"
     ]
   },
   "declarations": [
@@ -421,11 +427,9 @@
     "_getPoUnitEpis",
     "_handoverFeedback",
     "_initDemandsCompanyFilter",
-    "_loadSheetJS",
     "_manualRequestItems",
     "_navBack",
     "_parsePoImportFile",
-    "_parseSuppliersRows",
     "_poCsvParsed",
     "_poItems",
     "_populatePurchaseRequestEpiSelect",

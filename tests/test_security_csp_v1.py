@@ -77,9 +77,13 @@ def test_spa_policy_has_no_unsafe_script_sources():
 
 def test_spa_external_scripts_match_what_the_frontend_loads():
     index = (STATIC / 'index.html').read_text(encoding='utf-8')
-    app_js = (STATIC / 'app.js').read_text(encoding='utf-8')
+    # Carga dinâmica: o app.js e os módulos que ele usa (o SheetJS mora em
+    # js/modules/purchases/integrations/supplier-import-loader.js desde a UBX Fornecedores F1).
+    # Testes ficam de fora: não são servidos à página.
+    sources = [STATIC / 'app.js', *sorted(p for p in (STATIC / 'js').rglob('*.js') if 'test' not in p.relative_to(STATIC / 'js').parts)]
     loaded = set(re.findall(r'<script\b[^>]*\bsrc="(https://[^"]+)"', index))
-    loaded |= set(re.findall(r"['\"](https://(?:unpkg\.com|cdn\.jsdelivr\.net)/[^'\"]+\.js)['\"]", app_js))
+    for source in sources:
+        loaded |= set(re.findall(r"['\"](https://(?:unpkg\.com|cdn\.jsdelivr\.net)/[^'\"]+\.js)['\"]", source.read_text(encoding='utf-8')))
     assert loaded == set(csp.SPA_EXTERNAL_SCRIPTS)
 
 

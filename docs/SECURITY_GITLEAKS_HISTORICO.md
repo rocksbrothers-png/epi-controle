@@ -43,6 +43,8 @@ ficar verde, a proposta mais restrita é registrar só os 12 fingerprints em
 em vez de uma exceção por caminho ou por regra. Isso depende de aprovação
 explícita e não faz parte desta correção.
 
-Os demais arquivos versionados de `.dart_tool/` (35, por exemplo
-`package_config.json`) não geraram achados. Podem ser retirados num PR
-separado.
+Os demais artefatos gerados pelo Flutter que estavam versionados (`.dart_tool/`,
+`.flutter-plugins-dependencies` e o `GeneratedPluginRegistrant.java` do Android,
+38 arquivos) não geraram achados, mas traziam caminhos absolutos da máquina de
+quem os gerou. Foram retirados do índice num PR separado, com regras próprias no
+`.gitignore` e a guarda `tests/test_no_versioned_flutter_generated.py`.

@@ -60,6 +60,11 @@ logs/imports/
 # SDK de quem trabalha no projeto — ignora-lo agora nao o destrackearia, e
 # remove-lo apagaria o arquivo de quem o usa.
 flutter/**/.dart_tool/
+# Gerados pelo `flutter pub get` e pelo build a cada execução, com caminhos
+# absolutos da máquina de quem rodou (inclusive o usuário do sistema).
+flutter/**/.flutter-plugins
+flutter/**/.flutter-plugins-dependencies
+flutter/**/android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
 flutter/pubspec.lock
 
 # Android — material de assinatura (issue rocksbrothers-png/epi-controle-app#200).

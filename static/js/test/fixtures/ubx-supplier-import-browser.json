@@ -1,0 +1,1342 @@
+{
+ "pt-BR": {
+  "steps": [
+   {
+    "label": "sem arquivo",
+    "result": {
+     "feedback": "Selecione um arquivo.",
+     "scripts": 0,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": []
+    }
+   },
+   {
+    "label": "csv pt ;",
+    "result": {
+     "feedback": "Importado: 4 novos, 1 atualizados.",
+     "scripts": 0,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": [
+      {
+       "rows": [
+        {
+         "name": "Fornecedor A",
+         "cnpj": "12.345.678/0001-90",
+         "email": "a@x.test"
+        },
+        {
+         "name": "Fornecedor B",
+         "cnpj": "98765432000110",
+         "email": "b@x.test"
+        },
+        {
+         "name": "Só nome",
+         "cnpj": "",
+         "email": ""
+        },
+        {
+         "name": "<img src=x onerror=window.__xss=(window.__xss||0)+1>",
+         "cnpj": "1",
+         "email": "x"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "label": "csv en ,",
+    "result": {
+     "feedback": "Importado: 4 novos, 1 atualizados.",
+     "scripts": 0,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": [
+      {
+       "rows": [
+        {
+         "name": "Supplier One",
+         "cnpj": "1",
+         "email": "one@x.test"
+        },
+        {
+         "name": "Supplier Two",
+         "cnpj": "",
+         "email": ""
+        },
+        {
+         "name": "0",
+         "cnpj": "0",
+         "email": "0"
+        },
+        {
+         "name": "Quoted",
+         "cnpj": "comma",
+         "email": "2"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "label": "csv vazio",
+    "result": {
+     "feedback": "Arquivo vazio ou sem dados.",
+     "scripts": 0,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": []
+    }
+   },
+   {
+    "label": "csv sem nome",
+    "result": {
+     "feedback": "Nenhuma linha válida encontrada. Verifique se o arquivo tem coluna \"nome\".",
+     "scripts": 0,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": []
+    }
+   },
+   {
+    "label": "xls sem CDN",
+    "result": {
+     "feedback": "Não foi possível carregar suporte a XLS. Verifique sua conexão.",
+     "scripts": 1,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": []
+    }
+   },
+   {
+    "label": "xlsx",
+    "result": {
+     "feedback": "Importado: 4 novos, 1 atualizados.",
+     "scripts": 2,
+     "xlsxCalls": [
+      [
+       "read",
+       6,
+       "array"
+      ],
+      [
+       "sheet_to_json",
+       "ws1",
+       "{\"defval\":\"\"}"
+      ]
+     ],
+     "xss": 0,
+     "uploads": [
+      {
+       "rows": [
+        {
+         "name": "XLS Um",
+         "cnpj": "11222333000181",
+         "email": "um@x.test"
+        },
+        {
+         "name": "XLS Two",
+         "cnpj": "",
+         "email": "two@x.test"
+        },
+        {
+         "name": "4567",
+         "cnpj": "",
+         "email": "true"
+        },
+        {
+         "name": "<img src=x onerror=window.__xss=(window.__xss||0)+1>",
+         "cnpj": "\"1\"",
+         "email": "o'neil@x.test"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "label": "xls (SheetJS já carregado)",
+    "result": {
+     "feedback": "Importado: 4 novos, 1 atualizados.",
+     "scripts": 2,
+     "xlsxCalls": [
+      [
+       "read",
+       7,
+       "array"
+      ],
+      [
+       "sheet_to_json",
+       "ws1",
+       "{\"defval\":\"\"}"
+      ]
+     ],
+     "xss": 0,
+     "uploads": [
+      {
+       "rows": [
+        {
+         "name": "XLS Um",
+         "cnpj": "11222333000181",
+         "email": "um@x.test"
+        },
+        {
+         "name": "XLS Two",
+         "cnpj": "",
+         "email": "two@x.test"
+        },
+        {
+         "name": "4567",
+         "cnpj": "",
+         "email": "true"
+        },
+        {
+         "name": "<img src=x onerror=window.__xss=(window.__xss||0)+1>",
+         "cnpj": "\"1\"",
+         "email": "o'neil@x.test"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "label": "upload com erro",
+    "result": {
+     "feedback": "Falha QA no upload.",
+     "scripts": 2,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": [
+      {
+       "rows": [
+        {
+         "name": "Supplier One",
+         "cnpj": "1",
+         "email": "one@x.test"
+        },
+        {
+         "name": "Supplier Two",
+         "cnpj": "",
+         "email": ""
+        },
+        {
+         "name": "0",
+         "cnpj": "0",
+         "email": "0"
+        },
+        {
+         "name": "Quoted",
+         "cnpj": "comma",
+         "email": "2"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "label": "troca de idioma (fr-FR) xls sem CDN",
+    "result": {
+     "feedback": "Impossible de charger la prise en charge XLS. Vérifiez votre connexion.",
+     "scripts": 3,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": []
+    }
+   },
+   {
+    "label": "troca de idioma (fr-FR) csv",
+    "result": {
+     "feedback": "Importado: 4 novos, 1 atualizados.",
+     "scripts": 3,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": [
+      {
+       "rows": [
+        {
+         "name": "Fornecedor A",
+         "cnpj": "12.345.678/0001-90",
+         "email": "a@x.test"
+        },
+        {
+         "name": "Fornecedor B",
+         "cnpj": "98765432000110",
+         "email": "b@x.test"
+        },
+        {
+         "name": "Só nome",
+         "cnpj": "",
+         "email": ""
+        },
+        {
+         "name": "<img src=x onerror=window.__xss=(window.__xss||0)+1>",
+         "cnpj": "1",
+         "email": "x"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  ]
+ },
+ "en-GB": {
+  "steps": [
+   {
+    "label": "sem arquivo",
+    "result": {
+     "feedback": "Select a file.",
+     "scripts": 0,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": []
+    }
+   },
+   {
+    "label": "csv pt ;",
+    "result": {
+     "feedback": "Importado: 4 novos, 1 atualizados.",
+     "scripts": 0,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": [
+      {
+       "rows": [
+        {
+         "name": "Fornecedor A",
+         "cnpj": "12.345.678/0001-90",
+         "email": "a@x.test"
+        },
+        {
+         "name": "Fornecedor B",
+         "cnpj": "98765432000110",
+         "email": "b@x.test"
+        },
+        {
+         "name": "Só nome",
+         "cnpj": "",
+         "email": ""
+        },
+        {
+         "name": "<img src=x onerror=window.__xss=(window.__xss||0)+1>",
+         "cnpj": "1",
+         "email": "x"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "label": "csv en ,",
+    "result": {
+     "feedback": "Importado: 4 novos, 1 atualizados.",
+     "scripts": 0,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": [
+      {
+       "rows": [
+        {
+         "name": "Supplier One",
+         "cnpj": "1",
+         "email": "one@x.test"
+        },
+        {
+         "name": "Supplier Two",
+         "cnpj": "",
+         "email": ""
+        },
+        {
+         "name": "0",
+         "cnpj": "0",
+         "email": "0"
+        },
+        {
+         "name": "Quoted",
+         "cnpj": "comma",
+         "email": "2"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "label": "csv vazio",
+    "result": {
+     "feedback": "File is empty or contains no data.",
+     "scripts": 0,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": []
+    }
+   },
+   {
+    "label": "csv sem nome",
+    "result": {
+     "feedback": "No valid rows found. Check that the file has a “nome” column.",
+     "scripts": 0,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": []
+    }
+   },
+   {
+    "label": "xls sem CDN",
+    "result": {
+     "feedback": "Unable to load XLS support. Check your connection.",
+     "scripts": 1,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": []
+    }
+   },
+   {
+    "label": "xlsx",
+    "result": {
+     "feedback": "Importado: 1 novos, 1 atualizados.",
+     "scripts": 2,
+     "xlsxCalls": [
+      [
+       "read",
+       6,
+       "array"
+      ],
+      [
+       "sheet_to_json",
+       "ws1",
+       "{\"defval\":\"\"}"
+      ]
+     ],
+     "xss": 0,
+     "uploads": [
+      {
+       "rows": [
+        {
+         "name": "XLS Two",
+         "cnpj": "",
+         "email": "two@x.test"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "label": "xls (SheetJS já carregado)",
+    "result": {
+     "feedback": "Importado: 1 novos, 1 atualizados.",
+     "scripts": 2,
+     "xlsxCalls": [
+      [
+       "read",
+       7,
+       "array"
+      ],
+      [
+       "sheet_to_json",
+       "ws1",
+       "{\"defval\":\"\"}"
+      ]
+     ],
+     "xss": 0,
+     "uploads": [
+      {
+       "rows": [
+        {
+         "name": "XLS Two",
+         "cnpj": "",
+         "email": "two@x.test"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "label": "upload com erro",
+    "result": {
+     "feedback": "Falha QA no upload.",
+     "scripts": 2,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": [
+      {
+       "rows": [
+        {
+         "name": "Supplier One",
+         "cnpj": "1",
+         "email": "one@x.test"
+        },
+        {
+         "name": "Supplier Two",
+         "cnpj": "",
+         "email": ""
+        },
+        {
+         "name": "0",
+         "cnpj": "0",
+         "email": "0"
+        },
+        {
+         "name": "Quoted",
+         "cnpj": "comma",
+         "email": "2"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "label": "troca de idioma (fr-FR) xls sem CDN",
+    "result": {
+     "feedback": "Impossible de charger la prise en charge XLS. Vérifiez votre connexion.",
+     "scripts": 3,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": []
+    }
+   },
+   {
+    "label": "troca de idioma (fr-FR) csv",
+    "result": {
+     "feedback": "Importado: 4 novos, 1 atualizados.",
+     "scripts": 3,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": [
+      {
+       "rows": [
+        {
+         "name": "Fornecedor A",
+         "cnpj": "12.345.678/0001-90",
+         "email": "a@x.test"
+        },
+        {
+         "name": "Fornecedor B",
+         "cnpj": "98765432000110",
+         "email": "b@x.test"
+        },
+        {
+         "name": "Só nome",
+         "cnpj": "",
+         "email": ""
+        },
+        {
+         "name": "<img src=x onerror=window.__xss=(window.__xss||0)+1>",
+         "cnpj": "1",
+         "email": "x"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  ]
+ },
+ "es-ES": {
+  "steps": [
+   {
+    "label": "sem arquivo",
+    "result": {
+     "feedback": "Seleccione un archivo.",
+     "scripts": 0,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": []
+    }
+   },
+   {
+    "label": "csv pt ;",
+    "result": {
+     "feedback": "Importado: 4 novos, 1 atualizados.",
+     "scripts": 0,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": [
+      {
+       "rows": [
+        {
+         "name": "Fornecedor A",
+         "cnpj": "12.345.678/0001-90",
+         "email": "a@x.test"
+        },
+        {
+         "name": "Fornecedor B",
+         "cnpj": "98765432000110",
+         "email": "b@x.test"
+        },
+        {
+         "name": "Só nome",
+         "cnpj": "",
+         "email": ""
+        },
+        {
+         "name": "<img src=x onerror=window.__xss=(window.__xss||0)+1>",
+         "cnpj": "1",
+         "email": "x"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "label": "csv en ,",
+    "result": {
+     "feedback": "Importado: 4 novos, 1 atualizados.",
+     "scripts": 0,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": [
+      {
+       "rows": [
+        {
+         "name": "Supplier One",
+         "cnpj": "1",
+         "email": "one@x.test"
+        },
+        {
+         "name": "Supplier Two",
+         "cnpj": "",
+         "email": ""
+        },
+        {
+         "name": "0",
+         "cnpj": "0",
+         "email": "0"
+        },
+        {
+         "name": "Quoted",
+         "cnpj": "comma",
+         "email": "2"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "label": "csv vazio",
+    "result": {
+     "feedback": "El archivo está vacío o no contiene datos.",
+     "scripts": 0,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": []
+    }
+   },
+   {
+    "label": "csv sem nome",
+    "result": {
+     "feedback": "No se encontraron filas válidas. Compruebe que el archivo tenga la columna «nome».",
+     "scripts": 0,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": []
+    }
+   },
+   {
+    "label": "xls sem CDN",
+    "result": {
+     "feedback": "No se pudo cargar la compatibilidad con XLS. Compruebe su conexión.",
+     "scripts": 1,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": []
+    }
+   },
+   {
+    "label": "xlsx",
+    "result": {
+     "feedback": "Importado: 2 novos, 1 atualizados.",
+     "scripts": 2,
+     "xlsxCalls": [
+      [
+       "read",
+       6,
+       "array"
+      ],
+      [
+       "sheet_to_json",
+       "ws1",
+       "{\"defval\":\"\"}"
+      ]
+     ],
+     "xss": 0,
+     "uploads": [
+      {
+       "rows": [
+        {
+         "name": "XLS Two",
+         "cnpj": "",
+         "email": "two@x.test"
+        },
+        {
+         "name": "XLS Tres",
+         "cnpj": "",
+         "email": ""
+        }
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "label": "xls (SheetJS já carregado)",
+    "result": {
+     "feedback": "Importado: 2 novos, 1 atualizados.",
+     "scripts": 2,
+     "xlsxCalls": [
+      [
+       "read",
+       7,
+       "array"
+      ],
+      [
+       "sheet_to_json",
+       "ws1",
+       "{\"defval\":\"\"}"
+      ]
+     ],
+     "xss": 0,
+     "uploads": [
+      {
+       "rows": [
+        {
+         "name": "XLS Two",
+         "cnpj": "",
+         "email": "two@x.test"
+        },
+        {
+         "name": "XLS Tres",
+         "cnpj": "",
+         "email": ""
+        }
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "label": "upload com erro",
+    "result": {
+     "feedback": "Falha QA no upload.",
+     "scripts": 2,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": [
+      {
+       "rows": [
+        {
+         "name": "Supplier One",
+         "cnpj": "1",
+         "email": "one@x.test"
+        },
+        {
+         "name": "Supplier Two",
+         "cnpj": "",
+         "email": ""
+        },
+        {
+         "name": "0",
+         "cnpj": "0",
+         "email": "0"
+        },
+        {
+         "name": "Quoted",
+         "cnpj": "comma",
+         "email": "2"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "label": "troca de idioma (fr-FR) xls sem CDN",
+    "result": {
+     "feedback": "Impossible de charger la prise en charge XLS. Vérifiez votre connexion.",
+     "scripts": 3,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": []
+    }
+   },
+   {
+    "label": "troca de idioma (fr-FR) csv",
+    "result": {
+     "feedback": "Importado: 4 novos, 1 atualizados.",
+     "scripts": 3,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": [
+      {
+       "rows": [
+        {
+         "name": "Fornecedor A",
+         "cnpj": "12.345.678/0001-90",
+         "email": "a@x.test"
+        },
+        {
+         "name": "Fornecedor B",
+         "cnpj": "98765432000110",
+         "email": "b@x.test"
+        },
+        {
+         "name": "Só nome",
+         "cnpj": "",
+         "email": ""
+        },
+        {
+         "name": "<img src=x onerror=window.__xss=(window.__xss||0)+1>",
+         "cnpj": "1",
+         "email": "x"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  ]
+ },
+ "fr-FR": {
+  "steps": [
+   {
+    "label": "sem arquivo",
+    "result": {
+     "feedback": "Sélectionnez un fichier.",
+     "scripts": 0,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": []
+    }
+   },
+   {
+    "label": "csv pt ;",
+    "result": {
+     "feedback": "Importado: 4 novos, 1 atualizados.",
+     "scripts": 0,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": [
+      {
+       "rows": [
+        {
+         "name": "Fornecedor A",
+         "cnpj": "12.345.678/0001-90",
+         "email": "a@x.test"
+        },
+        {
+         "name": "Fornecedor B",
+         "cnpj": "98765432000110",
+         "email": "b@x.test"
+        },
+        {
+         "name": "Só nome",
+         "cnpj": "",
+         "email": ""
+        },
+        {
+         "name": "<img src=x onerror=window.__xss=(window.__xss||0)+1>",
+         "cnpj": "1",
+         "email": "x"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "label": "csv en ,",
+    "result": {
+     "feedback": "Importado: 4 novos, 1 atualizados.",
+     "scripts": 0,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": [
+      {
+       "rows": [
+        {
+         "name": "Supplier One",
+         "cnpj": "1",
+         "email": "one@x.test"
+        },
+        {
+         "name": "Supplier Two",
+         "cnpj": "",
+         "email": ""
+        },
+        {
+         "name": "0",
+         "cnpj": "0",
+         "email": "0"
+        },
+        {
+         "name": "Quoted",
+         "cnpj": "comma",
+         "email": "2"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "label": "csv vazio",
+    "result": {
+     "feedback": "Le fichier est vide ou ne contient aucune donnée.",
+     "scripts": 0,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": []
+    }
+   },
+   {
+    "label": "csv sem nome",
+    "result": {
+     "feedback": "Aucune ligne valide trouvée. Vérifiez que le fichier contient la colonne « nome ».",
+     "scripts": 0,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": []
+    }
+   },
+   {
+    "label": "xls sem CDN",
+    "result": {
+     "feedback": "Impossible de charger la prise en charge XLS. Vérifiez votre connexion.",
+     "scripts": 1,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": []
+    }
+   },
+   {
+    "label": "xlsx",
+    "result": {
+     "feedback": "Importado: 2 novos, 1 atualizados.",
+     "scripts": 2,
+     "xlsxCalls": [
+      [
+       "read",
+       6,
+       "array"
+      ],
+      [
+       "sheet_to_json",
+       "ws1",
+       "{\"defval\":\"\"}"
+      ]
+     ],
+     "xss": 0,
+     "uploads": [
+      {
+       "rows": [
+        {
+         "name": "XLS Two",
+         "cnpj": "",
+         "email": "two@x.test"
+        },
+        {
+         "name": "XLS Quatre",
+         "cnpj": "",
+         "email": ""
+        }
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "label": "xls (SheetJS já carregado)",
+    "result": {
+     "feedback": "Importado: 2 novos, 1 atualizados.",
+     "scripts": 2,
+     "xlsxCalls": [
+      [
+       "read",
+       7,
+       "array"
+      ],
+      [
+       "sheet_to_json",
+       "ws1",
+       "{\"defval\":\"\"}"
+      ]
+     ],
+     "xss": 0,
+     "uploads": [
+      {
+       "rows": [
+        {
+         "name": "XLS Two",
+         "cnpj": "",
+         "email": "two@x.test"
+        },
+        {
+         "name": "XLS Quatre",
+         "cnpj": "",
+         "email": ""
+        }
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "label": "upload com erro",
+    "result": {
+     "feedback": "Falha QA no upload.",
+     "scripts": 2,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": [
+      {
+       "rows": [
+        {
+         "name": "Supplier One",
+         "cnpj": "1",
+         "email": "one@x.test"
+        },
+        {
+         "name": "Supplier Two",
+         "cnpj": "",
+         "email": ""
+        },
+        {
+         "name": "0",
+         "cnpj": "0",
+         "email": "0"
+        },
+        {
+         "name": "Quoted",
+         "cnpj": "comma",
+         "email": "2"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "label": "troca de idioma (nb-NO) xls sem CDN",
+    "result": {
+     "feedback": "Kunne ikke laste XLS-støtte. Kontroller tilkoblingen.",
+     "scripts": 3,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": []
+    }
+   },
+   {
+    "label": "troca de idioma (nb-NO) csv",
+    "result": {
+     "feedback": "Importado: 4 novos, 1 atualizados.",
+     "scripts": 3,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": [
+      {
+       "rows": [
+        {
+         "name": "Fornecedor A",
+         "cnpj": "12.345.678/0001-90",
+         "email": "a@x.test"
+        },
+        {
+         "name": "Fornecedor B",
+         "cnpj": "98765432000110",
+         "email": "b@x.test"
+        },
+        {
+         "name": "Só nome",
+         "cnpj": "",
+         "email": ""
+        },
+        {
+         "name": "<img src=x onerror=window.__xss=(window.__xss||0)+1>",
+         "cnpj": "1",
+         "email": "x"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  ]
+ },
+ "nb-NO": {
+  "steps": [
+   {
+    "label": "sem arquivo",
+    "result": {
+     "feedback": "Velg en fil.",
+     "scripts": 0,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": []
+    }
+   },
+   {
+    "label": "csv pt ;",
+    "result": {
+     "feedback": "Importado: 4 novos, 1 atualizados.",
+     "scripts": 0,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": [
+      {
+       "rows": [
+        {
+         "name": "Fornecedor A",
+         "cnpj": "12.345.678/0001-90",
+         "email": "a@x.test"
+        },
+        {
+         "name": "Fornecedor B",
+         "cnpj": "98765432000110",
+         "email": "b@x.test"
+        },
+        {
+         "name": "Só nome",
+         "cnpj": "",
+         "email": ""
+        },
+        {
+         "name": "<img src=x onerror=window.__xss=(window.__xss||0)+1>",
+         "cnpj": "1",
+         "email": "x"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "label": "csv en ,",
+    "result": {
+     "feedback": "Importado: 4 novos, 1 atualizados.",
+     "scripts": 0,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": [
+      {
+       "rows": [
+        {
+         "name": "Supplier One",
+         "cnpj": "1",
+         "email": "one@x.test"
+        },
+        {
+         "name": "Supplier Two",
+         "cnpj": "",
+         "email": ""
+        },
+        {
+         "name": "0",
+         "cnpj": "0",
+         "email": "0"
+        },
+        {
+         "name": "Quoted",
+         "cnpj": "comma",
+         "email": "2"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "label": "csv vazio",
+    "result": {
+     "feedback": "Filen er tom eller inneholder ingen data.",
+     "scripts": 0,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": []
+    }
+   },
+   {
+    "label": "csv sem nome",
+    "result": {
+     "feedback": "Ingen gyldige rader funnet. Kontroller at filen har kolonnen «nome».",
+     "scripts": 0,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": []
+    }
+   },
+   {
+    "label": "xls sem CDN",
+    "result": {
+     "feedback": "Kunne ikke laste XLS-støtte. Kontroller tilkoblingen.",
+     "scripts": 1,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": []
+    }
+   },
+   {
+    "label": "xlsx",
+    "result": {
+     "feedback": "Importado: 2 novos, 1 atualizados.",
+     "scripts": 2,
+     "xlsxCalls": [
+      [
+       "read",
+       6,
+       "array"
+      ],
+      [
+       "sheet_to_json",
+       "ws1",
+       "{\"defval\":\"\"}"
+      ]
+     ],
+     "xss": 0,
+     "uploads": [
+      {
+       "rows": [
+        {
+         "name": "XLS Two",
+         "cnpj": "",
+         "email": "two@x.test"
+        },
+        {
+         "name": "XLS Fire",
+         "cnpj": "",
+         "email": ""
+        }
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "label": "xls (SheetJS já carregado)",
+    "result": {
+     "feedback": "Importado: 2 novos, 1 atualizados.",
+     "scripts": 2,
+     "xlsxCalls": [
+      [
+       "read",
+       7,
+       "array"
+      ],
+      [
+       "sheet_to_json",
+       "ws1",
+       "{\"defval\":\"\"}"
+      ]
+     ],
+     "xss": 0,
+     "uploads": [
+      {
+       "rows": [
+        {
+         "name": "XLS Two",
+         "cnpj": "",
+         "email": "two@x.test"
+        },
+        {
+         "name": "XLS Fire",
+         "cnpj": "",
+         "email": ""
+        }
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "label": "upload com erro",
+    "result": {
+     "feedback": "Falha QA no upload.",
+     "scripts": 2,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": [
+      {
+       "rows": [
+        {
+         "name": "Supplier One",
+         "cnpj": "1",
+         "email": "one@x.test"
+        },
+        {
+         "name": "Supplier Two",
+         "cnpj": "",
+         "email": ""
+        },
+        {
+         "name": "0",
+         "cnpj": "0",
+         "email": "0"
+        },
+        {
+         "name": "Quoted",
+         "cnpj": "comma",
+         "email": "2"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "label": "troca de idioma (fr-FR) xls sem CDN",
+    "result": {
+     "feedback": "Impossible de charger la prise en charge XLS. Vérifiez votre connexion.",
+     "scripts": 3,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": []
+    }
+   },
+   {
+    "label": "troca de idioma (fr-FR) csv",
+    "result": {
+     "feedback": "Importado: 4 novos, 1 atualizados.",
+     "scripts": 3,
+     "xlsxCalls": null,
+     "xss": 0,
+     "uploads": [
+      {
+       "rows": [
+        {
+         "name": "Fornecedor A",
+         "cnpj": "12.345.678/0001-90",
+         "email": "a@x.test"
+        },
+        {
+         "name": "Fornecedor B",
+         "cnpj": "98765432000110",
+         "email": "b@x.test"
+        },
+        {
+         "name": "Só nome",
+         "cnpj": "",
+         "email": ""
+        },
+        {
+         "name": "<img src=x onerror=window.__xss=(window.__xss||0)+1>",
+         "cnpj": "1",
+         "email": "x"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  ]
+ }
+}

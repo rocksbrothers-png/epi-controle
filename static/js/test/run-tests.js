@@ -7826,6 +7826,7 @@ require('./print-popup-runtime')({ testAsync, test, assert, eq });
 require('./shell-topbar-runtime')({ testAsync, test, assert, eq });
 require('./purchase-status-runtime')({ test, assert, eq });
 require('./requester-modal-labels-runtime')({ testAsync, test, assert, eq });
+require('./supplier-import-runtime')({ testAsync, test, assert, eq });
 require('./users-active-runtime')({ test, assert, eq });
 require('./employee-ppe-360-lifecycle-runtime')({ test, testAsync, assert, eq });
 // F1 — Ficha 360° de EPI: regras de apresentação do resumo e integração HTTP.

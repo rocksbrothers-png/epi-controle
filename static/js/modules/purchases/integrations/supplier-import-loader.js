@@ -21,7 +21,7 @@
   const SHEETJS_URL = 'https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js';
 
   async function _loadSheetJS(deps) {
-    if (deps.getXLSX()) return deps.getXLSX();
+    if (deps.getXLSX()) {return deps.getXLSX();}
     return new Promise((resolve, reject) => {
       const s = deps.createScript();
       s.src = SHEETJS_URL;

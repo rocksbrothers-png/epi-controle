@@ -19,7 +19,7 @@
       .map(r => {
         const k = (key) => String(r[key] || r[key?.toLowerCase?.()] || r[key?.toUpperCase?.()] || '').trim();
         const name = k('nome') || k('name') || k('Name') || k(translatedNameLabel) || '';
-        if (!name) return null;
+        if (!name) {return null;}
         return {
           name,
           cnpj: k('cnpj') || k('CNPJ') || '',

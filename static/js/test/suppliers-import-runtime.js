@@ -68,7 +68,7 @@ function buildContext(lang, impl, scenario, mutation) {
     ].join('\n'), ctx);
   } else {
     // Sem o motor: o tr de fallback do app.js devolve o texto do código.
-    vm.runInContext("var tr = function (key, fallback, vars) { return String(fallback !== undefined ? fallback : key).replace(/\\{(\\w+)\\}/g, (m, n) => vars && Object.prototype.hasOwnProperty.call(vars, n) ? String(vars[n]) : m); };", ctx);
+    vm.runInContext('var tr = function (key, fallback, vars) { return String(fallback !== undefined ? fallback : key).replace(/\\{(\\w+)\\}/g, (m, n) => vars && Object.prototype.hasOwnProperty.call(vars, n) ? String(vars[n]) : m); };', ctx);
   }
 
   const feedback = scenario.noFeedback ? null : {

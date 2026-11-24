@@ -26,6 +26,7 @@ on:
       - 'scripts/browser/ubx_print_popup.py'
       - 'scripts/browser/ubx_shell_topbar.py'
       - 'scripts/browser/ubx_purchase_status.py'
+      - 'scripts/browser/ubx_supplier_import.py'
       - 'scripts/browser/ubx_employee_ppe_360.py'
       - 'modules/employee_ppe_360/**'
       - 'modules/ficha/**'
@@ -114,6 +115,9 @@ jobs:
       - if: ${{ !cancelled() }}
         name: UBX Compras P1 purchase status equivalence (five locales)
         run: python scripts/browser/ubx_purchase_status.py --output browser-evidence/ubx-purchase-status
+      - if: ${{ !cancelled() }}
+        name: UBX Fornecedores F1 supplier import equivalence (five locales)
+        run: python scripts/browser/ubx_supplier_import.py --output browser-evidence/ubx-supplier-import
       - if: ${{ !cancelled() }}
         name: UBX application shell and topbar equivalence (five locales, desktop/mobile)
         run: |

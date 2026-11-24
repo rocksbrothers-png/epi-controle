@@ -13623,32 +13623,6 @@ function buildSupplierInclusionMailto(supplierName, cnpj) {
   return `mailto:?subject=${subject}&body=${body}`;
 }
 
-async function _loadSheetJS() {
-  if (window.XLSX) return window.XLSX;
-  return new Promise((resolve, reject) => {
-    const s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js';
-    s.onload = () => resolve(window.XLSX);
-    s.onerror = () => reject(new Error((tr('ui.app.nao_foi_possivel_carregar_suporte_a_xls_verifique_sua_conexao_a34fe1', 'Não foi possível carregar suporte a XLS. Verifique sua conexão.', {}))));
-    document.head.appendChild(s);
-  });
-}
-
-function _parseSuppliersRows(rawRows) {
-  return rawRows
-    .map(r => {
-      const k = (key) => String(r[key] || r[key?.toLowerCase?.()] || r[key?.toUpperCase?.()] || '').trim();
-      const name = k('nome') || k('name') || k('Name') || k((tr('signature.name', 'Nome', {}))) || '';
-      if (!name) return null;
-      return {
-        name,
-        cnpj: k('cnpj') || k('CNPJ') || '',
-        email: k('contato') || k('email') || k('Email') || k('contact_name') || k('contact_email') || '',
-      };
-    })
-    .filter(Boolean);
-}
-
 async function importSuppliersCSV() {
   const fileInput = document.getElementById('compras-suppliers-csv');
   const feedback = document.getElementById('compras-suppliers-csv-feedback');
@@ -13659,12 +13633,16 @@ async function importSuppliersCSV() {
   try {
     if (ext === 'xls' || ext === 'xlsx') {
       if (feedback) feedback.textContent = ((globalThis.EpiI18n?.textFor?.(feedback,"ui.app.carregando_suporte_xls_2db8a5","Carregando suporte XLS\u2026",{}) ?? globalThis.trEpi?.("ui.app.carregando_suporte_xls_2db8a5","Carregando suporte XLS\u2026",{})) ?? "Carregando suporte XLS\u2026");
-      const XLSX = await _loadSheetJS();
+      const XLSX = await globalThis.__EPI_SUPPLIER_IMPORT_LOADER__._loadSheetJS({
+        win: window,
+        doc: document,
+        errorMessage: () => tr('ui.app.nao_foi_possivel_carregar_suporte_a_xls_verifique_sua_conexao_a34fe1', 'Não foi possível carregar suporte a XLS. Verifique sua conexão.', {}),
+      });
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf, { type: 'array' });
       const ws = wb.Sheets[wb.SheetNames[0]];
       const data = XLSX.utils.sheet_to_json(ws, { defval: '' });
-      rows = _parseSuppliersRows(data);
+      rows = globalThis.__EPI_SUPPLIER_IMPORT_RULES__._parseSuppliersRows(data, () => tr('signature.name', 'Nome', {}));
     } else {
       const raw = await file.text();
       const text = raw.replace(/^﻿/, '');
@@ -13678,7 +13656,7 @@ async function importSuppliersCSV() {
         headers.forEach((h, i) => { obj[h] = cols[i] || ''; });
         return obj;
       });
-      rows = _parseSuppliersRows(objRows);
+      rows = globalThis.__EPI_SUPPLIER_IMPORT_RULES__._parseSuppliersRows(objRows, () => tr('signature.name', 'Nome', {}));
     }
   } catch(e) {
     if (feedback) feedback.textContent = e.message || ((globalThis.EpiI18n?.textFor?.(feedback,"ui.app.erro_ao_ler_o_arquivo_e02d01","Erro ao ler o arquivo.",{}) ?? globalThis.trEpi?.("ui.app.erro_ao_ler_o_arquivo_e02d01","Erro ao ler o arquivo.",{})) ?? "Erro ao ler o arquivo.");

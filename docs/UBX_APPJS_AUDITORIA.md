@@ -1968,3 +1968,63 @@ Todas as 16 chaves de `ITEM_STATUS_LABELS` existem nos 5 catálogos, mas 7 valor
 traduzidos: `portal.statusApproved` ("Approved") em `es-ES`, `fr-FR` e `nb-NO`; `portal.statusInRequest`
 ("In requisition") em `es-ES`, `fr-FR` e `nb-NO`; `portal.statusReceived` ("Received") em `nb-NO`. Proposta: corrigir os
 valores nos catálogos em uma fatia de I18N, com a verificação de completude existente.
+
+## 28. UBX Fornecedores F1 (2026-11-23): importação de planilha de fornecedores
+
+Base: Corporate `main` `5ab5851f`, SaaS `main` `a58bf49` (modal do requisitante integrado: #1109/#483). Só frontend;
+nenhum endpoint, contrato, regra de negócio, permissão, banco, CSP, CDN ou tradução alterado.
+
+### 28.1 Escopo e decisão arquitetural
+
+| Declaração | Antes | Depois |
+|---|---|---|
+| `_parseSuppliersRows(rawRows)` | `function` no `app.js` (global implícita, Annex B) | `modules/purchases/business/supplier-import-rules.js`, `_parseSuppliersRows(rawRows, resolveNameLabel)` |
+| `_loadSheetJS()` | `async function` de bloco no `app.js` | `modules/purchases/integrations/supplier-import-loader.js`, `_loadSheetJS({ win, doc, errorMessage })` |
+| `importSuppliersCSV()` | `app.js` | permanece no `app.js`: injeta as dependências e coordena a importação |
+
+- A cópia literal dos dois corpos violava a guarda (`business/` chamava `tr(`; `integrations/` usava `document.`). A
+  guarda não foi alterada: as dependências passaram a chegar por parâmetro (injeção), por decisão do responsável.
+- `resolveNameLabel` e `errorMessage` são **funções**, não valores: o original só chamava o tradutor quando
+  `nome`/`name`/`Name` estavam vazios (por linha) e só montava a mensagem de erro no `onerror`. Passar valores
+  anteciparia essas chamadas; as mutações "rótulo avaliado antecipadamente" e "mensagem antecipada" provam a diferença.
+- Os corpos são idênticos ao original, exceto pelas trocas `tr('signature.name', …)` → `resolveNameLabel()`,
+  `tr('ui.app.nao_foi_possivel_carregar_…')` → `errorMessage()`, `window` → `win` e `document` → `doc`. URL do SheetJS,
+  ordem dos passos, mensagens e o comportamento de carga (atalho quando `XLSX` já existe; chamadas concorrentes antes
+  da carga anexam um script cada, como antes) não mudam.
+- Globais: cada módulo publica só a flag `__EPI_MODULE_SUPPLIER_IMPORT_{RULES,LOADER}_LOADED__` e o namespace congelado
+  `__EPI_SUPPLIER_IMPORT_{RULES,LOADER}__`. A global implícita `_parseSuppliersRows` **deixa de existir**: não tinha
+  chamador fora do `app.js` (busca em `static/`, `templates`, Python e HTML) e republicá-la com outra assinatura seria
+  uma global nova com contrato diferente. `_loadSheetJS` já era de bloco.
+- Sem ciclos: os dois módulos não se referenciam, não leem nada carregado depois deles e carregam em `_scripts.html`
+  depois de `purchase-status-view.js` e antes de `views/purchases.js` e do `app.js`.
+- `app.js` 16.079 → 16.057 linhas; 648 → 646 declarações (catraca `--update`); 93 endpoints; zero ciclos.
+
+### 28.2 Testes
+
+- Caracterização (`static/js/test/supplier-import-runtime.js`, commit próprio antes da extração): cópia literal
+  (`fixtures/app-before-ubx-suppliers-f1.js.txt`) × implementação atual, no motor de tradução real com os 5 catálogos,
+  idioma não suportado, catálogos vazios e sem motor. 16 conjuntos de linhas (CSV, XLS com números/booleanos,
+  cabeçalhos alternativos e maiúsculos, linhas vazias, sem nome, BOM) + 8 entradas inválidas + 7 cenários de carga
+  (pré-carregado, `XLSX` falsy, sucesso, sucesso sem `XLSX`, erro, concorrência, sem `<head>`): 288 observações,
+  360 resultados, zero divergências antes **e** depois da extração. O adaptador do teste injeta as dependências com o
+  mesmo texto do `app.js`, e os contratos conferem esse texto, os namespaces congelados, as globais publicadas, a
+  ausência de leitura de tradutor/DOM/janela/estado/HTTP/storage nos módulos e a ordem de carga.
+- Mutações (`supplier-import-mutations.js`, em memória): 32/32 detectadas — 15 no parser, 9 no carregador e 8 na
+  injeção do `app.js`. Mutante equivalente conhecido (não listado): remover o `|| ''` final do nome.
+- Chromium (`scripts/browser/ubx_supplier_import.py`, referência gravada da `main`): importação real pelo campo
+  `#compras-suppliers-csv` nos 5 idiomas — sem arquivo, CSV `;` com BOM, CSV `,`, CSV vazio, sem coluna nome, XLS sem
+  CDN, `.xlsx`, `.xls` com SheetJS já carregado, erro 500 no upload e troca de idioma; corpo do POST, mensagens,
+  scripts injetados e chamadas ao SheetJS idênticos.
+- Ajustes de teste necessários pela mudança de arquivo (sem afrouxar nada):
+  `tests/test_security_csp_v1.py::test_spa_external_scripts_match_what_the_frontend_loads` passa a procurar scripts
+  injetados em `app.js` **e** em `static/js/modules/**` (antes só `app.js`; a igualdade com `core/csp.py` continua
+  exata); dígitos F4/F5B recalculados com `_digesto_dos_pareados()`.
+
+### 28.3 Pendências registradas (fora desta fatia)
+
+- **CDN/SRI do SheetJS:** URL sem versão fixada nem SRI (`core/csp.py:34` libera exatamente esse URL). Proposta:
+  versão fixada + `integrity`, ou servir o arquivo localmente, numa fatia de segurança com revisão da CSP.
+- **CSP:** `CSP_MODE` efetivo em produção não verificado nesta fatia.
+- **Traduções:** a mensagem de sucesso `Importado: N novos, M atualizados.` é português fixo no `app.js`; os 7 valores
+  em inglês da §27.4 seguem pendentes. Fatia de I18N.
+- **Deploy:** nenhuma das fatias recentes foi verificada em produção nesta sessão; deploy só com autorização própria.

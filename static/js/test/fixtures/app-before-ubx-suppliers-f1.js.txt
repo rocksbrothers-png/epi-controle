@@ -1,0 +1,27 @@
+// Cópia literal do static/app.js da main ANTES da UBX Fornecedores F1 (referência "antes" da caracterização).
+// Trechos: _loadSheetJS e _parseSuppliersRows. Não editar.
+async function _loadSheetJS() {
+  if (window.XLSX) return window.XLSX;
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js';
+    s.onload = () => resolve(window.XLSX);
+    s.onerror = () => reject(new Error((tr('ui.app.nao_foi_possivel_carregar_suporte_a_xls_verifique_sua_conexao_a34fe1', 'Não foi possível carregar suporte a XLS. Verifique sua conexão.', {}))));
+    document.head.appendChild(s);
+  });
+}
+
+function _parseSuppliersRows(rawRows) {
+  return rawRows
+    .map(r => {
+      const k = (key) => String(r[key] || r[key?.toLowerCase?.()] || r[key?.toUpperCase?.()] || '').trim();
+      const name = k('nome') || k('name') || k('Name') || k((tr('signature.name', 'Nome', {}))) || '';
+      if (!name) return null;
+      return {
+        name,
+        cnpj: k('cnpj') || k('CNPJ') || '',
+        email: k('contato') || k('email') || k('Email') || k('contact_name') || k('contact_email') || '',
+      };
+    })
+    .filter(Boolean);
+}
